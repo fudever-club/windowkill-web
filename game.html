@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WINDOWKILL: Web Edition — Chiến trường</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { height: 100%; overflow: hidden; background: #04080f; }
+  #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
+  #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+  .menu-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .stat-line { color: #bfa8dd; font-size: 15px; line-height: 2; }
+  .stat-line b { color: #fde68a; }
+</style>
+</head>
+<body>
+<div id="arena-wrap">
+  <canvas id="game-canvas"></canvas>
+
+  <div class="overlay" id="ov-draft">
+    <h2>⬆️ LÊN CẤP! Chọn 1 nâng cấp</h2>
+    <div class="cards" id="draft-cards"></div>
+  </div>
+
+  <div class="overlay" id="ov-pause">
+    <h2>⏸ Tạm dừng</h2>
+    <div class="menu-btns">
+      <button class="btn-big" id="btn-resume" style="font-size:16px;padding:12px 28px">▶ Tiếp tục</button>
+      <button class="btn-ghost" id="btn-restart">↺ Chơi lại</button>
+      <button class="btn-ghost" id="btn-quit">🏠 Về menu</button>
+    </div>
+    <div class="stat-line">P / Esc: tiếp tục · M: bật/tắt nhạc</div>
+  </div>
+
+  <div class="overlay" id="ov-over">
+    <h2 id="over-title">💥 GAME OVER</h2>
+    <div class="score-big" id="over-score"></div>
+    <div class="stat-line" id="over-stats"></div>
+    <div id="over-record" style="color:#fde68a;font-weight:700;font-size:18px"></div>
+    <div class="menu-btns">
+      <button class="btn-big" id="btn-again" style="font-size:16px;padding:12px 28px">↺ Chơi lại (R)</button>
+      <button class="btn-ghost" id="btn-quit2">🏠 Về menu</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

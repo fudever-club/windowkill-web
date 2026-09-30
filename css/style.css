@@ -55,3 +55,34 @@ button { font-family: inherit; }
 .pchip.on { background: linear-gradient(135deg, #0080FF, #0066CC); border-color: transparent; font-weight: 700; color: #fff; }
 .pchip .x { opacity: .6; font-size: 12px; padding: 0 2px; }
 .pchip .x:hover { opacity: 1; color: #ff8f8f; }
+
+/* ---------- SVG icon system (assets/icons/*.svg, sprite inlined in HTML) ---------- */
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.18em; flex: none; }
+.panel h3 .ic { color: #8fc3ff; margin-right: 8px; width: 1.25em; height: 1.25em; vertical-align: -0.22em; }
+.howto .ic { color: #8fc3ff; margin-right: 10px; width: 1.3em; height: 1.3em; }
+.setrow .ic { color: #8fc3ff; margin-right: 10px; width: 1.3em; height: 1.3em; }
+.setrow > span { display: inline-flex; align-items: center; }
+.btn-big .ic, .btn-ghost .ic { margin-right: 8px; }
+.card .ico .ic { width: 46px; height: 46px; color: #8fc3ff; }
+.pchip .ic { width: 18px; height: 18px; }
+.pchip .av { width: 22px; height: 22px; border-radius: 7px; flex: none; }
+.pchip .x .ic { width: 12px; height: 12px; vertical-align: 0; }
+#hs-list .ic, #stat-list .ic { color: #8fc3ff; margin-right: 6px; }
+.warn-box .ic { color: #fbbf24; margin-right: 8px; width: 1.3em; height: 1.3em; }
+.overlay h2 .ic { color: #8fc3ff; margin-right: 10px; width: 1.1em; height: 1.1em; }
+.stat-line .ic { color: #8fc3ff; margin: 0 4px; }
+.score-big .ic, #over-record .ic { color: #fde68a; margin-right: 8px; }
+.card .d .ic { width: 1.1em; height: 1.1em; color: #8fc3ff; }
+/* footer links */
+.footer-links { display: flex; gap: 18px; justify-content: center; margin-top: 12px; }
+.footer-links a { color: #8fc3ff; display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; text-decoration: none; }
+.footer-links a:hover { color: #fff; }
+.footer-links .ic { width: 17px; height: 17px; margin: 0; }
+/* mini brand chip inside game overlays */
+.ov-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 2px; font-weight: 800; color: #8fc3ff; opacity: .9; }
+.ov-brand img { width: 26px; height: 26px; border-radius: 7px; }
+/* online leaderboard rank badges */
+.rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; font-weight: 800; background: #1a2f52; color: #8fc3ff; margin-right: 6px; }
+.rank.r1 { background: linear-gradient(135deg, #ffd34d, #b45309); color: #241a05; }
+.rank.r2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #0f172a; }
+.rank.r3 { background: linear-gradient(135deg, #f0a35e, #92400e); color: #fff; }

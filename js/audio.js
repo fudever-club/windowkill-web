@@ -51,26 +51,31 @@ const AudioEngine = (() => {
   const MENU_ARP  = [261.6, 329.6, 392, 523.2, 392, 329.6, 293.7, 329.6];
   const GAME_BASS = [55, 0, 55, 65.4, 0, 55, 82.4, 73.4];
   const GAME_HAT  = [1, 0, 1, 1, 0, 1, 0, 1];
+  // Nhạc theo Act (v2.0): tempo tăng dần theo độ căng. "game" = act1 (tương thích ngược).
+  const ACT2_BASS = [55, 0, 55, 58.3, 0, 55, 65.4, 62.2];
+  const ACT3_BASS = [55, 55, 65.4, 55, 49, 55, 58.3, 73.4];
+  const TRACKS = {
+    menu: { dur: 240, bass: MENU_BASS, arp: MENU_ARP, bassDur: .22, bassVol: .09 },
+    game: { dur: 165, bass: GAME_BASS, hat: GAME_HAT, stab: true, bassDur: .16, bassVol: .1 },
+    act1: { dur: 165, bass: GAME_BASS, hat: GAME_HAT, stab: true, bassDur: .16, bassVol: .1 },
+    act2: { dur: 148, bass: ACT2_BASS, hat: GAME_HAT, stab: true, bassDur: .16, bassVol: .11 },
+    act3: { dur: 130, bass: ACT3_BASS, hat: GAME_HAT, stab: true, bassDur: .14, bassVol: .12 },
+  };
 
   function startMusic(m) {
     mode = m || mode;
     stopMusic(); resume();
     if (!settings.music) return;
-    const stepDur = mode === "menu" ? 240 : 165;
+    const tr = TRACKS[mode] || TRACKS.game;
     musicTimer = setInterval(() => {
       if (!settings.music) return;
       const i = step % 8; step++;
-      if (mode === "menu") {
-        const b = MENU_BASS[i], a = MENU_ARP[i];
-        if (b) tone(b, .22, "triangle", .09, null, 0, true);
-        if (a && i % 2 === 0) tone(a, .18, "sine", .05, null, 0, true);
-      } else {
-        const b = GAME_BASS[i];
-        if (b) tone(b, .16, "triangle", .1, null, 0, true);
-        if (GAME_HAT[i]) tone(6000, .03, "square", .02, null, 0, true);
-        if (i === 4) tone(220, .12, "sawtooth", .03, 110, 0, true);
-      }
-    }, stepDur);
+      const b = tr.bass[i];
+      if (b) tone(b, tr.bassDur, "triangle", tr.bassVol, null, 0, true);
+      if (tr.hat && tr.hat[i]) tone(6000, .03, "square", .02, null, 0, true);
+      if (tr.stab && i === 4) tone(220, .12, "sawtooth", .03, 110, 0, true);
+      if (tr.arp && i % 2 === 0) { const a = tr.arp[i]; if (a) tone(a, .18, "sine", .05, null, 0, true); }
+    }, tr.dur);
   }
   function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
   function setSettings(s) { Object.assign(settings, s); if (!settings.music) stopMusic(); }

@@ -1,0 +1,198 @@
+/* WINDOWKILL backend — SQLite storage layer (node:sqlite, zero dependencies) */
+"use strict";
+import { randomBytes } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
+
+export const DIFFICULTIES = ["chill", "normal", "hard"];
+
+export function openDb(dbPath, opts = {}) {
+  const db = new DatabaseSync(dbPath);
+  const eventsCap = Number.isInteger(opts.eventsCap) && opts.eventsCap > 0 ? opts.eventsCap : 100_000;
+  const errorsCap = Number.isInteger(opts.errorsCap) && opts.errorsCap > 0 ? opts.errorsCap : 500;
+  db.exec("PRAGMA journal_mode = WAL;");
+  db.exec("PRAGMA foreign_keys = ON;");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '🎮',
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      score INTEGER NOT NULL,
+      wave INTEGER NOT NULL,
+      kills INTEGER NOT NULL,
+      duration_ms INTEGER NOT NULL,
+      difficulty TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_scores_leaderboard ON scores (difficulty, score DESC, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_scores_profile ON scores (profile_id);
+    /* Privacy-friendly analytics events. Only aggregates are ever read back;
+       the raw profile id is never stored (clients send a sha256 hash). */
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      profile_hash TEXT,
+      difficulty TEXT,
+      score INTEGER,
+      wave INTEGER,
+      payload TEXT NOT NULL DEFAULT '{}',
+      ts INTEGER NOT NULL,
+      received_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events (type, ts);
+    CREATE INDEX IF NOT EXISTS idx_events_profile_ts ON events (profile_hash, ts);
+    /* Client-side error reports (message + source only, no stack, no PII). */
+    CREATE TABLE IF NOT EXISTS errors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT '',
+      profile_hash TEXT,
+      ts INTEGER NOT NULL,
+      received_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_errors_ts ON errors (ts);
+  `);
+
+  const q = {
+    insertProfile: db.prepare("INSERT INTO profiles (id, name, emoji, created_at) VALUES (?, ?, ?, ?)"),
+    getProfile: db.prepare("SELECT id, name, emoji, created_at AS createdAt FROM profiles WHERE id = ?"),
+    listProfiles: db.prepare("SELECT id, name, emoji, created_at AS createdAt FROM profiles ORDER BY created_at ASC"),
+    deleteProfile: db.prepare("DELETE FROM profiles WHERE id = ?"),
+    insertScore: db.prepare(
+      "INSERT INTO scores (profile_id, score, wave, kills, duration_ms, difficulty, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ),
+    leaderboard: db.prepare(`
+      SELECT s.score, s.wave, s.kills, s.duration_ms AS durationMs, s.difficulty,
+             s.created_at AS createdAt, p.id AS profileId, p.name AS profileName, p.emoji AS profileEmoji
+      FROM scores s JOIN profiles p ON p.id = s.profile_id
+      WHERE s.difficulty = ?
+      ORDER BY s.score DESC, s.created_at ASC
+      LIMIT ?
+    `),
+    bestPerDifficulty: db.prepare(`
+      SELECT difficulty, MAX(score) AS bestScore, MAX(wave) AS bestWave
+      FROM scores WHERE profile_id = ? GROUP BY difficulty
+    `),
+    statsAgg: db.prepare(`
+      SELECT COUNT(*) AS games, COALESCE(SUM(kills), 0) AS kills,
+             COALESCE(SUM(score), 0) AS totalScore, COALESCE(MAX(wave), 0) AS bestWave,
+             COALESCE(SUM(duration_ms), 0) AS totalDurationMs
+      FROM scores WHERE profile_id = ?
+    `),
+    insertEvent: db.prepare(`
+      INSERT INTO events (type, profile_hash, difficulty, score, wave, payload, ts, received_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `),
+    trimEvents: db.prepare("DELETE FROM events WHERE id <= (SELECT COALESCE(MAX(id), 0) - ? FROM events)"),
+    insertError: db.prepare(`
+      INSERT INTO errors (message, source, profile_hash, ts, received_at)
+      VALUES (?, ?, ?, ?, ?)
+    `),
+    trimErrors: db.prepare("DELETE FROM errors WHERE id <= (SELECT COALESCE(MAX(id), 0) - ? FROM errors)"),
+    errorCount: db.prepare("SELECT COUNT(*) AS n FROM errors"),
+    dau: db.prepare(`
+      SELECT COUNT(DISTINCT profile_hash) AS n FROM events
+      WHERE ts >= ? AND profile_hash IS NOT NULL
+    `),
+    gamesAgg: db.prepare(`
+      SELECT COUNT(*) AS games,
+             COALESCE(AVG(score), 0) AS avgScore,
+             COALESCE(MAX(wave), 0) AS bestWave
+      FROM events WHERE type = 'game_over' AND ts >= ?
+    `),
+    gamesByDiff: db.prepare(`
+      SELECT difficulty, COUNT(*) AS games,
+             COALESCE(AVG(score), 0) AS avgScore,
+             COALESCE(MAX(wave), 0) AS bestWave
+      FROM events WHERE type = 'game_over' AND ts >= ?
+      GROUP BY difficulty
+    `),
+  };
+
+  const now = () => Date.now();
+
+  return {
+    db,
+    createProfile({ id, name, emoji }) {
+      const pid = id || "srv_" + randomBytes(8).toString("hex");
+      q.insertProfile.run(pid, name, emoji || "🎮", now());
+      return q.getProfile.get(pid);
+    },
+    getProfile: (id) => q.getProfile.get(id) || null,
+    listProfiles: () => q.listProfiles.all(),
+    deleteProfile: (id) => q.deleteProfile.run(id).changes > 0,
+    addScore({ profileId, score, wave, kills, durationMs, difficulty }) {
+      const r = q.insertScore.run(profileId, score, wave, kills, durationMs, difficulty, now());
+      return { id: Number(r.lastInsertRowid) };
+    },
+    leaderboard: (difficulty, limit) => q.leaderboard.all(difficulty, limit),
+    profileStats(profileId) {
+      const agg = q.statsAgg.get(profileId);
+      const best = {};
+      for (const row of q.bestPerDifficulty.all(profileId)) {
+        best[row.difficulty] = { score: row.bestScore, wave: row.bestWave };
+      }
+      return {
+        games: agg.games,
+        kills: agg.kills,
+        totalScore: agg.totalScore,
+        bestWave: agg.bestWave,
+        totalDurationMs: agg.totalDurationMs,
+        bestPerDifficulty: best,
+      };
+    },
+    /* Analytics: insert a batch of validated events (payload holds the
+       validated per-type extras; score/wave/difficulty are extracted for
+       cheap aggregation). Old rows are trimmed past eventsCap. */
+    addEvents(events) {
+      const t = now();
+      for (const e of events) {
+        q.insertEvent.run(
+          e.type, e.profile_id_hash || null, e.difficulty || null,
+          e.score ?? null, e.wave ?? null,
+          JSON.stringify(e.payload || {}), e.ts, t
+        );
+      }
+      q.trimEvents.run(eventsCap);
+      return { inserted: events.length };
+    },
+    /* Error reports: capped at errorsCap rows (oldest trimmed). */
+    addErrors(errors) {
+      const t = now();
+      for (const e of errors) {
+        q.insertError.run(e.message, e.source || "", e.profile_id_hash || null, e.ts, t);
+      }
+      q.trimErrors.run(errorsCap);
+      return { inserted: errors.length, stored: q.errorCount.get().n };
+    },
+    errorCount: () => q.errorCount.get().n,
+    /* Internal dashboard aggregates (privacy-friendly: counts & averages only). */
+    metrics() {
+      const t = now();
+      const day = t - 24 * 3600_000;
+      const week = t - 7 * 24 * 3600_000;
+      const agg = q.gamesAgg.get(week);
+      const byDiff = {};
+      for (const row of q.gamesByDiff.all(week)) {
+        byDiff[row.difficulty] = {
+          games: row.games,
+          avgScore: Math.round(row.avgScore * 10) / 10,
+          bestWave: row.bestWave,
+        };
+      }
+      return {
+        dau: q.dau.get(day).n,
+        games7d: agg.games,
+        avgScore7d: Math.round(agg.avgScore * 10) / 10,
+        bestWave7d: agg.bestWave,
+        byDifficulty7d: byDiff,
+        generatedAt: t,
+      };
+    },
+    close: () => db.close(),
+  };
+}

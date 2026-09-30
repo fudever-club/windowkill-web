@@ -1,0 +1,15 @@
+{
+  "description": "Lightweight optional backend for WINDOWKILL Web Edition (profiles, scores, leaderboard, stats). Zero dependencies — Node 24 built-ins only.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "license": "MIT",
+  "main": "src/index.js",
+  "name": "windowkill-backend",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/api.test.js"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

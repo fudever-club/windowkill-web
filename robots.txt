@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://windowkill-web.vercel.app/sitemap.xml

@@ -12,12 +12,23 @@
   #hpfill{height:100%;width:100%;background:#c084fc;border-radius:3px;transition:width .15s}
   #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:11px;letter-spacing:2px}
   #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
+
+  /* boot overlay (cinematics polish): overlay tim #7c3aed alpha .25 fade-in 200ms + logo pulse */
+  #boot{position:fixed;inset:0;background:rgba(124,58,237,.25);display:flex;flex-direction:column;
+    gap:10px;align-items:center;justify-content:center;z-index:50;opacity:0;pointer-events:none;
+    transition:opacity .2s ease-out}
+  #boot.show{opacity:1}
+  #boot-logo{font-size:46px;color:#c084fc;line-height:1;animation:bootPulse .6s ease-in-out 1}
+  #boot-txt{color:#e9d5ff;font-size:12px;letter-spacing:4px;font-weight:700}
+  @keyframes bootPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){#boot-logo{animation:none}#boot{transition:none}}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="hp"><div id="hpfill"></div></div>
 <div id="lbl"></div>
+<div id="boot" aria-hidden="true"><div id="boot-logo">◈</div><div id="boot-txt">VỆ TINH</div></div>
 <script>
 "use strict";
 /* Vệ tinh WINDOWKILL — dumb renderer. Logic nằm ở cửa sổ chính.
@@ -207,6 +218,21 @@ if (bus) bus.onmessage = (ev) => {
 };
 
 addEventListener("beforeunload", () => post({ type: "sat-bye", id: ID }));
+
+
+/* boot overlay: fade-in 200ms + logo pulse 1 nhip khi mo popup */
+(function () {
+  var bootEl = document.getElementById("boot");
+  if (!bootEl) return;
+  var rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (rm) { bootEl.remove(); return; }
+  requestAnimationFrame(function () { bootEl.classList.add("show"); });
+  setTimeout(function () {
+    bootEl.style.transition = "opacity .4s ease-out";
+    bootEl.classList.remove("show");
+    setTimeout(function () { bootEl.remove(); }, 450);
+  }, 500);
+})();
 
 /* khởi động */
 paintHp();

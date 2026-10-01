@@ -223,9 +223,19 @@
       <button class="btn-ghost" id="btn-quit2"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> Về menu</button>
     </div>
   </div>
+
+  <!-- banner xin phép mở popup vệ tinh (non-blocking, MULTIWINDOW-SPEC §3.1) -->
+  <div id="satperm" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
+       align-items:center;gap:10px;background:#0d1626ee;border:1px solid #2e6db488;border-radius:12px;
+       padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
+    <span>Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
+    <button class="btn-ghost" id="btn-sat-allow" style="padding:6px 14px">Cho phép</button>
+    <button class="btn-ghost" id="btn-sat-single" style="padding:6px 14px">Chơi 1 cửa sổ</button>
+  </div>
 </div>
 
 <script src="js/audio.js"></script>
+<script src="js/bg.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

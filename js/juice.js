@@ -25,6 +25,9 @@
 (function () {
 "use strict";
 
+/* FIX mobile #7: máy yếu (mobile + <=4 nhân CPU) -> giảm particle x0.5 trong burst() */
+var IS_LOW = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "") && ((navigator.hardwareConcurrency || 8) <= 4);
+
 /* ================= helpers (module-private) ================= */
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -341,6 +344,7 @@ function burst(presetName, x, y, opts) {
   var n = pr.n;
   if (opts.elite) n = Math.ceil(n * 1.5);
   if (_aliveParts > 300) n = Math.ceil(n * 0.5);
+  if (IS_LOW) n = Math.ceil(n * 0.5); // FIX mobile #7: máy yếu giảm particle
   if (reducedMotion) n = Math.max(1, Math.ceil(n * 0.3));
   var velMul = opts.elite ? 1.2 : 1;
   var lifeBonus = opts.elite ? 100 : 0;

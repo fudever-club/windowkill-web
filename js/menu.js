@@ -258,8 +258,14 @@
       diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
       shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
       sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "auto", profile: activeId,
-    }).toString();
-    const w = window.open("game.html?" + q, "windowkill_arena", "width=980,height=700,left=120,top=60,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+    });
+    if (window.WK_PORTAL_MODE) {
+      // Portal/iframe (itch.io, CrazyGames...): popup bị chặn → mở game ngay trong khung hiện tại
+      q.set("portal", "1"); q.set("sat", "sim");
+      window.location.href = "game.html?" + q.toString();
+      return;
+    }
+    const w = window.open("game.html?" + q.toString(), "windowkill_arena", "width=980,height=700,left=120,top=60,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
     if (!w) $("popup-warn").style.display = "block";
     else { $("popup-warn").style.display = "none"; w.focus(); }
   };

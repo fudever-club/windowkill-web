@@ -33,16 +33,8 @@
       });
     }
   } catch (e) {}
-  var _lastBuzz = 0;
   function buzz(p) {
-    // OPT: throttle chống spam rung (vd nuke giết 30 quái cùng frame) + nhường khi perf đang reduced
-    try {
-      var now = Date.now();
-      if (now - _lastBuzz < 80) return;
-      if (window.WKPerf && window.WKPerf.reduced) return;
-      _lastBuzz = now;
-      if (hapticOn() && "vibrate" in navigator) navigator.vibrate(p);
-    } catch (e) {}
+    try { if (hapticOn() && "vibrate" in navigator) navigator.vibrate(p); } catch (e) {}
   }
   window.WKBuzz = buzz; // cho phép game core hoặc console gọi tay
 

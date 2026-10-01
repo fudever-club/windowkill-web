@@ -63,7 +63,21 @@
   }
 
   // Quái chết → rung nhẹ 12ms (bỏ qua nếu đã dead từ trước)
-  wrapFn("killEnemy", function (e) { if (e && !e.dead) buzz(12); });
+  // FIX: killEnemy đánh dấu e.dead=true trong orig (chạy trước onCall) → chụp trạng thái trước
+  (function () {
+    try {
+      var origK = window.killEnemy;
+      if (typeof origK !== "function" || origK.__wkWrapped) return;
+      var w = function (e) {
+        var wasAlive = e && !e.dead;
+        var r = origK.apply(this, arguments);
+        try { if (wasAlive) buzz(12); } catch (e2) {}
+        return r;
+      };
+      w.__wkWrapped = true;
+      window.killEnemy = w;
+    } catch (e) {}
+  })();
   // Trúng đạn → rung đôi cảnh báo
   wrapFn("hurtShip", function () { buzz([40, 30, 40]); });
   // Nuke nổ → rung mạnh 3 nhịp

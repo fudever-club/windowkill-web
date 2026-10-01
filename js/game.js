@@ -29,6 +29,33 @@ const DIFF_KEY = qp.get("diff") in DIFFS ? qp.get("diff") : "normal";
 const PROFILE_ID = qp.get("profile") || null;
 AudioEngine.setSettings({ music: qp.get("music") === "1", sfx: qp.get("sfx") === "1" });
 if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật, tiếp tục từ menu
+// BGM handoff: game chạy ở popup riêng, tab menu (opener) vẫn mở nền → bảo opener tạm nhường nhạc, khỏi chồng 2 bài
+try {
+  if (window.opener && !window.opener.closed && window.opener.BGM && typeof window.opener.BGM.suspend === "function") {
+    window.opener.BGM.suspend();
+    window.__wkSuspendedOpener = true;
+  }
+} catch (e) {}
+window.addEventListener("pagehide", () => {
+  try {
+    if (window.__wkSuspendedOpener && window.opener && !window.opener.closed && window.opener.BGM && typeof window.opener.BGM.resume === "function")
+      window.opener.BGM.resume(); // đóng game → trả nhạc lại cho menu (nếu user vẫn bật nhạc)
+  } catch (e) {}
+});
+// Auto-pause khi tab bị ẩn (click ra ngoài / minimize) — tránh chết oan lúc không nhìn
+document.addEventListener("visibilitychange", () => { if (document.hidden) { try { pauseGame(true); } catch (e) {} } });
+// Fullscreen như game .exe — không còn gì ở ngoài để ấn nhầm (cần 1 click của user, luật browser)
+function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  } catch (e) {}
+}
+document.addEventListener("fullscreenchange", () => {
+  const b = document.getElementById("btn-hud-full");
+  if (b) b.classList.toggle("on", !!document.fullscreenElement);
+});
+document.getElementById("btn-hud-full")?.addEventListener("click", toggleFullscreen);
 const SHAKE_WINDOW = qp.get("shake") === "1";
 if (typeof BG !== "undefined") BG.setQuality(qp.get("fx") === "reduced" ? "reduced" : "full");
 
@@ -351,6 +378,16 @@ const SatManager = (() => {
     }
   };
 
+  // DESIGN-SYSTEM v1.1 §8 — tint title bar mô phỏng theo role (giữ tương phản thấp)
+  const ROLE_TB_TINT = {
+    nest: ["#3a1d5c", "#190b2c"], fragment: ["#4a2d6b", "#201335"],
+    shield: ["#1d3a52", "#0c1c2c"], debris: ["#4a1d1d", "#260d0d"],
+    giant: ["#1d4224", "#0d2112"], minion: ["#2d4416", "#141f0a"],
+    mother: ["#4d2f0d", "#261505"], chick: ["#4d4211", "#261f09"],
+    bomb: ["#4d2113", "#270f08"], lover: ["#4d1428", "#270a14"],
+    superlove: ["#521226", "#2a0a13"], mirror: ["#1f3a46", "#0d1a21"],
+    blackhole: ["#22133d", "#0f0820"],
+  };
   /* vẽ cửa sổ mô phỏng (khung OS giả) */
   function drawSims() {
     for (const s of sats.values()) {
@@ -363,9 +400,10 @@ const SatManager = (() => {
       ctx.fillStyle = "#0d1420";
       roundRect(s.x, s.y, s.sw, s.sh, 8); ctx.fill();
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      // title bar
+      // title bar — DESIGN-SYSTEM v1.1 §8: tint theo role
+      const tb = ROLE_TB_TINT[s.role] || ["#1a2b4a", "#0f1c33"];
       const tg = ctx.createLinearGradient(0, s.y, 0, s.y + 26);
-      tg.addColorStop(0, "#1a2b4a"); tg.addColorStop(1, "#0f1c33");
+      tg.addColorStop(0, tb[0]); tg.addColorStop(1, tb[1]);
       ctx.fillStyle = tg;
       roundRect(s.x, s.y, s.sw, 26, [8, 8, 0, 0]); ctx.fill();
       const cols = ["#ff5f57", "#febc2e", "#28c840"];

@@ -28,6 +28,7 @@ const DIFF = DIFFS[qp.get("diff")] || DIFFS.normal;
 const DIFF_KEY = qp.get("diff") in DIFFS ? qp.get("diff") : "normal";
 const PROFILE_ID = qp.get("profile") || null;
 AudioEngine.setSettings({ music: qp.get("music") === "1", sfx: qp.get("sfx") === "1" });
+if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật
 const SHAKE_WINDOW = qp.get("shake") === "1";
 if (typeof BG !== "undefined") BG.setQuality(qp.get("fx") === "reduced" ? "reduced" : "full");
 

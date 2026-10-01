@@ -20,6 +20,10 @@ const STATIC_ASSETS = [
   "js/game.js",
   "js/pwa.js",
   "js/analytics.js",
+  "js/bgm.js",
+  "js/bg.js",
+  "js/juice.js",
+  "js/cinema.js",
   "manifest.webmanifest",
   OFFLINE_URL,
   "assets/favicon.png",
@@ -81,27 +85,28 @@ function networkFirstPage(req) {
   );
 }
 
-// Static: cache-first, miss thì network rồi lưu lại (runtime cache)
-function cacheFirstStatic(req) {
+// Static: stale-while-revalidate — trả cache ngay (nhanh), đồng thời fetch bản mới
+// ngầm để lần sau dùng bản mới nhất. Không còn kẹt JS cũ vĩnh viễn sau deploy.
+function staleWhileRevalidate(req) {
   return caches.open(STATIC_CACHE).then((cache) =>
-    cache.match(req).then(
-      (hit) =>
-        hit ||
-        fetch(req)
-          .then((res) => putIfOk(cache, req, res))
-          .catch(() => cache.match(OFFLINE_URL))
-    )
+    cache.match(req).then((hit) => {
+      const network = fetch(req)
+        .then((res) => putIfOk(cache, req, res))
+        .catch(() => hit || cache.match(OFFLINE_URL));
+      return hit || network;
+    })
   );
 }
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  if (req.headers.has("range")) return; // audio seek: để browser tự xử, không cache 206
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // cross-origin: không chạm
   if (req.mode === "navigate") {
     event.respondWith(networkFirstPage(req));
     return;
   }
-  event.respondWith(cacheFirstStatic(req));
+  event.respondWith(staleWhileRevalidate(req));
 });

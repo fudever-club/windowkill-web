@@ -167,11 +167,11 @@
     anchor.parentElement.insertAdjacentElement("afterend", row);
   }
   injectAnalyticsToggle();
-  $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
-  $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); WKAudio.setSfx(settings.sfx); Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
+  $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); if (window.WKAudio) WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
+  $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };
   document.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { settings.diff = b.dataset.diff; saveSettings(); paintToggles(); renderScores(); Analytics.track("settings_changed", { key: "diff", value: settings.diff }); });
-  WKAudio.setMusic(settings.music); WKAudio.setSfx(settings.sfx);
+  if (window.WKAudio) { WKAudio.setMusic(settings.music); WKAudio.setSfx(settings.sfx); }
   if (window.BGM) { try { BGM.init(); BGM.setEnabled(settings.music); } catch (e) {} } // BGM: nhạc nền file thật
 
   /* ---------- high scores & stats (per profile) ---------- */
@@ -247,7 +247,7 @@
   }
   $("btn-play").onclick = () => {
     if (!ensureProfile()) return;
-    WKAudio.ensure();
+    if (window.WKAudio) WKAudio.ensure();
     const p = active();
     if (p) { Analytics.setProfile(p.id); Analytics.track("game_start", { difficulty: settings.diff }); }
     const q = new URLSearchParams({

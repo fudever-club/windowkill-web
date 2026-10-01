@@ -252,7 +252,10 @@ const SatManager = (() => {
     if (pollT < 0.5) return;
     pollT = 0;
     for (const sat of [...sats.values()]) {
-      if (sat.dead) continue;
+      if (sat.dead) { // dọn xác: popup thật đã đóng thì xóa khỏi map (BUG2)
+        if (!sat.sim && sat.win && sat.win.closed) sats.delete(sat.id);
+        continue;
+      }
       if (!sat.sim && sat.win && sat.win.closed) { kill(sat.id, "manual"); }
     }
   }
@@ -291,8 +294,21 @@ const SatManager = (() => {
       try { setTimeout(() => { try { if (sat.win && !sat.win.closed) sat.win.close(); } catch (e) {} }, 600); } catch (e) {}
     }
     try { if (typeof sat.opts.onClose === "function") sat.opts.onClose(mode, sat); } catch (e) {}
-    // dọn khỏi map sau hiệu ứng (sim) hoặc khi sat-bye/poll tới (real)
+    // dọn khỏi map sau hiệu ứng (sim) hoặc khi popup đã đóng (real)
     if (sat.sim) setTimeout(() => sats.delete(id), 350);
+    else {
+      // BUG2-FIX: sat thật từng chỉ dọn khi sat-bye tới (bị guard nuốt khi đã dead) —
+      // lên lịch xóa map sau khi popup đã đóng; poll() cũng dọn xác mỗi 0.5s.
+      try {
+        setTimeout(() => {
+          const s = sats.get(id);
+          if (s && s.dead) {
+            try { if (s.win && !s.win.closed) s.win.close(); } catch (e) {}
+            sats.delete(id);
+          }
+        }, 2000);
+      } catch (e) {}
+    }
   }
 
   function closeAll() {
@@ -322,13 +338,16 @@ const SatManager = (() => {
     const m = ev.data || {};
     if (!m || typeof m.type !== "string" || !m.type.startsWith("sat-")) return;
     const id = String(m.id || m.satId || "");
+    // BUG1-FIX: sat-bye (user đóng tay popup) phải đi qua kill("manual") để phạt kích hoạt —
+    // đặt TRƯỚC guard dead kẻo nhánh này thành dead code.
+    if (m.type === "sat-bye") { const s = sats.get(id); if (s && !s.dead) kill(id, "manual"); else sats.delete(id); return; }
     const sat = sats.get(id);
     if (!sat || sat.dead) return;
     if (m.type === "sat-ready") sat.ready = true, sat.canMove = !!m.canMove;
     else if (m.type === "sat-hit") {
       const x = clamp(+m.x || 0, 0, sat.w), y = clamp(+m.y || 0, 0, sat.h);
       damage(id, x, y);
-    } else if (m.type === "sat-bye") { sats.delete(id); }
+    }
   };
 
   /* vẽ cửa sổ mô phỏng (khung OS giả) */

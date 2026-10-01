@@ -448,7 +448,7 @@ function showDraft(upgrades, onPick, opts) {
     var nm = _draftEl("div", "cin-card-name", card);
     nm.textContent = u.name || ("Nâng cấp " + (i + 1));
     var ds = _draftEl("div", "cin-card-desc", card);
-    ds.textContent = u.desc || "";
+    ds.innerHTML = u.desc || ""; // desc do dev viết, chứa SVG icon → cần parse HTML
     var key = _draftEl("div", "cin-card-key", card);
     key.textContent = String(i + 1);
     card.addEventListener("click", function () { _draftPick(i); });

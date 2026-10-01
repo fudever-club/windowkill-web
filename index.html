@@ -318,5 +318,15 @@
 <script src="js/juice.js" defer></script>
 <script src="js/cinema.js" defer></script>
 <script src="js/menu.js" defer></script>
+<script>
+// PWA: đăng ký Service Worker — cache tài nguyên + màn hình offline
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {
+      /* SW không bắt buộc: game vẫn chạy online bình thường */
+    });
+  });
+}
+</script>
 </body>
 </html>

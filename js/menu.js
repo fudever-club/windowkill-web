@@ -173,8 +173,8 @@
     const el = $("hs-list");
     const rows = ["chill", "normal", "hard"].map(d => {
       const h = store.get(pkey("wk_high_" + d), null);
-      const txt = h ? `${num(h.score).toLocaleString("vi-VN")} điểm · wave ${int0(h.wave)}` : "—";
-      return `<div>${svgIcon("i-gauge")} ${DIFF_LABEL[d]}: <b style="color:#fde68a">${txt}</b></div>`;
+      const txt = h ? `<span class="hs-num" data-v="${num(h.score)}" style="color:#fde68a">${num(h.score).toLocaleString("vi-VN")}</span> điểm · wave ${int0(h.wave)}` : "—";
+      return `<div>${svgIcon("i-gauge")} ${DIFF_LABEL[d]}: <b>${txt}</b></div>`;
     }).join("");
     el.innerHTML = active() ? rows : "Hãy tạo tài khoản để lưu kỷ lục!";
     if (Backend.online && active() && window.WKApi) {
@@ -255,6 +255,52 @@
       profiles.push(p); activeId = p.id; saveProfiles();
     }
   }
+  /* WOW: micro-interactions — Cinema.pressFx / countUp / slidePanel + ui sfx.
+     Tất cả đều guard: không có Cinema/AudioEngine thì menu chạy như cũ. */
+  (function wowUI() {
+    try {
+      if (window.Cinema) {
+        document.querySelectorAll(".panel").forEach(p => { try { Cinema.slidePanel(p); } catch (e) {} });
+      }
+      const BTN = ".btn-big,.btn-ghost,.pchip,.tgl";
+      // press FX qua delegation (bao phủ cả nút tạo động như profile chips)
+      document.addEventListener("pointerdown", (ev) => {
+        const b = ev.target && ev.target.closest ? ev.target.closest(BTN) : null;
+        if (b && window.Cinema) { try { Cinema.pressFx(b); } catch (e) {} }
+      });
+      // click / hover sfx
+      document.addEventListener("click", (ev) => {
+        const b = ev.target && ev.target.closest ? ev.target.closest(BTN) : null;
+        if (b && window.AudioEngine && AudioEngine.sfx && AudioEngine.sfx.ui_click) {
+          try { AudioEngine.sfx.ui_click(); } catch (e) {}
+        }
+      });
+      let lastHover = null;
+      document.addEventListener("mouseover", (ev) => {
+        const b = ev.target && ev.target.closest ? ev.target.closest(BTN) : null;
+        if (b && b !== lastHover) {
+          lastHover = b;
+          if (window.AudioEngine && AudioEngine.sfx && AudioEngine.sfx.ui_hover) {
+            try { AudioEngine.sfx.ui_hover(); } catch (e) {}
+          }
+        }
+      });
+    } catch (e) {}
+    // countUp cho điểm kỷ lục sau mỗi lần renderScores
+    try {
+      const _renderScores = renderScores;
+      renderScores = function () {
+        _renderScores();
+        if (!window.Cinema) return;
+        try {
+          document.querySelectorAll("#hs-list .hs-num").forEach(el => {
+            const v = parseFloat(el.dataset.v || "0") || 0;
+            Cinema.countUp(el, v, { format: (x) => Math.round(x).toLocaleString("vi-VN") });
+          });
+        } catch (e) {}
+      };
+    } catch (e) {}
+  })();
   paintToggles(); renderAll(); Backend.init();
   if (activeId) Analytics.setProfile(activeId); // warm the sha256 profile hash for analytics
 })();

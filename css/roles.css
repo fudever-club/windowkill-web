@@ -1,0 +1,109 @@
+/* WINDOWKILL — Design System v1.1: role tokens + launcher hero polish + satellite theming
+ * Link SAU css/style.css trong index.html (1 dòng).
+ * satellite.html: thêm 1 dòng JS `document.body.dataset.role = ROLE;` để theme tự chạy. */
+
+/* ============ Role color tokens (DESIGN-SYSTEM §1) ============ */
+:root {
+  --role-nest: #8b2fc9;
+  --role-fragment: #c084fc;
+  --role-shield: #38bdf8;
+  --role-debris: #ff5a5a;
+  --role-giant: #4caf50;
+  --role-minion: #8bc34a;
+  --role-mother: #ff9800;
+  --role-chick: #ffd54f;
+  --role-bomb: #ff5722;
+  --role-lover: #ff5f8a;
+  --role-superlove: #ff5f8a;
+  --role-superlove-bolt: #ffe93c;
+  --role-mirror: #a5f3fc;
+  --role-blackhole: #7c3aed;
+}
+
+/* ============ Launcher hero polish (DESIGN-SYSTEM §9) ============ */
+/* specificity cao hơn block <style> inline của index.html — thắng mà không cần sửa HTML */
+.hero .game-logo {
+  animation: heroFloat 6s ease-in-out infinite, heroGlow 4s ease-in-out infinite;
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes heroGlow {
+  0%, 100% { filter: drop-shadow(0 6px 24px #0080FF66); }
+  50% { filter: drop-shadow(0 6px 34px #0080FF99); }
+}
+header.hero h1.title {
+  background: linear-gradient(135deg, #8fc3ff, #0080FF 60%, #0066CC);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% 100%;
+  animation: titleShimmer 8s linear infinite;
+}
+@keyframes titleShimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+header.hero > * { animation: heroIn 0.5s ease-out both; }
+header.hero > *:nth-child(2) { animation-delay: 0.08s; }
+header.hero > *:nth-child(3) { animation-delay: 0.16s; }
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+header.hero .brand { animation: brandPulse 3s ease-in-out infinite; }
+@keyframes brandPulse {
+  0%, 100% { box-shadow: 0 0 0 0 #0080FF00; }
+  50% { box-shadow: 0 0 18px 0 #0080FF44; }
+}
+body > .hero-bg {
+  filter: saturate(0.85);
+  animation: heroDrift 60s linear infinite alternate;
+}
+@keyframes heroDrift {
+  from { background-position: 50% 40%; }
+  to { background-position: 50% 60%; }
+}
+
+/* ============ satellite.html theming theo role (DESIGN-SYSTEM §1) ============ */
+body[data-role="nest"] #hpfill { background: var(--role-nest); }
+body[data-role="fragment"] #hpfill { background: var(--role-fragment); }
+body[data-role="shield"] #hpfill { background: var(--role-shield); }
+body[data-role="debris"] #hpfill { background: var(--role-debris); }
+body[data-role="giant"] #hpfill { background: var(--role-giant); }
+body[data-role="minion"] #hpfill { background: var(--role-minion); }
+body[data-role="mother"] #hpfill { background: var(--role-mother); }
+body[data-role="chick"] #hpfill { background: var(--role-chick); }
+body[data-role="bomb"] #hpfill { background: var(--role-bomb); }
+body[data-role="lover"] #hpfill, body[data-role="superlove"] #hpfill { background: var(--role-lover); }
+body[data-role="mirror"] #hpfill { background: var(--role-mirror); }
+body[data-role="blackhole"] #hpfill { background: var(--role-blackhole); }
+
+body[data-role="lover"] #boot, body[data-role="superlove"] #boot { background: rgba(255, 95, 138, 0.22); }
+body[data-role="lover"] #boot-logo, body[data-role="superlove"] #boot-logo { color: var(--role-lover); }
+body[data-role="lover"] #boot-txt, body[data-role="superlove"] #boot-txt { color: #ffd6e4; }
+body[data-role="lover"] #dmg, body[data-role="superlove"] #dmg { text-shadow: 0 0 8px var(--role-lover); }
+body[data-role="superlove"] #boot { background: rgba(255, 95, 138, 0.28); }
+
+body[data-role="mirror"] #boot { background: rgba(165, 243, 252, 0.14); }
+body[data-role="mirror"] #boot-logo { color: var(--role-mirror); }
+body[data-role="mirror"] #boot-txt { color: #d9f7ff; }
+body[data-role="mirror"] #dmg { text-shadow: 0 0 8px var(--role-mirror); }
+
+body[data-role="blackhole"] #boot { background: rgba(124, 58, 237, 0.22); }
+body[data-role="blackhole"] #boot-logo { color: var(--role-blackhole); }
+body[data-role="blackhole"] #boot-txt { color: #dcc8ff; }
+body[data-role="blackhole"] #dmg { text-shadow: 0 0 8px var(--role-blackhole); }
+
+/* ============ reduced-motion & mobile ============ */
+@media (prefers-reduced-motion: reduce) {
+  .hero .game-logo,
+  header.hero h1.title,
+  header.hero > *,
+  header.hero .brand,
+  body > .hero-bg { animation: none; }
+}
+@media (max-width: 480px) {
+  header.hero h1.title { font-size: 40px; }
+}

@@ -119,6 +119,7 @@
 
   /* ---------- settings ---------- */
   const settings = Object.assign({ music: true, sfx: true, shake: true, diff: "normal", fx: "full", sat: "auto", analytics: true }, store.get("wk_settings", {}));
+  if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   const saveSettings = () => store.set("wk_settings", settings);
   function paintToggles() {
     $("tgl-music").classList.toggle("on", settings.music);
@@ -126,7 +127,7 @@
     $("tgl-shake").classList.toggle("on", settings.shake);
     const ta = $("tgl-analytics");
     if (ta) ta.classList.toggle("on", settings.analytics);
-    document.querySelectorAll(".diff-btns .btn-ghost").forEach(b => b.classList.toggle("sel", b.dataset.diff === settings.diff));
+    document.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("sel", b.dataset.diff === settings.diff));
     document.querySelectorAll("[data-fx]").forEach(b => b.classList.toggle("sel", b.dataset.fx === settings.fx));
   }
   document.querySelectorAll("[data-fx]").forEach(b => b.onclick = () => {
@@ -169,7 +170,7 @@
   $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
   $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); WKAudio.setSfx(settings.sfx); Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };
-  document.querySelectorAll(".diff-btns .btn-ghost").forEach(b => b.onclick = () => { settings.diff = b.dataset.diff; saveSettings(); paintToggles(); renderScores(); Analytics.track("settings_changed", { key: "diff", value: settings.diff }); });
+  document.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { settings.diff = b.dataset.diff; saveSettings(); paintToggles(); renderScores(); Analytics.track("settings_changed", { key: "diff", value: settings.diff }); });
   WKAudio.setMusic(settings.music); WKAudio.setSfx(settings.sfx);
 
   /* ---------- high scores & stats (per profile) ---------- */

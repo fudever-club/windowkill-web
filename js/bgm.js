@@ -31,6 +31,10 @@ window.BGM = (() => {
   let unlocked = false;
   let patched = false;
   let allFailed = false;
+  let lastPlayAt = 0;      // lần cuối gọi play()
+  let playFailCount = 0;   // số lần watchdog thấy player bị pause
+  let playFailStreak = 0;  // số track liên tiếp play() thất bại
+  let watchdogTimer = 0;
   const _orig = {};
 
   function ae() {
@@ -87,7 +91,7 @@ window.BGM = (() => {
     }
   }
   function wirePlayer(a, idx) {
-    a.addEventListener("playing", () => { trackOK = true; });
+    a.addEventListener("playing", () => { trackOK = true; playFailStreak = 0; playFailCount = 0; });
     a.addEventListener("ended", () => { if (idx === cur) next(false); });
     a.addEventListener("error", () => onTrackError(a, idx));
     a.addEventListener("timeupdate", () => {
@@ -114,10 +118,31 @@ window.BGM = (() => {
   }
 
   function tryPlay(a) {
+    lastPlayAt = Date.now();
     try {
       const p = a.play();
-      if (p && typeof p.catch === "function") p.catch(() => { /* autoplay bị chặn — unlock handler sẽ thử lại */ });
-    } catch (e) { /* ignore */ }
+      if (p && typeof p.catch === "function") p.catch(() => { /* watchdog bên dưới sẽ retry */ });
+    } catch (e) { /* watchdog bên dưới sẽ retry */ }
+  }
+
+  /* Watchdog: nhạc bật mà player bị pause quá 3s → thử play lại;
+     3 lần không được → bỏ qua track lỗi, chuyển bài tiếp;
+     hết cả 4 track đều lỗi → fallback về procedural, không im lặng. */
+  function scheduleWatchdog() {
+    if (watchdogTimer) return;
+    watchdogTimer = setInterval(() => {
+      if (!enabled || allFailed || !started || players.length === 0) return;
+      const a = players[cur];
+      if (!a || !a.src) return;
+      if (!a.paused) { playFailCount = 0; return; } // đang phát tốt
+      if (Date.now() - lastPlayAt <= 3000) return;   // cho track 3s để bắt đầu
+      playFailCount++;
+      if (playFailCount < 3) { tryPlay(a); return; }
+      playFailCount = 0;
+      playFailStreak++;
+      if (playFailStreak >= TRACKS.length) { fallbackToProcedural(); return; }
+      next(false);
+    }, 4000);
   }
 
   function playAt(playerIdx, trackIdx, fadeInMs) {
@@ -196,15 +221,13 @@ window.BGM = (() => {
     shuffle();
     installPatch();
     const unlock = () => {
-      if (unlocked) return;
       unlocked = true;
-      if (enabled && !allFailed) ensurePlaying();
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
+      if (enabled && !allFailed) ensurePlaying(); // retry mỗi lần tương tác nếu nhạc đang bị kẹt
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
     if (enabled) ensurePlaying();
+    scheduleWatchdog();
   }
 
   function setEnabled(v) {
@@ -227,6 +250,6 @@ window.BGM = (() => {
   return {
     init, setEnabled, nowPlaying,
     setVolume: (v) => { players.forEach((a) => { a.volume = Math.max(0, Math.min(1, v)); }); },
-    version: "1.0-bgm",
+    version: "1.1-bgm-watchdog",
   };
 })();

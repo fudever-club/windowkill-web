@@ -99,6 +99,7 @@ var _draftOpen = false;    // worker set true khi panel draft mở (game pause)
 function update(rawDt) {
   var ms = rawDt * 1000;
   var ts = 1;
+  if (_draftOpen) { _timeScale = 0; return 0; } // draft mở → đóng băng gameplay
   if (_hitStopMs > 0) { _hitStopMs = Math.max(0, _hitStopMs - ms); ts = 0; }
   else if (_slowMoMs > 0) { _slowMoMs = Math.max(0, _slowMoMs - ms); ts = _slowMoScale; }
   _timeScale = ts;
@@ -1050,7 +1051,11 @@ function reset() {
   var i;
   _shakes.length = 0;
   _pending.length = 0;
+  // Settle warning promises đang treo — tránh worker await vĩnh viễn
+  for (i = 0; i < _warnings.length; i++) { try { _warnings[i].resolve(false); } catch (e) {} }
   _warnings.length = 0;
+  // Fire death onDone đang treo trước khi xóa entity
+  for (i = 0; i < _ents.length; i++) { try { if (typeof _ents[i].onDone === "function") _ents[i].onDone(); } catch (e) {} }
   _ents.length = 0;
   _hitStopMs = 0; _slowMoMs = 0; _timeScale = 1;
   _aliveParts = 0; _shardAlive = 0;
@@ -1074,7 +1079,6 @@ var Juice = {
   isHitStop: isHitStop,
   isSlowMo: isSlowMo,
   /** Set true khi panel draft mở (game pause) — hitStop bị bỏ qua khi cờ này bật. */
-  draftOpen: false,
   /* 3. shake */
   addShake: addShake,
   applyShake: applyShake,
@@ -1119,4 +1123,5 @@ try {
 } catch (e) { Juice.timeScale = 1; }
 
 window.Juice = Juice;
+Object.defineProperty(Juice, "draftOpen", { get: function () { return _draftOpen; }, set: function (v) { _draftOpen = !!v; }, configurable: true });
 })();

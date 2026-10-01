@@ -32,7 +32,12 @@ button { font-family: inherit; }
 /* arena overlays */
 .overlay {
   position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-  background: #020610d9; z-index: 20; flex-direction: column; gap: 18px; text-align: center; padding: 20px;
+  background: #020610d9; z-index: 20; flex-direction: column; gap: 18px; text-align: center;
+  /* FIX mobile #6: safe-area cho HUD overlay (tai thỏ / thanh điều hướng) */
+  padding-top: calc(20px + env(safe-area-inset-top));
+  padding-right: calc(20px + env(safe-area-inset-right));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding-left: calc(20px + env(safe-area-inset-left));
 }
 .overlay.show { display: flex; }
 .overlay h2 { font-size: 34px; }
@@ -138,4 +143,31 @@ button { font-family: inherit; }
   .cin-card { transition: border-color 0.12s ease-out, background 0.12s ease-out; }
   .cin-card:hover { transform: none; }
   .cin-card:hover .cin-card-ico { transform: none; }
+}
+
+/* ================= MOBILE (FIX mobile #4) — responsive cho màn hình nhỏ === */
+@media (max-width: 640px) {
+  /* draft nâng cấp (cinema.js) */
+  .cin-draft-panel { padding: 16px; }
+  .cin-draft-title { font-size: 22px; letter-spacing: 3px; }
+  .cin-draft-cards { gap: 10px; }
+  .cin-card { width: calc(50% - 20px); min-width: 140px; padding: 14px 10px 12px; }
+  .cin-card-name { font-size: 14px; }
+  .cin-card-desc { font-size: 12px; min-height: 34px; }
+  /* draft cũ (game.html) */
+  .card { width: calc(50% - 20px); min-width: 140px; padding: 14px 10px; }
+  /* HUD chữ nhỏ hơn */
+  .overlay h2 { font-size: 24px; }
+  .score-big { font-size: 18px; }
+  .stat-line { font-size: 13px; }
+  .menu-btns .btn-big { font-size: 16px; padding: 12px 24px; }
+  .menu-btns .btn-ghost { font-size: 13px; padding: 10px 16px; }
+}
+/* màn rất nhỏ: xếp card dọc 1 cột */
+@media (max-width: 380px) {
+  .cin-draft-cards { flex-direction: column; align-items: center; }
+  .cin-card { width: 100%; max-width: 300px; }
+  .cards { flex-direction: column; align-items: center; }
+  .card { width: 100%; max-width: 300px; }
+  .cin-draft-title { font-size: 19px; letter-spacing: 2px; }
 }

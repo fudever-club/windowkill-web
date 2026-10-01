@@ -196,6 +196,8 @@
 <div id="arena-wrap">
   <canvas id="game-canvas"></canvas>
 
+  <button id="btn-hud-pause" class="hud-btn" aria-label="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+
   <div class="overlay" id="ov-draft">
     <h2><svg class="ic" aria-hidden="true"><use href="#i-levelup"/></svg> LÊN CẤP! Chọn 1 nâng cấp</h2>
     <div class="cards" id="draft-cards"></div>
@@ -229,8 +231,8 @@
        align-items:center;gap:10px;background:#0d1626ee;border:1px solid #2e6db488;border-radius:12px;
        padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
     <span>Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
-    <button class="btn-ghost" id="btn-sat-allow" style="padding:6px 14px">Cho phép</button>
-    <button class="btn-ghost" id="btn-sat-single" style="padding:6px 14px">Chơi 1 cửa sổ</button>
+    <button class="btn-ghost" id="btn-sat-allow" style="padding:10px 18px;min-height:44px">Cho phép</button>
+    <button class="btn-ghost" id="btn-sat-single" style="padding:10px 18px;min-height:44px">Chơi 1 cửa sổ</button>
   </div>
 </div>
 

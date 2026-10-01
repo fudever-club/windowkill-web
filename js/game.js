@@ -206,7 +206,7 @@ const SatManager = (() => {
       left = clamp(Math.round(left), 0, Math.max(0, aw - sat.w - 20));
       top = clamp(Math.round(top), 0, Math.max(0, ah - sat.h - 40));
     } catch (e) {}
-    const q = new URLSearchParams({ role: sat.role, id: sat.id, hp: sat.hp, color: sat.color, label: sat.label }).toString();
+    const q = new URLSearchParams({ role: sat.role, id: sat.id, hp: sat.hp, color: sat.color, label: sat.label, enr: sat.opts.enraged ? "1" : "" }).toString();
     let w = null;
     try {
       w = window.open("satellite.html?" + q, "wk_sat_" + sat.id,
@@ -401,6 +401,33 @@ const SatManager = (() => {
     ctx.restore();
   }
 
+
+  function drawGoofyFace(x, y, r, color, angry, t) {
+    const wob = Math.sin(t / 500) * 0.06;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(wob);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    const ey = -r * 0.25, ex = r * 0.34;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-ex, ey, r * 0.22, 0, Math.PI * 2); ctx.arc(ex, ey, r * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = angry ? "#ff2020" : "#1a1a2e";
+    const px = angry ? 0 : Math.sin(t / 700) * r * 0.05;
+    ctx.beginPath(); ctx.arc(-ex + px, ey, r * 0.1, 0, Math.PI * 2); ctx.arc(ex + px, ey, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    if (angry) {
+      ctx.strokeStyle = "#7a0d0d"; ctx.lineWidth = Math.max(2, r * 0.09); ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-ex - r * 0.22, ey - r * 0.36); ctx.lineTo(-ex + r * 0.2, ey - r * 0.12);
+      ctx.moveTo(ex + r * 0.22, ey - r * 0.36); ctx.lineTo(ex - r * 0.2, ey - r * 0.12);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = Math.max(2, r * 0.08); ctx.lineCap = "round";
+    ctx.beginPath();
+    if (angry) ctx.arc(0, r * 0.75, r * 0.4, Math.PI * 1.15, Math.PI * 1.85);
+    else ctx.arc(0, r * 0.1, r * 0.5, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawSimContent(s) {
     const cx = s.x + s.sw / 2, cy = s.y + 26 + (s.sh - 26) / 2, t = performance.now();
     if (s.role === "nest") {
@@ -431,6 +458,71 @@ const SatManager = (() => {
       ctx.restore();
       ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText("BẤM ĐỂ PHÁ!", cx, s.y + s.sh - 22);
+    } else if (s.role === "bomb") { // M8
+      const urgent = (s.fuseT === undefined ? 15 : s.fuseT) <= 3;
+      const blink = Math.floor(t / (urgent ? 120 : 300)) % 2 === 0;
+      ctx.fillStyle = blink ? "#3a0d02" : "#1c0701"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const r = Math.min(s.sw, s.sh - 26) * 0.22;
+      ctx.fillStyle = "#2b2f36"; ctx.beginPath(); ctx.arc(cx, cy - 8, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#4a5058"; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - 8 - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#c98a3a"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(cx + r * 0.6, cy - 8 - r * 0.7);
+      ctx.quadraticCurveTo(cx + r * 1.2, cy - 8 - r * 1.5, cx + r * 0.9, cy - 8 - r * 1.9); ctx.stroke();
+      const sp = (Math.sin(t / 70) + 1) / 2;
+      ctx.fillStyle = `rgba(255,${140 + Math.floor(80 * sp)},40,.95)`;
+      ctx.beginPath(); ctx.arc(cx + r * 0.9, cy - 8 - r * 1.9, 4 + 3 * sp, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = urgent ? "#ff3b30" : "#ffd166"; ctx.font = "700 44px system-ui";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(Math.max(0, Math.ceil(s.fuseT === undefined ? 15 : s.fuseT))), cx, cy + r * 1.15);
+      ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui";
+      ctx.fillText("BẤM ĐỂ PHÁ!", cx, s.y + s.sh - 22);
+    } else if (s.role === "giant") { // M6
+      ctx.fillStyle = "#0a1a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, "#4caf50", false, t);
+      ctx.fillStyle = "#a5ffb0"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("PHÁ TÔI ĐI! BỐP!", cx, s.y + s.sh - 22);
+    } else if (s.role === "minion") { // M6
+      const enr = !!(s.opts.enraged || (s.enrageT || 0) > 0);
+      ctx.fillStyle = enr ? "#1c0505" : "#0c160a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, enr ? "#ff5252" : "#8bc34a", enr, t);
+      ctx.fillStyle = enr ? "#ff8f8f" : "#c5f0a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(enr ? "NỔI GIẬN!" : "HIHI! BẮT TÔI ĐI!", cx, s.y + s.sh - 22);
+    } else if (s.role === "mother") { // M5
+      ctx.fillStyle = "#241105"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const r = Math.min(s.sw, s.sh - 26) * 0.26;
+      ctx.fillStyle = "#ff9800";
+      ctx.beginPath(); ctx.ellipse(cx, cy + 8, r * 1.15, r * 0.85, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffa726";
+      ctx.beginPath(); ctx.arc(cx + r * 0.72, cy - r * 0.55, r * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#e53935";
+      for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(cx + r * 0.72 + i * r * 0.28, cy - r * 0.98, r * 0.16, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = "#1a1a1a";
+      ctx.beginPath(); ctx.arc(cx + r * 0.84, cy - r * 0.6, r * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffca28";
+      ctx.beginPath(); ctx.moveTo(cx + r * 1.12, cy - r * 0.55); ctx.lineTo(cx + r * 1.38, cy - r * 0.42); ctx.lineTo(cx + r * 1.12, cy - r * 0.3); ctx.closePath(); ctx.fill();
+      const flap = Math.sin(t / 240) * 0.5;
+      ctx.save(); ctx.translate(cx - r * 0.35, cy + 8); ctx.rotate(-0.4 + flap * 0.3);
+      ctx.fillStyle = "#f57c00"; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.fillStyle = "#ffd9a0"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("CỤC TÁC! ĐẺ TRỨNG!", cx, s.y + s.sh - 22);
+    } else if (s.role === "chick") { // M5
+      const enr = (s.enrageT || 0) > 0;
+      ctx.fillStyle = enr ? "#200808" : "#1d1503"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const hop = Math.abs(Math.sin(t / 280 + (s.hopPh || 0))) * (enr ? 26 : 16);
+      const cr = Math.min(s.sw, s.sh - 26) * (enr ? 0.3 : 0.24);
+      ctx.fillStyle = enr ? "#ff8a65" : "#ffd54f";
+      ctx.beginPath(); ctx.arc(cx, cy - hop, cr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a1a";
+      ctx.beginPath(); ctx.arc(cx - cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2);
+      ctx.arc(cx + cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ff9800";
+      ctx.beginPath(); ctx.moveTo(cx - cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx + cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx, cy - hop + cr * 0.32); ctx.closePath(); ctx.fill();
+      if (enr) {
+        ctx.fillStyle = "#ff5252";
+        ctx.beginPath(); ctx.arc(cx - cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.arc(cx + cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = enr ? "#ff8f8f" : "#ffe9a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(enr ? "GIẬN MẤT MẸ!" : "CHÍP CHÍP!", cx, s.y + s.sh - 22);
     } else {
       ctx.fillStyle = "#0a0a14"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       ctx.fillStyle = s.color; ctx.font = "700 22px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -462,6 +554,7 @@ const SatManager = (() => {
   }
 
   return { request, flush, poll, closeAll, count, list, anyRole, damage, kill, hitSim, drawSims, updateSims,
+    send: (id, msg) => post(id, msg), // M8: gửi sat-tick cho popup thật
     steer: (id, vx, vy) => post(id, { type: "sat-steer", id, vx, vy }),
     warn: (id) => post(id, { type: "sat-warn", id }) };
 })();
@@ -734,6 +827,342 @@ function drawCracks() {
   }
 }
 
+/* ---------------- M8 — QUẢ BOM CƯỜI (Bomb Window) ----------------
+ * Act 2+, wave ≥ 8, mỗi wave tối đa 2 quả, không cùng lúc với M5.
+ * Đếm ngược 15s (số to trong popup qua sat-tick + khung giả vẽ số).
+ * Hết giờ → nổ: 5-6 mini + hất tàu văng. Phá kịp (8 click) → +2 gem +500.
+ * ĐÓNG TAY = nổ ngay, toàn dasher. Fallback: khung giả nhấp nháy đỏ-cam. */
+/* nảy khung giả */
+function bounceSimSat(s, mul, dt) {
+  s.x += s.vx * mul * dt; s.y += s.vy * mul * dt;
+  const b = bounds();
+  if (s.x < b.x) { s.x = b.x; s.vx = Math.abs(s.vx); }
+  else if (s.x + s.sw > b.x + b.w) { s.x = b.x + b.w - s.sw; s.vx = -Math.abs(s.vx); }
+  if (s.y < b.y) { s.y = b.y; s.vy = Math.abs(s.vy); }
+  else if (s.y + s.sh > b.y + b.h) { s.y = b.y + b.h - s.sh; s.vy = -Math.abs(s.vy); }
+}
+
+function knockShip(fx, fy, power) {
+  const s = G.ship;
+  if (!s || G.phase !== "play") return;
+  const dx = s.x - fx, dy = s.y - fy, d = Math.hypot(dx, dy) || 1;
+  const p = Math.min(power, 700);
+  s.kbvx = (s.kbvx || 0) + dx / d * p;
+  s.kbvy = (s.kbvy || 0) + dy / d * p;
+}
+
+function explodeBomb(sat, manual) {
+  if (sat.exploded) return;
+  sat.exploded = true;
+  const p = nestSpawnPoint(sat);
+  const n = 5 + (Math.random() < 0.5 ? 1 : 0);
+  const type = manual ? "dasher" : "mini";
+  for (let i = 0; i < n; i++) spawnEnemyAt(type, p.x + rand(-60, 60), p.y + rand(-60, 60));
+  knockShip(p.x, p.y, 460);
+  burst(p.x, p.y, 40, ["#ff5722", "#ff9800", "#ffd166", "#ffffff"], 420);
+  jxShake(10, 400, 8); windowJitter(26);
+  AudioEngine.sfx.bigboom();
+  addFloat(p.x, p.y - 30, manual ? "BOM NỔ! Đóng tay = ăn đòn!" : "BÙM! Bom nổ tung!", "#ff5722", true);
+}
+
+function onBombClose(mode, sat) {
+  const p = nestSpawnPoint(sat);
+  if (mode === "manual") {
+    explodeBomb(sat, true);
+  } else if (mode === "killed") {
+    burst(p.x, p.y, 24, ["#ff9800", "#ffd166", "#ffffff"], 300);
+    for (let i = 0; i < 2; i++) {
+      const a = Math.random() * Math.PI * 2;
+      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
+    }
+    G.score += 500;
+    addFloat(p.x, p.y - 30, "Phá bom! +2 💎 +500", "#ffd166", true);
+    AudioEngine.sfx.pickup();
+  }
+
+}
+
+function updateBombs(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "bomb" || sat.dead) continue;
+    sat.fuseT -= dt;
+    const secs = Math.max(0, Math.ceil(sat.fuseT));
+    if (secs !== sat.tickLast) {
+      sat.tickLast = secs;
+      if (!sat.sim) SatManager.send(sat.id, { type: "sat-tick", id: sat.id, t: secs }); // popup thật hiện số
+      AudioEngine.sfx.click();
+    }
+    if (sat.fuseT <= 0) {
+      explodeBomb(sat, false);
+      SatManager.kill(sat.id, "exploded");
+    }
+  }
+}
+
+function maybeTriggerBomb(n) {
+  const act = actOf(n);
+  if (act < 2 || n < 8 || G.bombWave === n) return;
+  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
+  G.bombWave = n;
+  let made = 0;
+  for (let i = 0; i < 2; i++) {
+    const sat = SatManager.request("bomb", {
+      hp: 8, color: "#ff5722", label: "BOM NÓNG", w: 300, h: 220,
+      onClose: onBombClose,
+    });
+    if (sat) { made++; sat.fuseT = 15; sat.tickLast = -1; }
+    else break;
+  }
+  if (made > 0) {
+    setBanner("💣 Bom nóng xuất hiện! Phá trong 15s — đóng tay là nổ ngay!", "");
+    AudioEngine.sfx.wave();
+  } else if (SAT_MODE === "off") {
+    spawnEnemy("dasher"); spawnEnemy("dasher");
+  }
+}
+
+/* ---------------- M6 — MỘT THÀNH HAI (Giant/Minion) ----------------
+ * Act 2+, wave ≥ 9, mỗi wave 1 lần. Khổng lồ (8 HP) bị phá → "BỐP!" tách 2 nhóc
+ * (HP 4, nhỏ bằng nửa). Nhóc mỗi 4s nhả 1 mini (tối đa 6); phá cả 2 → 1 heart + 2 gem.
+ * ĐÓNG TAY khổng lồ = tách ngay nhưng cả 2 nổi giận (nhanh x1.5, nhả mỗi 2.5s).
+ * ĐÓNG TAY 1 nhóc = nhóc còn lại giận 12s (nhả nhanh gấp đôi). */
+function spawnMinion(parent, enraged) {
+  const sat = SatManager.request("minion", {
+    hp: 4, color: "#8bc34a", label: "NHÓC TINH NGHỊCH", w: 210, h: 150,
+    enraged, onClose: onMinionClose,
+  });
+  if (!sat) return null;
+  const sp = (enraged ? 1.5 : 1) * (70 + Math.random() * 40);
+  const a = Math.random() * Math.PI * 2;
+  sat.vx = Math.cos(a) * sp; sat.vy = Math.sin(a) * sp;
+  sat.spawnT = enraged ? 2.5 : 4; sat.spawned = 0; sat.maxSpawns = 6; sat.enrageT = 0; sat.steerT = 0;
+  if (sat.sim && parent && parent.sim) {
+    const b = bounds();
+    sat.x = clamp(parent.x + parent.sw / 2 - sat.sw / 2 + rand(-70, 70), b.x, Math.max(b.x, b.x + b.w - sat.sw));
+    sat.y = clamp(parent.y + parent.sh / 2 - sat.sh / 2 + rand(-50, 50), b.y, Math.max(b.y, b.y + b.h - sat.sh));
+  }
+  return sat;
+}
+
+function liveMinion(exceptId) {
+  return SatManager.list().find(s => s.role === "minion" && !s.dead && s.id !== exceptId) || null;
+}
+
+function onGiantClose(mode, sat) {
+  const p = nestSpawnPoint(sat);
+  if (mode === "killed" || mode === "manual") {
+    const enraged = mode === "manual";
+    burst(p.x, p.y, 30, ["#4caf50", "#8bc34a", "#ffffff"], 340);
+    AudioEngine.sfx.bigboom();
+    addFloat(p.x, p.y - 30, enraged ? "BỐP! Tách đôi — CẢ 2 NỔI GIẬN!" : "BỐP! Tách thành 2 nhóc!", "#4caf50", true);
+    spawnMinion(sat, enraged);
+    spawnMinion(sat, enraged);
+  }
+
+}
+
+function onMinionClose(mode, sat) {
+  const p = nestSpawnPoint(sat);
+  if (mode === "manual") {
+    const other = liveMinion(sat.id);
+    if (other) {
+      other.enrageT = 12;
+      addFloat(p.x, p.y - 30, "Nhóc còn lại NỔI GIẬN 12s!", "#ff5252", true);
+      AudioEngine.sfx.boss();
+    }
+    burst(p.x, p.y, 20, ["#8bc34a", "#ffffff"], 300);
+  } else if (mode === "killed") {
+    burst(p.x, p.y, 20, ["#8bc34a", "#ffffff"], 300);
+    if (!liveMinion(sat.id)) {
+      // phá cả 2 nhóc → 1 heart + 2 gem
+      G.pickups.push({ kind: "heart", x: p.x, y: p.y, t: 0 });
+      for (let i = 0; i < 2; i++) {
+        const a = Math.random() * Math.PI * 2;
+        G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
+      }
+      addFloat(p.x, p.y - 34, "Cả 2 nhóc bị bắt! +❤️ +2💎", "#8bc34a", true);
+      AudioEngine.sfx.pickup();
+    }
+  }
+}
+
+function updateMinions(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "minion" || sat.dead) continue;
+    if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
+    let interval = sat.opts.enraged ? 2.5 : 4;
+    let speedMul = sat.opts.enraged ? 1.5 : 1;
+    if (sat.enrageT > 0) {
+      sat.enrageT -= dt;
+      interval = Math.max(1.2, interval / 2);
+      speedMul *= 1.5;
+    }
+    if (sat.sim) bounceSimSat(sat, speedMul, dt);
+    else if (sat.canMove && sat.win && !sat.win.closed) {
+      sat.steerT -= dt;
+      if (sat.steerT <= 0) {
+        sat.steerT = 2;
+        const a = Math.random() * Math.PI * 2, sp = 70 * speedMul;
+        SatManager.steer(sat.id, Math.cos(a) * sp, Math.sin(a) * sp);
+      }
+    }
+    sat.spawnT -= dt;
+    if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
+      sat.spawnT = interval; sat.spawned++;
+      const p = nestSpawnPoint(sat);
+      spawnEnemyAt("mini", p.x + rand(-30, 30), p.y + rand(-30, 30));
+      AudioEngine.sfx.shrink();
+    }
+  }
+}
+
+function maybeTriggerGiant(n) {
+  const act = actOf(n);
+  if (act < 2 || n < 9 || G.giantWave === n) return;
+  if (SatManager.anyRole("giant")) return;
+  G.giantWave = n;
+  const sat = SatManager.request("giant", {
+    hp: 8, color: "#4caf50", label: "KHỔNG LỒ VUI VẺ", w: 420, h: 300,
+    onClose: onGiantClose,
+  });
+  if (sat) {
+    setBanner("Khổng lồ vui vẻ xuất hiện! Phá nó… nhưng coi chừng tách đôi!", "");
+    AudioEngine.sfx.boss();
+  } else if (SAT_MODE === "off") {
+    spawnEnemy("tank");
+  }
+}
+
+/* ---------------- M5 — MẸ GÀ ĐẺ TRỨNG VÀNG (Mother/Chick) ----------------
+ * Act 2+, wave ≥ 7, mỗi wave 1 lần, cần ≥ 2 slot trống (mẹ + 2 con = 3 popup).
+ * Mẹ mỗi 8s đẻ 1 con (tối đa 2); con nhảy tưng tưng, mỗi 5s nhả 1 mini.
+ * Phá MẸ → con "NỔI GIẬN MẤT MẸ": to x1.5, nhanh x2, nhả x2 trong 10s rồi tự vỡ
+ * (rơi gem an ủi). ĐÓNG TAY mẹ = con giận + mất 1 HP. ĐÓNG TAY con = nổ, 2 mini. */
+function motherChicks(motherId) {
+  return SatManager.list().filter(s => s.role === "chick" && !s.dead && s.motherId === motherId);
+}
+
+function enrageChicks(motherId, msg) {
+  const chicks = motherChicks(motherId);
+  for (const c of chicks) c.enrageT = 10;
+  if (chicks.length) {
+    const p = nestSpawnPoint(chicks[0]);
+    addFloat(p.x, p.y - 30, msg, "#ff9800", true);
+    AudioEngine.sfx.boss();
+  }
+}
+
+function onMotherClose(mode, sat) {
+  const p = nestSpawnPoint(sat);
+  if (mode === "killed") {
+    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
+    enrageChicks(sat.id, "MẤT MẸ! Gà con nổi giận!");
+  } else if (mode === "manual") {
+    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
+    enrageChicks(sat.id, "Mẹ bị đóng tay! Gà con nổi giận!");
+    hurtShip(1, p.x, p.y);
+  }
+
+}
+
+function onChickClose(mode, sat) {
+  const p = nestSpawnPoint(sat);
+  if (mode === "manual") {
+
+    burst(p.x, p.y, 22, ["#ffd54f", "#ff9800", "#ffffff"], 320);
+    spawnEnemyAt("mini", p.x - 22, p.y);
+    spawnEnemyAt("mini", p.x + 22, p.y);
+    addFloat(p.x, p.y - 26, "Gà con nổ tung!", "#ffd54f", true);
+    AudioEngine.sfx.boom();
+  } else if (mode === "killed") {
+    burst(p.x, p.y, 14, ["#ffd54f", "#ffffff"], 240);
+    AudioEngine.sfx.hit();
+  }
+
+}
+
+function layChick(mother) {
+  const sat = SatManager.request("chick", {
+    hp: 4, color: "#ffd54f", label: "GÀ CON", w: 170, h: 120,
+    onClose: onChickClose,
+  });
+  if (!sat) return null;
+  sat.motherId = mother.id;
+  const sp = 90 + Math.random() * 60, a = Math.random() * Math.PI * 2;
+  sat.vx = Math.cos(a) * sp; sat.vy = Math.sin(a) * sp;
+  sat.spawnT = 2; sat.spawned = 0; sat.maxSpawns = 8; sat.enrageT = 0;
+  sat.hopPh = Math.random() * 9;
+  if (sat.sim && mother.sim) {
+    const b = bounds();
+    sat.x = clamp(mother.x + mother.sw / 2 - sat.sw / 2 + rand(-70, 70), b.x, Math.max(b.x, b.x + b.w - sat.sw));
+    sat.y = clamp(mother.y + mother.sh / 2 - sat.sh / 2 + rand(-50, 50), b.y, Math.max(b.y, b.y + b.h - sat.sh));
+  }
+  const p = nestSpawnPoint(mother);
+  addFloat(p.x, p.y - 20, "Mẹ gà đẻ trứng!", "#ffd54f");
+  AudioEngine.sfx.pickup();
+  return sat;
+}
+
+function updateMothers(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "mother" || sat.dead) continue;
+    if (performance.now() - sat.born > 75000) { SatManager.kill(sat.id, "timeout"); continue; }
+    sat.layT = (sat.layT === undefined ? 3 : sat.layT) - dt;
+    if (sat.layT <= 0) {
+      if (motherChicks(sat.id).length < 2) layChick(sat);
+      sat.layT = 8;
+    }
+  }
+}
+
+function updateChicks(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "chick" || sat.dead) continue;
+    const enraged = sat.enrageT > 0;
+    if (enraged) {
+      sat.enrageT -= dt;
+      if (sat.enrageT <= 0) {
+
+        const p = nestSpawnPoint(sat);
+        G.gems.push({ x: p.x, y: p.y, vx: rand(-90, 90), vy: rand(-90, 90), v: 1, t: rand(0, 9) });
+        addFloat(p.x, p.y - 24, "Gà con nguôi giận 💎", "#ffd54f");
+        burst(p.x, p.y, 16, ["#ffd54f", "#ffffff"], 220);
+        AudioEngine.sfx.pickup();
+        SatManager.kill(sat.id, "timeout");
+        continue;
+      }
+    }
+    const speedMul = enraged ? 2 : 1;
+    if (sat.sim) bounceSimSat(sat, speedMul, dt);
+    sat.spawnT -= dt;
+    if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
+      sat.spawnT = enraged ? 2.5 : 5; sat.spawned++;
+      const p = nestSpawnPoint(sat);
+      spawnEnemyAt("mini", p.x + rand(-24, 24), p.y + rand(-24, 24));
+      AudioEngine.sfx.shrink();
+    }
+  }
+}
+
+function maybeTriggerMother(n) {
+  const act = actOf(n);
+  if (act < 2 || n < 7 || G.motherWave === n) return;
+  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
+  if (SatManager.count() > 1) return;
+  G.motherWave = n;
+  const sat = SatManager.request("mother", {
+    hp: 8, color: "#ff9800", label: "MẸ GÀ", w: 340, h: 240,
+    onClose: onMotherClose,
+  });
+  if (sat) {
+    sat.layT = 3;
+    setBanner("Mẹ gà đẻ trứng vàng! Phá mẹ trước khi đàn con đông!", "");
+    AudioEngine.sfx.pickup();
+  } else if (SAT_MODE === "off") {
+    spawnEnemy("chewer"); spawnEnemy("chewer");
+  }
+}
+
 /* ---------------- M2 — BOSS TÁCH MẢNH (Boss Split Window) — P1d ----------------
  * Boss vào phase 2 (HP 66%) → tách 3 mảnh vệ tinh bay lượn quanh cửa sổ chính.
  * - Pool HP chung: bắn/click mảnh nào cũng trừ HP boss (qua onDamage).
@@ -945,6 +1374,7 @@ function newShip() {
     hp: DIFF.shipHp, maxHp: DIFF.shipHp,
     speed: 275, fireInt: 0.21, fireT: 0, streams: 1, dmg: 1, pierce: 0,
     magnet: 125, thorns: 0, bulletSpd: 560, slow: 0, dropMul: 1, scoreMul: DIFF.scoreMul,
+    kbvx: 0, kbvy: 0,
     iframes: 0, ang: 0, shieldT: 0, regenT: 0, magnetT: 0, overdriveT: 0,
   };
 }
@@ -1318,6 +1748,7 @@ function startWave(n) {
   G.spawnQueue.sort(() => Math.random() - 0.5);
   G.spawnT = 0;
   maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
+  maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
   const sub = n === 1 ? "Bắn quái tím trước — chúng gặm cửa sổ!" : pickSub();
   // WOW: wave banner qua Cinema (fallback setBanner cũ)
   if (window.Cinema) {
@@ -1448,6 +1879,7 @@ function resetGame() {
     boss: null, spawnQueue: [], spawnT: 0, waveBreak: 1.4, waveClearShown: false,
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
+    bombWave: 0, giantWave: 0, motherWave: 0,
   });
   G.ship = newShip();
   ["ov-over", "ov-draft", "ov-pause"].forEach(id => $(id).classList.remove("show"));
@@ -1568,6 +2000,8 @@ function update(dt) {
   SatManager.poll(dt); SatManager.updateSims(dt); updateNests(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
+  if (typeof updateBombs === "function") updateBombs(dt);
+  if (typeof updateMinions === "function") { updateMinions(dt); updateMothers(dt); updateChicks(dt); }
   updateCracks(dt);
   G.comboT -= dt;
   if (G.comboT <= 0) {
@@ -1597,6 +2031,15 @@ function update(dt) {
   } else s.moveSpeed = 0;
   s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);
   s.y = clamp(s.y, b.y + s.r, b.y + b.h - s.r);
+
+  if (s.kbvx || s.kbvy) {
+    s.x += s.kbvx * dt; s.y += s.kbvy * dt;
+    const dk = Math.pow(0.02, dt);
+    s.kbvx *= dk; s.kbvy *= dk;
+    if (Math.hypot(s.kbvx, s.kbvy) < 10) { s.kbvx = 0; s.kbvy = 0; }
+    s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);
+    s.y = clamp(s.y, b.y + s.r, b.y + b.h - s.r);
+  }
   const ta = touchAim();
   s.ang = ta ? Math.atan2(ta.y, ta.x) : Math.atan2(mouse.y - s.y, mouse.x - s.x);
 

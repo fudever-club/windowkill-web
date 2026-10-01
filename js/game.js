@@ -28,7 +28,7 @@ const DIFF = DIFFS[qp.get("diff")] || DIFFS.normal;
 const DIFF_KEY = qp.get("diff") in DIFFS ? qp.get("diff") : "normal";
 const PROFILE_ID = qp.get("profile") || null;
 AudioEngine.setSettings({ music: qp.get("music") === "1", sfx: qp.get("sfx") === "1" });
-if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật
+if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật, tiếp tục từ menu
 const SHAKE_WINDOW = qp.get("shake") === "1";
 if (typeof BG !== "undefined") BG.setQuality(qp.get("fx") === "reduced" ? "reduced" : "full");
 
@@ -859,6 +859,7 @@ window.addEventListener("keydown", e => {
     const on = qp.get("music") === "off";
     qp.set("music", on ? "on" : "off");
     AudioEngine.setSettings({ music: on });
+    if (window.BGM) { try { BGM.setEnabled(on); } catch (e2) {} }
     if (on) AudioEngine.startMusic(curTrack);
   }
   if (e.code === "KeyR" && G.phase === "over") resetGame();

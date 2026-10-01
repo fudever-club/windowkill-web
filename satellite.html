@@ -5,26 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WINDOWKILL — Vệ tinh</title>
 <style>
-  /* Design tokens: --role được set từ JS theo màu role (nest tím, bom cam...) */
-  :root{--role:#8b2fc9}
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0a0618;
     font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;cursor:crosshair}
   canvas{display:block;width:100%;height:100%}
   #hp{position:fixed;top:6px;left:8px;right:8px;height:6px;background:#ffffff18;border-radius:3px;overflow:hidden}
-  #hpfill{height:100%;width:100%;background:var(--role);border-radius:3px;transition:width .15s}
-  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;
-    color:color-mix(in srgb, var(--role) 55%, #ffffffcc);font-size:11px;letter-spacing:2px}
-  #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px var(--role)}
-  /* viền glow theo role — mỗi vệ tinh một cá tính */
-  #glow{position:fixed;inset:0;pointer-events:none;z-index:5;
-    box-shadow:inset 0 0 70px color-mix(in srgb, var(--role) 38%, transparent)}
+  #hpfill{height:100%;width:100%;background:#c084fc;border-radius:3px;transition:width .15s}
+  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:11px;letter-spacing:2px}
+  #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
 
-  /* boot overlay: tint theo màu role, fade-in 200ms + logo pulse */
-  #boot{position:fixed;inset:0;background:color-mix(in srgb, var(--role) 25%, transparent);display:flex;flex-direction:column;
+  /* boot overlay (cinematics polish): overlay tim #7c3aed alpha .25 fade-in 200ms + logo pulse */
+  #boot{position:fixed;inset:0;background:rgba(124,58,237,.25);display:flex;flex-direction:column;
     gap:10px;align-items:center;justify-content:center;z-index:50;opacity:0;pointer-events:none;
     transition:opacity .2s ease-out}
   #boot.show{opacity:1}
-  #boot-logo{font-size:46px;color:var(--role);line-height:1;animation:bootPulse .6s ease-in-out 1}
+  #boot-logo{font-size:46px;color:#c084fc;line-height:1;animation:bootPulse .6s ease-in-out 1}
   #boot-txt{color:#e9d5ff;font-size:12px;letter-spacing:4px;font-weight:700}
   @keyframes bootPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
   @media (prefers-reduced-motion:reduce){#boot-logo{animation:none}#boot{transition:none}}
@@ -32,7 +26,6 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="glow" aria-hidden="true"></div>
 <div id="hp"><div id="hpfill"></div></div>
 <div id="lbl"></div>
 <div id="boot" aria-hidden="true"><div id="boot-logo">◈</div><div id="boot-txt">VỆ TINH</div></div>
@@ -53,7 +46,6 @@ const LABEL = (qp.get("label") || "VỆ TINH").slice(0, 24);
 const ENR = qp.get("enr") === "1"; // M6: nhóc tinh nghịch nổi giận (vẽ mặt giận)
 document.title = "WINDOWKILL — " + LABEL;
 document.getElementById("lbl").textContent = LABEL;
-try { document.documentElement.style.setProperty("--role", COLOR); } catch (e) {} // theme theo role
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -199,6 +191,78 @@ function drawBlob(t) {
   }
 }
 
+/* M7/M10/M9: popup thật cho lover / superlove / mirror / blackhole */
+function drawHeartShape(cx, cy, r) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r * 0.75);
+  ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
+  ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
+  ctx.closePath();
+}
+function drawLover(t) { // M7: trái tim đập thình thịch đi tìm tình yêu
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  ctx.fillStyle = "#2a0a1a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const beat = 1 + 0.22 * Math.abs(Math.sin(t / 260));
+  const r = Math.min(canvas.width, canvas.height) * 0.24 * beat;
+  ctx.fillStyle = COLOR; drawHeartShape(cx, cy, r); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.5)";
+  ctx.beginPath(); ctx.arc(cx - r * 0.4, cy - r * 0.35, r * 0.16, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffc2d6"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("ĐI TÌM TÌNH YÊU…", cx, canvas.height - 26);
+}
+function drawSuperlove(t) { // M7: siêu tim + sét đánh nhấp nháy
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  ctx.fillStyle = "#1c0510"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const beat = 1 + 0.14 * Math.abs(Math.sin(t / 220));
+  const r = Math.min(canvas.width, canvas.height) * 0.28 * beat;
+  ctx.fillStyle = COLOR; drawHeartShape(cx, cy, r); ctx.fill();
+  const fl = Math.floor(t / 150) % 2 === 0;
+  ctx.fillStyle = fl ? "#ffe93c" : "#fff7ae";
+  ctx.beginPath();
+  ctx.moveTo(cx + 5, cy - r * 1.2); ctx.lineTo(cx - 14, cy + r * 0.1);
+  ctx.lineTo(cx - 2, cy + r * 0.1); ctx.lineTo(cx - 7, cy + r * 0.8);
+  ctx.lineTo(cx + 14, cy - r * 0.4); ctx.lineTo(cx + 2, cy - r * 0.4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#ffc2d6"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("⚡ SIÊU TÌNH YÊU! ⚡", cx, canvas.height - 26);
+}
+function drawMirror(t) { // M10: mặt gương lấp lánh, vệt sáng chạy qua
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  ctx.fillStyle = "#08131c"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const mw = canvas.width * 0.62, mh = canvas.height * 0.62;
+  const gg = ctx.createLinearGradient(cx - mw / 2, cy - mh / 2, cx + mw / 2, cy + mh / 2);
+  gg.addColorStop(0, "#164e63"); gg.addColorStop(0.5, "#a5f3fc"); gg.addColorStop(1, "#164e63");
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 4; ctx.stroke();
+  const sx = ((t / 12) % (mw * 1.6)) - mw * 0.8;
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  ctx.fillRect(cx + sx - 16, cy - mh / 2, 32, mh);
+  ctx.restore();
+  ctx.fillStyle = "#a5f3fc"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("ĐỪNG BẮN VÀO GƯƠNG!", cx, canvas.height - 26);
+}
+function drawBlackhole(t) { // M9: hố đen + đĩa bồi tụ xoay
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  ctx.fillStyle = "#05030c"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const r = Math.min(canvas.width, canvas.height) * 0.22;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(t / 800);
+  const cols = ["#7c3aed", "#c084fc", "#ff9d5c"];
+  for (let i = 0; i < 3; i++) {
+    ctx.strokeStyle = cols[i]; ctx.lineWidth = 7 - i * 2; ctx.globalAlpha = 0.85 - i * 0.2;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * (1.5 + i * 0.45), r * (0.62 + i * 0.18), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#ff9d5c"; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = "#c084fc"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("HÚT HÚT HÚT…", cx, canvas.height - 26);
+}
+
 function paint(t) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (ROLE === "nest") drawNest(t);
@@ -206,6 +270,10 @@ function paint(t) {
   else if (ROLE === "shield") drawShield(t);
   else if (ROLE === "bomb") drawBomb(t);
   else if (ROLE === "debris") drawDebris(t);
+  else if (ROLE === "lover") drawLover(t); // M7
+  else if (ROLE === "superlove") drawSuperlove(t); // M7
+  else if (ROLE === "mirror") drawMirror(t); // M10
+  else if (ROLE === "blackhole") drawBlackhole(t); // M9
   else drawBlob(t); // giant / minion / mother / chick
   if (flash > 0) { // flash trắng khi trúng đòn
     ctx.fillStyle = `rgba(255,255,255,${flash * 0.55})`;

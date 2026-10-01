@@ -156,7 +156,7 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
   const MAX_SATS = 3;
-  const PRI = { fragment: 0, debris: 1, nest: 2, shield: 3 }; // hàng đợi ưu tiên
+  const PRI = { fragment: 0, debris: 1, nest: 2, shield: 3, lover: 4, superlove: 4, mirror: 5, blackhole: 6 }; // hàng đợi ưu tiên
   const queue = [];
   const sats = new Map(); // id -> sat
   let permAsked = false, pollT = 0, blockedWarned = false;
@@ -543,6 +543,80 @@ const SatManager = (() => {
       }
       ctx.fillStyle = enr ? "#ff8f8f" : "#ffe9a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(enr ? "GIẬN MẤT MẸ!" : "CHÍP CHÍP!", cx, s.y + s.sh - 22);
+    } else if (s.role === "lover") { // M7: người yêu — trái tim đập thình thịch
+      const hb = !!(s.heartbroken);
+      ctx.fillStyle = hb ? "#2a0a12" : "#2a0a1a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const beat = 1 + 0.22 * Math.abs(Math.sin(t / 260));
+      const r = Math.min(s.sw, s.sh - 26) * 0.26 * beat;
+      ctx.fillStyle = hb ? "#ff2020" : "#ff5f8a";
+      ctx.beginPath(); // trái tim
+      ctx.moveTo(cx, cy + r * 0.75);
+      ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
+      ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
+      ctx.fill();
+      if (hb) { // mắt giận
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.12, 0, Math.PI * 2);
+        ctx.arc(cx + r * 0.3, cy - r * 0.3, r * 0.12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#7a0d0d";
+        ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.05, 0, Math.PI * 2);
+        ctx.arc(cx + r * 0.3, cy - r * 0.3, r * 0.05, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = hb ? "#ff8f8f" : "#ffc2d6"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(hb ? "💔 THẤT TÌNH! TRẢ THÙ!" : "💘 ĐI TÌM TÌNH YÊU…", cx, s.y + s.sh - 22);
+    } else if (s.role === "superlove") { // M7: siêu-popup — tim khổng lồ + sét
+      ctx.fillStyle = "#1c0510"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const beat = 1 + 0.14 * Math.abs(Math.sin(t / 220));
+      const r = Math.min(s.sw, s.sh - 26) * 0.3 * beat;
+      ctx.fillStyle = "#ff5f8a";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + r * 0.75);
+      ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
+      ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
+      ctx.fill();
+      const fl = Math.floor(t / 150) % 2 === 0; // tia sét nhấp nháy
+      ctx.fillStyle = fl ? "#ffe93c" : "#fff7ae";
+      ctx.beginPath();
+      ctx.moveTo(cx + 4, cy - r * 1.15); ctx.lineTo(cx - 12, cy + r * 0.1);
+      ctx.lineTo(cx - 1, cy + r * 0.1); ctx.lineTo(cx - 6, cy + r * 0.75);
+      ctx.lineTo(cx + 12, cy - r * 0.35); ctx.lineTo(cx + 1, cy - r * 0.35);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffc2d6"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("⚡ SIÊU TÌNH YÊU 10HP! ⚡", cx, s.y + s.sh - 22);
+    } else if (s.role === "mirror") { // M10: gương thần — mặt kính lấp lánh
+      ctx.fillStyle = "#08131c"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const mw = s.sw * 0.62, mh = (s.sh - 26) * 0.62;
+      const gg = ctx.createLinearGradient(cx - mw / 2, cy - mh / 2, cx + mw / 2, cy + mh / 2);
+      gg.addColorStop(0, "#164e63"); gg.addColorStop(0.5, "#a5f3fc"); gg.addColorStop(1, "#164e63");
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 3; ctx.stroke();
+      const sx = ((t / 14) % (mw * 1.6)) - mw * 0.8; // vệt sáng chạy qua gương
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = "rgba(255,255,255,.35)";
+      ctx.fillRect(cx + sx - 14, cy - mh / 2, 28, mh);
+      ctx.restore();
+      ctx.fillStyle = "#a5f3fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("ĐỪNG BẮN VÀO GƯƠNG!", cx, s.y + s.sh - 22);
+    } else if (s.role === "blackhole") { // M9: hố đen + đĩa bồi tụ xoay
+      ctx.fillStyle = "#05030c"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
+      const r = Math.min(s.sw, s.sh - 26) * 0.24;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(t / 900);
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = ["#7c3aed", "#c084fc", "#ff9d5c"][i];
+        ctx.lineWidth = 5 - i;
+        ctx.globalAlpha = 0.85 - i * 0.2;
+        ctx.beginPath(); ctx.ellipse(0, 0, r * (1.5 + i * 0.45), r * (0.62 + i * 0.18), 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ff9d5c"; ctx.lineWidth = 2; ctx.stroke();
+      const n = (s.swallowed || []).length;
+      ctx.fillStyle = "#c084fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(`ĐÃ HÚT: ${n} — SẮP NHẢ!`, cx, s.y + s.sh - 22);
     } else {
       ctx.fillStyle = "#0a0a14"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       ctx.fillStyle = s.color; ctx.font = "700 22px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -1183,6 +1257,442 @@ function maybeTriggerMother(n) {
   }
 }
 
+/* ---------------- M7 — TÌNH YÊU SÉT ĐÁNH (Lightning Love) ----------------
+ * Act 2+, wave ≥ 12, mỗi wave 1 lần, cần cả 3 slot trống.
+ * 2 popup "người yêu" (5 HP) trôi về phía nhau; chạm nhau → "BÙM! TÌNH YÊU SÉT ĐÁNH!"
+ * hợp thành SIÊU-POPUP 10 HP. Siêu-popup mỗi 5s bắn 1 trái tim độc vào tàu.
+ * Phá siêu-popup → +4 gem +800. ĐÓNG TAY 1 người yêu = người còn lại THẤT TÌNH:
+ * nhanh x2, mỗi 4s nhả 1 chaser (tối đa 4), ăn ngay 2 chaser.
+ * ĐÓNG TAY siêu-popup = 3 trái tim độc bay vào tàu + hất văng.
+ * Fallback: khung giả trôi trong arena, chạm nhau là hợp nhất. */
+function loverOf(sat) {
+  return SatManager.list().find(s => s.role === "lover" && !s.dead && s.id !== sat.id && s.pairId === sat.pairId) || null;
+}
+
+/* tâm lover trong tọa độ screen (popup thật) */
+function loverScreen(sat) {
+  return { x: sat.x + sat.w / 2, y: sat.y + sat.h / 2 };
+}
+
+function loverAnchor(sat) {
+  if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
+  const p = nestSpawnPoint(sat);
+  return { x: p.x, y: p.y };
+}
+
+function onLoverClose(mode, sat) {
+  const p = loverAnchor(sat);
+  if (mode === "manual") {
+    // đóng tay: người còn lại THẤT TÌNH — giận dữ, đẻ quái trả thù
+    const other = loverOf(sat);
+    burst(p.x, p.y, 22, ["#ff5f8a", "#ff8fab", "#ffffff"], 300);
+    addFloat(p.x, p.y - 28, "💔 THẤT TÌNH! Nó nổi giận!", "#ff5f8a", true);
+    AudioEngine.sfx.boss();
+    if (other && !other.dead) {
+      other.heartbroken = true;
+      other.spawnT = 0.5; other.spawned = 0;
+      for (let i = 0; i < 2; i++) {
+        const q = loverAnchor(other);
+        spawnEnemyAt("chaser", q.x + rand(-50, 50), q.y + rand(-50, 50));
+      }
+    }
+  } else if (mode === "killed") {
+    burst(p.x, p.y, 16, ["#ff8fab", "#ffffff"], 240);
+    addFloat(p.x, p.y - 24, "💔", "#ff8fab", true);
+    AudioEngine.sfx.hit();
+    const other = loverOf(sat); // người còn lại cô đơn → tự rút sau 6s
+    if (other && !other.dead) other.lonelyT = 6;
+  }
+  // "merge"/"timeout": êm, không phạt
+}
+
+function onSuperloveClose(mode, sat) {
+  const p = loverAnchor(sat);
+  if (mode === "killed") {
+    burst(p.x, p.y, 44, ["#ff5f8a", "#ff8fab", "#ffd166", "#ffffff"], 420);
+    jxShake(8, 350, 6);
+    for (let i = 0; i < 4; i++) {
+      const a = Math.random() * Math.PI * 2;
+      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, v: 1, t: rand(0, 9) });
+    }
+    G.score += 800;
+    addFloat(p.x, p.y - 34, "💖 Tình yêu tan vỡ! +4💎 +800", "#ff8fab", true);
+    AudioEngine.sfx.pickup();
+  } else if (mode === "manual") {
+    // đóng tay siêu-popup: 3 trái tim độc bay vào tàu + hất văng
+    burst(p.x, p.y, 30, ["#ff2020", "#ff5f8a", "#ffffff"], 380);
+    const s = G.ship;
+    const base = Math.atan2(s.y - p.y, s.x - p.x);
+    for (let i = -1; i <= 1; i++) {
+      const a = base + i * 0.28;
+      G.ebullets.push({ x: p.x, y: p.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, r: 7, life: 4 });
+    }
+    knockShip(p.x, p.y, 420);
+    jxShake(8, 350, 6);
+    addFloat(p.x, p.y - 30, "💔 Đóng tay = ăn 3 tim độc!", "#ff2020", true);
+    AudioEngine.sfx.bigboom();
+  }
+}
+
+function mergeLovers(a, b) {
+  if (!a || !b || a.dead || b.dead || a.merged || b.merged) return;
+  a.merged = b.merged = true;
+  const pa = loverAnchor(a), pb = loverAnchor(b);
+  const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+  burst(mx, my, 40, ["#ff5f8a", "#ffd166", "#ffffff"], 400);
+  jxShake(7, 300, 5); windowJitter(18);
+  AudioEngine.sfx.zap();
+  addFloat(mx, my - 40, "⚡ BÙM! TÌNH YÊU SÉT ĐÁNH! ⚡", "#ff8fab", true);
+  SatManager.kill(a.id, "merge");
+  SatManager.kill(b.id, "merge");
+  const sat = SatManager.request("superlove", {
+    hp: 10, color: "#ff5f8a", label: "SIÊU TÌNH YÊU", w: 340, h: 240,
+    onClose: onSuperloveClose,
+  });
+  if (sat) {
+    sat.heartT = 2.5; sat.steerT = 0;
+    const sp = 40 + Math.random() * 30, an = Math.random() * Math.PI * 2;
+    sat.vx = Math.cos(an) * sp; sat.vy = Math.sin(an) * sp;
+    if (sat.sim) {
+      const bd = bounds();
+      sat.x = clamp(mx - sat.sw / 2, bd.x, Math.max(bd.x, bd.x + bd.w - sat.sw));
+      sat.y = clamp(my - sat.sh / 2, bd.y, Math.max(bd.y, bd.y + bd.h - sat.sh));
+    }
+    setBanner("💘 SIÊU-POPUP 10 HP! Nó bắn tim độc — phá ngay!", "");
+  }
+}
+
+function updateLovers(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "lover" || sat.dead) continue;
+    if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
+    const p = loverOf(sat);
+    if (!p) { // mất đôi (bị phá/đóng) → cô đơn, tự rút
+      sat.lonelyT = (sat.lonelyT === undefined ? 6 : sat.lonelyT) - dt;
+      if (sat.lonelyT <= 0) {
+        const q = loverAnchor(sat);
+        addFloat(q.x, q.y - 24, "💔 cô đơn quá…", "#ff8fab");
+        SatManager.kill(sat.id, "timeout");
+      }
+      continue;
+    }
+    const sp = sat.heartbroken ? 150 : 75;
+    if (sat.sim) {
+      const ax = sat.x + sat.sw / 2, ay = sat.y + sat.sh / 2;
+      const bx = p.x + p.sw / 2, by = p.y + p.sh / 2;
+      const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy) || 1;
+      sat.vx = dx / d * sp; sat.vy = dy / d * sp;
+      bounceSimSat(sat, 1, dt);
+      if (d < 85) mergeLovers(sat, p);
+    } else if (sat.canMove && sat.win && !sat.win.closed) {
+      sat.steerT = (sat.steerT || 0) - dt;
+      if (sat.steerT <= 0) {
+        sat.steerT = 1.2;
+        const a = loverScreen(sat), bpos = loverScreen(p);
+        const dx = bpos.x - a.x, dy = bpos.y - a.y, d = Math.hypot(dx, dy) || 1;
+        SatManager.steer(sat.id, dx / d * sp, dy / d * sp);
+      }
+      const a = loverScreen(sat), bpos = loverScreen(p);
+      if (Math.hypot(bpos.x - a.x, bpos.y - a.y) < (sat.w + p.w) / 2 * 0.7) mergeLovers(sat, p);
+    }
+    // thất tình → đẻ chaser trả thù
+    if (sat.heartbroken) {
+      sat.spawnT -= dt;
+      if (sat.spawnT <= 0 && sat.spawned < 4) {
+        sat.spawnT = 4; sat.spawned++;
+        const q = loverAnchor(sat);
+        spawnEnemyAt("chaser", q.x + rand(-40, 40), q.y + rand(-40, 40));
+        AudioEngine.sfx.shrink();
+        addFloat(q.x, q.y - 20, "💔 trả thù!", "#ff5f8a");
+      }
+    }
+  }
+}
+
+function updateSuperlove(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "superlove" || sat.dead) continue;
+    if (performance.now() - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; }
+    // trôi lững lờ
+    if (sat.sim) bounceSimSat(sat, 1, dt);
+    else if (sat.canMove && sat.win && !sat.win.closed) {
+      sat.steerT -= dt;
+      if (sat.steerT <= 0) {
+        sat.steerT = 2.5;
+        const a = Math.random() * Math.PI * 2, sp = 45;
+        SatManager.steer(sat.id, Math.cos(a) * sp, Math.sin(a) * sp);
+      }
+    }
+    // mỗi 5s bắn 1 trái tim độc vào tàu
+    sat.heartT -= dt;
+    if (sat.heartT <= 0) {
+      sat.heartT = 5;
+      const p = loverAnchor(sat), s = G.ship;
+      const a = Math.atan2(s.y - p.y, s.x - p.x);
+      G.ebullets.push({ x: p.x, y: p.y, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, r: 7, life: 4 });
+      AudioEngine.sfx.shrink();
+      addFloat(p.x, p.y - 30, "💘!", "#ff8fab");
+    }
+  }
+}
+
+function maybeTriggerLove(n) {
+  const act = actOf(n);
+  if (act < 2 || n < 12 || G.loveWave === n) return;
+  if (SatManager.count() > 0) return; // cần cả 3 slot trống
+  G.loveWave = n;
+  const pairId = "love" + Date.now().toString(36);
+  const a = SatManager.request("lover", {
+    hp: 5, color: "#ff5f8a", label: "💘 ĐANG YÊU", w: 260, h: 180, onClose: onLoverClose,
+  });
+  const b = SatManager.request("lover", {
+    hp: 5, color: "#c86bff", label: "💘 ĐANG YÊU", w: 260, h: 180, onClose: onLoverClose,
+  });
+  if (a && b) {
+    a.pairId = b.pairId = pairId;
+    // đặt 2 khung giả ở 2 góc đối nhau để chúng phải "tìm nhau"
+    if (a.sim && b.sim) {
+      const bd = bounds();
+      const corners = [
+        { x: bd.x + 24, y: bd.y + 56 },
+        { x: bd.x + bd.w - 24 - b.sw, y: bd.y + bd.h - 24 - b.sh },
+      ];
+      b.x = corners[1].x; b.y = corners[1].y;
+    }
+    setBanner("💘 2 cửa sổ đang yêu nhau! Phá trước khi chúng hợp nhất!", "");
+    AudioEngine.sfx.wave();
+  } else {
+    if (a) SatManager.kill(a.id, "timeout");
+    if (b) SatManager.kill(b.id, "timeout");
+    if (SAT_MODE === "off") { spawnEnemy("chaser"); spawnEnemy("chaser"); }
+  }
+}
+
+/* ---------------- M10 — GƯƠNG THẦN LẦY LỘI (Silly Mirror) ----------------
+ * Act 2+ (wave ≥ 11), mỗi wave 1 lần, tối đa 1 gương sống.
+ * Gương (6 HP) chiếu "vùng gương" bán kính 85px: đạn player bay vào bị PHẢN CHIỀU
+ * ngược lại thành đạn địch (1 dmg). Đừng bắn vào gương!
+ * Phá gương → +2 gem +300. ĐÓNG TAY = gương vỡ: 4 mảnh vỡ bay vào tàu.
+ * Fallback: khung giả — vùng gương vẽ quanh khung. */
+function mirrorAnchor(sat) {
+  if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
+  const p = nestSpawnPoint(sat);
+  return { x: p.x, y: p.y };
+}
+
+function onMirrorClose(mode, sat) {
+  const p = mirrorAnchor(sat);
+  if (mode === "killed") {
+    burst(p.x, p.y, 26, ["#a5f3fc", "#ffffff", "#f0abfc"], 320);
+    for (let i = 0; i < 2; i++) {
+      const a = Math.random() * Math.PI * 2;
+      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
+    }
+    G.score += 300;
+    addFloat(p.x, p.y - 30, "🪞 Phá gương! +2💎 +300", "#a5f3fc", true);
+    AudioEngine.sfx.pickup();
+  } else if (mode === "manual") {
+    // đóng tay: gương vỡ — 4 mảnh vỡ bay vào tàu
+    burst(p.x, p.y, 30, ["#a5f3fc", "#ff5470", "#ffffff"], 360);
+    const s = G.ship;
+    const base = Math.atan2(s.y - p.y, s.x - p.x);
+    for (let i = 0; i < 4; i++) {
+      const a = base + (i - 1.5) * 0.3;
+      G.ebullets.push({ x: p.x, y: p.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, r: 6, life: 3.5 });
+    }
+    jxShake(6, 300, 4);
+    addFloat(p.x, p.y - 30, "🪞 Gương vỡ! Mảnh bay vào mặt!", "#ff5470", true);
+    AudioEngine.sfx.bigboom();
+  }
+}
+
+/* đạn player bay vào vùng gương → phản chiếu thành đạn địch; trả về true nếu đã phản */
+function mirrorReflect(bl) {
+  for (const m of SatManager.list()) {
+    if (m.role !== "mirror" || m.dead) continue;
+    if (bl.mirrorId === m.id) continue; // mỗi gương chỉ phản 1 viên 1 lần
+    const a = mirrorAnchor(m), R = 85;
+    if (dist2(bl.x, bl.y, a.x, a.y) < R * R) {
+      bl.mirrorId = m.id;
+      G.ebullets.push({
+        x: bl.x, y: bl.y, vx: -bl.vx, vy: -bl.vy,
+        r: Math.max(4, bl.r || 4), life: 3,
+      });
+      burst(bl.x, bl.y, 10, ["#a5f3fc", "#ffffff", "#f0abfc"], 200);
+      addFloat(bl.x, bl.y - 14, "Gương phản đạn!", "#a5f3fc");
+      AudioEngine.sfx.boing();
+      return true;
+    }
+  }
+  return false;
+}
+
+function updateMirrors(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "mirror" || sat.dead) continue;
+    if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
+    if (sat.sim) { // gương lững lờ trôi cho khó ngắm
+      sat.steerT = (sat.steerT || 0);
+      if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 45; sat.vy = Math.sin(a) * 45; }
+      bounceSimSat(sat, 1, dt);
+    }
+  }
+}
+
+function maybeTriggerMirror(n) {
+  const act = actOf(n);
+  if (act < 2 || n < 11 || G.mirrorWave === n) return;
+  if (SatManager.anyRole("mirror") || SatManager.count() >= 2) return;
+  G.mirrorWave = n;
+  const sat = SatManager.request("mirror", {
+    hp: 6, color: "#67e8f9", label: "🪞 GƯƠNG THẦN", w: 280, h: 200,
+    onClose: onMirrorClose,
+  });
+  if (sat) {
+    setBanner("🪞 Gương thần xuất hiện! ĐỪNG bắn vào vùng gương!", "");
+    AudioEngine.sfx.wave();
+  } else if (SAT_MODE === "off") {
+    spawnEnemy("dasher");
+  }
+}
+
+/* ---------------- M9 — MÁY HÚT BỤI VŨ TRỤ (Cosmic Vacuum) ----------------
+ * Act 3+, mỗi wave 1 lần, tối đa 1 máy sống.
+ * Hố đen (8 HP) hút quái trong bán kính 240px; quái chạm tâm → bị NUỐT (mất, không điểm).
+ * Mỗi 7s hoặc nuốt đủ 3 con → NHẢ ra: quái giận dữ (nhanh x1.6).
+ * Phá máy → mỗi con đã nuốt thành 1 gem +150 điểm/con.
+ * ĐÓNG TAY = nhả hết ngay + sóng xung kích hất tàu.
+ * Fallback: khung giả vẽ hố đen + vòng xoáy hút. */
+function vacAnchor(sat) {
+  if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
+  const p = nestSpawnPoint(sat);
+  return { x: p.x, y: p.y };
+}
+
+function spitVacuum(sat) {
+  const p = vacAnchor(sat);
+  const n = sat.swallowed ? sat.swallowed.length : 0;
+  if (n > 0) {
+    for (const type of sat.swallowed) {
+      const e = spawnEnemyAt(type, p.x + rand(-50, 50), p.y + rand(-50, 50));
+      if (e) e.speed *= 1.6; // nhả ra giận dữ
+    }
+    sat.swallowed = [];
+    burst(p.x, p.y, 30, ["#7c3aed", "#c084fc", "#ffffff"], 380);
+    addFloat(p.x, p.y - 30, "Máy hút NHẢ quái! Giận x1.6!", "#c084fc", true);
+    AudioEngine.sfx.boom();
+  }
+  sat.spitT = 7;
+}
+
+function onVacuumClose(mode, sat) {
+  const p = vacAnchor(sat);
+  const n = sat.swallowed ? sat.swallowed.length : 0;
+  if (mode === "killed") {
+    burst(p.x, p.y, 36, ["#7c3aed", "#ffd166", "#ffffff"], 400);
+    jxShake(7, 320, 5);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, v: 1, t: rand(0, 9) });
+    }
+    if (n > 0) {
+      G.score += 150 * n;
+      addFloat(p.x, p.y - 34, `Phá máy hút! +${n}💎 +${150 * n}`, "#ffd166", true);
+    } else {
+      addFloat(p.x, p.y - 34, "Phá máy hút!", "#c084fc", true);
+    }
+    AudioEngine.sfx.pickup();
+  } else if (mode === "manual") {
+    // đóng tay: ho ra tất cả + sóng xung kích
+    spitVacuum(sat);
+    knockShip(p.x, p.y, 520);
+    jxShake(9, 380, 7); windowJitter(22);
+    burst(p.x, p.y, 34, ["#7c3aed", "#ff5470", "#ffffff"], 420);
+    addFloat(p.x, p.y - 30, "Đóng tay! Máy hút ho ra hết!", "#ff5470", true);
+    AudioEngine.sfx.bigboom();
+  }
+}
+
+function updateBlackholes(dt) {
+  for (const sat of SatManager.list()) {
+    if (sat.role !== "blackhole" || sat.dead) continue;
+    if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
+    sat.swallowed = sat.swallowed || [];
+    const p = vacAnchor(sat), R = 240;
+    // hút quái xung quanh (xoáy trôn ốc)
+    for (const e of G.enemies) {
+      if (e.dead || e.type === "boss") continue;
+      const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy);
+      if (d < R && d > 1) {
+        const pull = (1 - d / R) * 640;
+        e.x += dx / d * pull * dt;
+        e.y += dy / d * pull * dt;
+        // xoáy tiếp tuyến cho vui mắt
+        e.x += -dy / d * pull * 0.45 * dt;
+        e.y += dx / d * pull * 0.45 * dt;
+        if (d < 26) {
+          e.dead = true; // nuốt: mất luôn, không điểm/kill
+          sat.swallowed.push(e.type);
+          burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+          AudioEngine.sfx.slurp();
+          addFloat(p.x + rand(-20, 20), p.y - 24, "Hút!", "#c084fc");
+          if (sat.swallowed.length >= 3) spitVacuum(sat);
+        }
+      }
+    }
+    // nhả định kỳ mỗi 7s
+    sat.spitT = (sat.spitT === undefined ? 7 : sat.spitT) - dt;
+    if (sat.spitT <= 0) spitVacuum(sat);
+    // khung giả lững lờ
+    if (sat.sim) {
+      if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 35; sat.vy = Math.sin(a) * 35; }
+      bounceSimSat(sat, 1, dt);
+    }
+  }
+}
+
+function maybeTriggerVacuum(n) {
+  const act = actOf(n);
+  if (act < 3 || G.vacWave === n) return;
+  if (SatManager.anyRole("blackhole") || SatManager.count() >= 2) return;
+  G.vacWave = n;
+  const sat = SatManager.request("blackhole", {
+    hp: 8, color: "#7c3aed", label: "🌀 MÁY HÚT BỤI", w: 300, h: 220,
+    onClose: onVacuumClose,
+  });
+  if (sat) {
+    sat.swallowed = []; sat.spitT = 7;
+    setBanner("🌀 Máy hút bụi vũ trụ! Nó hút quái… rồi nhả ra giận dữ!", "");
+    AudioEngine.sfx.wave();
+  } else if (SAT_MODE === "off") {
+    spawnEnemy("tank");
+  }
+}
+
+/* vẽ vùng hiệu lực của popup THẬT (gương/hố đen nằm ngoài arena nên phải
+ * chiếu vùng ảnh hưởng vào trong để player thấy) */
+function drawSatFields() {
+  const t = performance.now();
+  for (const s of SatManager.list()) {
+    if (s.dead || s.sim) continue;
+    let a = null, R = 0, col = "#fff", label = "";
+    if (s.role === "mirror") { a = mirrorAnchor(s); R = 85; col = "#67e8f9"; label = "🪞 VÙNG GƯƠNG"; }
+    else if (s.role === "blackhole") { a = vacAnchor(s); R = 240; col = "#7c3aed"; label = "🌀 VÙNG HÚT"; }
+    else continue;
+    const pulse = 0.5 + 0.3 * Math.sin(t / 400);
+    ctx.save();
+    ctx.globalAlpha = 0.16 + pulse * 0.1;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+    ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t / 60;
+    ctx.beginPath(); ctx.arc(a.x, a.y, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = col; ctx.font = "700 11px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(label, a.x, a.y - R - 8);
+    ctx.restore();
+  }
+}
+
 /* ---------------- M2 — BOSS TÁCH MẢNH (Boss Split Window) — P1d ----------------
  * Boss vào phase 2 (HP 66%) → tách 3 mảnh vệ tinh bay lượn quanh cửa sổ chính.
  * - Pool HP chung: bắn/click mảnh nào cũng trừ HP boss (qua onDamage).
@@ -1769,6 +2279,7 @@ function startWave(n) {
   G.spawnT = 0;
   maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
   maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
+  maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? "Bắn quái tím trước — chúng gặm cửa sổ!" : pickSub();
   // WOW: wave banner qua Cinema (fallback setBanner cũ)
   if (window.Cinema) {
@@ -2022,6 +2533,9 @@ function update(dt) {
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
   if (typeof updateBombs === "function") updateBombs(dt);
   if (typeof updateMinions === "function") { updateMinions(dt); updateMothers(dt); updateChicks(dt); }
+  if (typeof updateLovers === "function") { updateLovers(dt); updateSuperlove(dt); } // M7
+  if (typeof updateMirrors === "function") updateMirrors(dt); // M10
+  if (typeof updateBlackholes === "function") updateBlackholes(dt); // M9
   updateCracks(dt);
   G.comboT -= dt;
   if (G.comboT <= 0) {
@@ -2112,6 +2626,7 @@ function update(dt) {
       });
       dead = true;
     }
+    if (!dead && mirrorReflect(bl)) dead = true; // M10: gương thần phản chiếu đạn
     if (!dead) {
       for (const e of G.enemies) {
         if (e.dead) continue;
@@ -2354,6 +2869,7 @@ function render(now) {
   if (window.Cinema) { try { Cinema.drawBack(ctx, W, H); } catch (e) {} }
   // cửa sổ vệ tinh mô phỏng (fallback multi-window)
   SatManager.drawSims();
+  if (typeof drawSatFields === "function") drawSatFields(); // M10/M9: vùng hiệu lực popup thật
   if (typeof drawCracks === "function") drawCracks(); // M4: vết nứt viền arena
 
   // gems (OPT: set font 1 lần, không set lại mỗi gem)

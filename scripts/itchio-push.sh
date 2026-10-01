@@ -1,17 +1,28 @@
 #!/usr/bin/env bash
 # WINDOWKILL — push gói portal lên itch.io bằng butler. Chỉ 1 lệnh.
 #
-# Cần: export ITCHIO_API_KEY="..."   (lấy ở itch.io → Account settings → API keys)
-# KHÔNG hardcode key vào file này hay bất kỳ file nào trong repo.
+# API key lấy theo thứ tự ưu tiên (KHÔNG hardcode key vào repo, KHÔNG in ra log):
+#   1. File đã lưu: ~/.config/windowkill/itchio.env   (nội dung: export BUTLER_API_KEY=...; chmod 600; nằm ngoài repo)
+#   2. Biến môi trường BUTLER_API_KEY
+#   3. Biến môi trường ITCHIO_API_KEY (tên cũ, tương thích ngược)
+# Lấy key mới ở: itch.io → Account settings → API keys.
 #
 # Dùng: ./scripts/itchio-push.sh <user>/<game>:<channel> [zip] [version]
 #   vd: ./scripts/itchio-push.sh fudever/windowkill:web
 #       ./scripts/itchio-push.sh fudever/windowkill:web dist/windowkill-web-portal.zip 2026.10.02
-#
-# KHÔNG tự chạy khi chưa có key — script sẽ báo lỗi và dừng.
 set -euo pipefail
 
-: "${ITCHIO_API_KEY:?Chưa có ITCHIO_API_KEY. Export trước: export ITCHIO_API_KEY=\"...\" (itch.io → Account settings → API keys)}"
+KEY_FILE="$HOME/.config/windowkill/itchio.env"
+if [ -f "$KEY_FILE" ]; then
+  # shellcheck disable=SC1091
+  . "$KEY_FILE"   # chỉ export BUTLER_API_KEY, không in gì ra
+fi
+if [ -z "${BUTLER_API_KEY:-}" ] && [ -n "${ITCHIO_API_KEY:-}" ]; then
+  BUTLER_API_KEY="$ITCHIO_API_KEY"
+fi
+: "${BUTLER_API_KEY:?Chưa có API key. Lưu vào $KEY_FILE (dòng: export BUTLER_API_KEY=\"...\") hoặc export BUTLER_API_KEY/ITCHIO_API_KEY. Lấy key ở itch.io → Account settings → API keys.}"
+export BUTLER_API_KEY
+
 TARGET="${1:?Thiếu <user>/<game>:<channel> — vd: fudever/windowkill:web}"
 ZIP_ARG="${2:-dist/windowkill-web-portal.zip}"
 VERSION="${3:-$(date +%Y.%m.%d)}"
@@ -32,6 +43,6 @@ ZIP="$ZIP_ARG"
 
 echo "Push $ZIP → itch.io $TARGET (version $VERSION)"
 echo "butler: $BUTLER ($("$BUTLER" --version 2>&1 | head -1 || echo unknown))"
-# butler đọc key qua BUTLER_API_KEY — map từ ITCHIO_API_KEY, không in key ra log
-BUTLER_API_KEY="$ITCHIO_API_KEY" "$BUTLER" push "$ZIP" "$TARGET" --userversion "$VERSION"
+# BUTLER_API_KEY đã export ở trên — butler tự đọc, key không bao giờ in ra log
+"$BUTLER" push "$ZIP" "$TARGET" --userversion "$VERSION"
 echo "Push xong."

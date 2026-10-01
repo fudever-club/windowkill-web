@@ -1,0 +1,17 @@
+# windowkill-web — Vercel chi deploy static site.
+# Mirror allowlist trong scripts/deploy-vercel.sh:
+# giu index.html, game.html, css/, js/, assets/,
+# manifest.webmanifest, sw.js, offline.html, robots.txt, sitemap.xml, vercel.json.
+server/
+electron/
+studio/
+docs/
+tests/
+skills/
+rules/
+scripts/
+memory/
+api/
+.github/
+.gitignore
+*.md

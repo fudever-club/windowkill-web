@@ -11,6 +11,10 @@
  *  2. Query: ?portal=1 (để test local).
  *  3. Thủ công: window.WK_PORTAL = true trước khi file này chạy.
  *
+ * Cơ chế ép simulation: game.js đọc SAT_MODE từ query ?sat= (auto|sim|off).
+ * File này tiêm sat=sim vào URL bằng history.replaceState (không reload)
+ * TRƯỚC khi game.js chạy, nên KHÔNG cần sửa game.js (tránh file 158KB).
+ *
  * PHẢI load TRƯỚC js/pwa.js, js/menu.js, js/game.js (dùng defer, giữ đúng thứ tự
  * khai báo trong HTML). Không phụ thuộc bất kỳ lib nào.
  */
@@ -47,6 +51,16 @@
   };
 
   if (portal) {
+    try {
+      // Tiêm sat=sim để game.js ép simulation (không cần sửa game.js).
+      // Tôn trọng ?sat=... nếu đã chỉ định rõ (vd ?portal=1&sat=auto để test popup thật).
+      var usp = new URLSearchParams(window.location.search);
+      if (!usp.has("sat")) {
+        usp.set("sat", "sim");
+        var newUrl = window.location.pathname + "?" + usp.toString() + window.location.hash;
+        window.history.replaceState(null, "", newUrl);
+      }
+    } catch (e) {}
     try { console.info("[Portal] portal mode ON — simulation satellites, no service worker, same-window launch"); } catch (e) {}
   }
 })();

@@ -48,7 +48,7 @@ window.BGM = (() => {
     if (!A || patched) return;
     if (typeof A.startMusic === "function") {
       _orig.startMusic = A.startMusic;
-      A.startMusic = function () { if (shouldSuppress()) return undefined; return _orig.startMusic.apply(A, arguments); };
+      A.startMusic = function () { try { A.resume(); } catch (e) {} if (shouldSuppress()) return undefined; return _orig.startMusic.apply(A, arguments); };
     }
     if (typeof A.setMusicState === "function") {
       _orig.setMusicState = A.setMusicState;

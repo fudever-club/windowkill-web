@@ -224,6 +224,7 @@ var _countdown = null; // { idx, age, resolve }
 function waveBanner(n, opts) {
   opts = opts || {};
   return new Promise(function (resolve) {
+    try { if (_banner && _banner.resolve) _banner.resolve(false); } catch (e) {}
     _banner = { kind: "wave", text: "WAVE " + n, sub: opts.sub || "Tiêu diệt tất cả!",
       age: 0, resolve: resolve, boss: !!opts.boss };
   });
@@ -342,6 +343,7 @@ function waveClear(n, shards, patches) {
   setMusic("VICTORY");
   (patches || []).forEach(function (p) { patch(p.x, p.y); });
   return new Promise(function (resolve) {
+    try { if (_banner && _banner.resolve) _banner.resolve(false); } catch (e) {}
     _banner = { kind: "clear", text: "WAVE CLEAR", age: 0, dur: 1.6, resolve: resolve };
   });
 }
@@ -443,7 +445,7 @@ function showDraft(upgrades, onPick, opts) {
     card.type = "button";
     card.setAttribute("aria-label", "Nâng cấp: " + (u.name || ("#" + (i + 1))));
     var ico = _draftEl("div", "cin-card-ico", card);
-    if (typeof u.icon === "string" && u.icon.indexOf("<svg") === 0) ico.innerHTML = u.icon;
+    if (typeof u.icon === "string" && /^\s*<svg/i.test(u.icon)) ico.innerHTML = u.icon;
     else ico.textContent = u.icon || "◆";
     var nm = _draftEl("div", "cin-card-name", card);
     nm.textContent = u.name || ("Nâng cấp " + (i + 1));
@@ -571,6 +573,7 @@ function combo(n) {
     sfx("combo_milestone", 25);
   } else if (n === 50) {
     _combo.popAmp = 0.5;
+    try { if (_banner && _banner.resolve) _banner.resolve(false); } catch (e) {}
     _banner = { kind: "mini", text: "COMBO x50!!", age: 0, dur: 0.6, resolve: null };
     spawnConfetti(20, false, cx, cy);
     jShake(4, 200, 2);
@@ -1626,6 +1629,11 @@ function reset() {
   }
   _timers.length = 0;
   _heroes.length = 0;
+  // Settle mọi promise đang chờ trước khi xóa — tránh game đơ khi reset giữa cinematic
+  try { if (_banner && _banner.resolve) _banner.resolve(false); } catch (e) {}
+  try { if (_countdown && _countdown.resolve) _countdown.resolve(false); } catch (e) {}
+  try { if (_bossCine && _bossCine.resolve) _bossCine.resolve(false); } catch (e) {}
+  try { for (var _spi = 0; _spi < _satPortals.length; _spi++) { if (_satPortals[_spi].resolve) _satPortals[_spi].resolve(false); } } catch (e) {}
   _banner = null; _countdown = null;
   _combo = { n: 0, lastT: -99, popAge: 9, active: false, lostAge: 9, lost: false };
   _bossCine = null; _phaseFlash = null; _whiteFlash = null; _sweep = null;
@@ -1634,7 +1642,11 @@ function reset() {
   _bg = { mode: "normal", a: 0, breath: null, stageFx: null, ringRot: 0 };
   _lock = false;
   _trailAcc = 0; _hbAcc = 0;
-  if (_draft) { try { if (_draft.ov.parentNode) _draft.ov.parentNode.removeChild(_draft.ov); } catch (e) {} _draft = null; }
+  if (_draft) {
+    try { document.removeEventListener("keydown", _draft.keyH); } catch (e) {}
+    try { if (_draft.ov.parentNode) _draft.ov.parentNode.removeChild(_draft.ov); } catch (e) {}
+    _draft = null;
+  }
   if (window.Juice) window.Juice.draftOpen = false;
 }
 

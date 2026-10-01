@@ -967,7 +967,7 @@ const UPS = [
   { ico: "i-rocket", t: "Tốc độ +18%", d: "Tàu lanh lẹ hơn.", apply: s => s.speed *= 1.18 },
   { ico: "i-heart", t: "+1 máu & hồi 1", d: "Tăng máu tối đa, hồi ngay 1 tim.", apply: s => { s.maxHp += 1; s.hp = Math.min(s.maxHp, s.hp + 1); } },
   { ico: "i-pierce", t: "Đạn xuyên +1", d: "Đạn bay xuyên thêm quái.", apply: s => s.pierce += 1 },
-  { ico: "i-magnet", t: "Nam châm +60%", d: "Hút <svg class=\"ic\" aria-hidden=\"true\"><use href=\"#i-gem\"/></svg> từ xa hơn.", apply: s => s.magnet *= 1.6 },
+  { ico: "i-magnet", t: "Nam châm +60%", d: "Hút gem từ xa hơn.", apply: s => s.magnet *= 1.6 },
   { ico: "i-shield", t: "Giáp gai", d: "Va chạm hất văng quái và gây sát thương.", apply: s => s.thorns += 1 },
   { ico: "i-gem", t: "Tham lam", d: "+30% điểm mọi nguồn.", apply: s => s.scoreMul *= 1.3 },
   { ico: "i-bolt", t: "Đạn siêu tốc", d: "+25% tốc độ & tầm bay đạn.", apply: s => s.bulletSpd *= 1.25 },

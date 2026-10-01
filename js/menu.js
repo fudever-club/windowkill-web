@@ -118,13 +118,15 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, diff: "normal", fx: "full", sat: "auto", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "auto", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   const saveSettings = () => store.set("wk_settings", settings);
   function paintToggles() {
     $("tgl-music").classList.toggle("on", settings.music);
     $("tgl-sfx").classList.toggle("on", settings.sfx);
     $("tgl-shake").classList.toggle("on", settings.shake);
+    const th = $("tgl-haptic");
+    if (th) th.classList.toggle("on", settings.haptic);
     const ta = $("tgl-analytics");
     if (ta) ta.classList.toggle("on", settings.analytics);
     document.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("sel", b.dataset.diff === settings.diff));
@@ -170,6 +172,8 @@
   $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); if (window.WKAudio) WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
   $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };
+  const thBtn = $("tgl-haptic");
+  if (thBtn) thBtn.onclick = () => { settings.haptic = !settings.haptic; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "haptic", value: settings.haptic }); };
   document.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { settings.diff = b.dataset.diff; saveSettings(); paintToggles(); renderScores(); Analytics.track("settings_changed", { key: "diff", value: settings.diff }); });
   if (window.WKAudio) { WKAudio.setMusic(settings.music); WKAudio.setSfx(settings.sfx); }
   if (window.BGM) { try { BGM.init(); BGM.setEnabled(settings.music); } catch (e) {} } // BGM: nhạc nền file thật

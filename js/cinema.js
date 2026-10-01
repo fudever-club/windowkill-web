@@ -970,14 +970,8 @@ function playerFx(dt, p) {
   if (!p) return;
   _player.x = p.x; _player.y = p.y;
   var rm = RM();
-  // trail
-  if (!rm && p.speed > 180) {
-    _trailAcc += dt;
-    if (_trailAcc >= 0.04) {
-      _trailAcc = 0;
-      jGhost(p.x, p.y, { rot: p.rot || 0, scale: 0.9, color: "#0080ff", alpha: 0.35, lifeMs: 220 });
-    }
-  } else _trailAcc = 0;
+  // trail: REMOVED (2026-10-01) — user feedback: ghost trail gây đau mắt
+  _trailAcc = 0;
   // dash afterimage đặt lịch
   for (var i = _dashGhosts.length - 1; i >= 0; i--) {
     if (_now >= _dashGhosts[i].at) {

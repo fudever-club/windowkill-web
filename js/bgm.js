@@ -34,6 +34,7 @@ window.BGM = (() => {
   let lastPlayAt = 0;      // lần cuối gọi play()
   let playFailCount = 0;   // số lần watchdog thấy player bị pause
   let playFailStreak = 0;  // số track liên tiếp play() thất bại
+  let suspended = false;   // game popup mượn quyền phát nhạc — menu tạm nhường, không đổi `enabled`
   let watchdogTimer = 0;
   const _orig = {};
 
@@ -131,7 +132,7 @@ window.BGM = (() => {
   function scheduleWatchdog() {
     if (watchdogTimer) return;
     watchdogTimer = setInterval(() => {
-      if (!enabled || allFailed || !started || players.length === 0) return;
+      if (!enabled || suspended || allFailed || !started || players.length === 0) return;
       const a = players[cur];
       if (!a || !a.src) return;
       if (!a.paused) { playFailCount = 0; return; } // đang phát tốt
@@ -222,7 +223,7 @@ window.BGM = (() => {
     installPatch();
     const unlock = () => {
       unlocked = true;
-      if (enabled && !allFailed) ensurePlaying(); // retry mỗi lần tương tác nếu nhạc đang bị kẹt
+      if (enabled && !suspended && !allFailed) ensurePlaying(); // retry mỗi lần tương tác nếu nhạc đang bị kẹt
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
@@ -230,6 +231,18 @@ window.BGM = (() => {
     scheduleWatchdog();
   }
 
+  /* Tạm nhường nhạc cho cửa sổ khác (game popup) — không đụng tới `enabled`/setting của user.
+     Game gọi opener.BGM.suspend() khi mở, opener.BGM.resume() khi đóng (pagehide). */
+  function suspend() {
+    if (!started || suspended) return;
+    suspended = true;
+    stopPlayers();
+  }
+  function resume() {
+    if (!started || !suspended) return;
+    suspended = false;
+    if (enabled && !allFailed) { installPatch(); ensurePlaying(); }
+  }
   function setEnabled(v) {
     enabled = !!v;
     if (!started) return;
@@ -248,7 +261,7 @@ window.BGM = (() => {
   }
 
   return {
-    init, setEnabled, nowPlaying,
+    init, setEnabled, suspend, resume, nowPlaying,
     setVolume: (v) => { players.forEach((a) => { a.volume = Math.max(0, Math.min(1, v)); }); },
     version: "1.1-bgm-watchdog",
   };

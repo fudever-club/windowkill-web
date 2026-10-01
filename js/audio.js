@@ -1,6 +1,8 @@
 /* ============================================================================
  * WINDOWKILL: Web Edition — adaptive audio engine (Web Audio 100% procedural)
- * v2.0 "wow-polish" · vanilla JS, IIFE, strict, zero dependencies, no audio files
+ * v2.1 "fun" · vanilla JS, IIFE, strict, zero dependencies, no audio files
+ * Hướng nhạc: VUI NHỘN, NHỊP NHANH (user feedback 2026-10-01) — C major / G Mixolydian,
+ *   BPM 120-168, SFX cartoon (boing/pop/slide-whistle/sad-trombone). Không rùng rợn.
  *
  * Kiến trúc:
  *   master(1.0) ─┬─ musicBus(.70) → pump → hurtDuck → focusDuck → musicTgl ─┐
@@ -244,24 +246,27 @@ const AudioEngine = (() => {
     shoot() {
       oneShot({ type: "shoot", cat: "shoot", bus: () => G.sfxBus,
         build(a, t, out, v) {
-          blip(a, t, out, v, { f: 700 + Math.random() * 120, f1: 220,
-                               dur: 0.07, type: "square", vol: 0.05 });
-          return 0.12;
+          blip(a, t, out, v, { f: 880 + Math.random() * 160, f1: 1500,
+                               dur: 0.06, type: "square", vol: 0.045 });
+          blip(a, t, out, v, { f: 1760 + Math.random() * 320, dur: 0.03,
+                               type: "sine", vol: 0.02 });
+          return 0.1;
         }});
     },
     hit() {
       oneShot({ type: "death", cat: "death",
         build(a, t, out, v) {
-          blip(a, t, out, v, { f: 180, f1: 90, dur: 0.08, type: "sawtooth", vol: 0.07 });
-          return 0.14;
+          blip(a, t, out, v, { f: 320, f1: 140, dur: 0.07, type: "triangle", vol: 0.09 });
+          noiseHit(a, t, out, v, { dur: 0.02, type: "highpass", f: 4000, vol: 0.05 });
+          return 0.12;
         }});
     },
     boom() {
       oneShot({ type: "death", cat: "death",
         build(a, t, out, v) {
-          blip(a, t, out, v, { f: 140, f1: 40, dur: 0.25, type: "sawtooth", vol: 0.12 });
-          blip(a, t + 0.03, out, v, { f: 90, f1: 35, dur: 0.3, type: "triangle", vol: 0.10 });
-          noiseHit(a, t, out, v, { dur: 0.2, type: "lowpass", f: 800, f1: 200, vol: 0.12 });
+          blip(a, t, out, v, { f: 160, f1: 50, dur: 0.22, type: "triangle", vol: 0.14 });
+          noiseHit(a, t, out, v, { dur: 0.18, type: "lowpass", f: 1200, f1: 300, vol: 0.10 });
+          blip(a, t + 0.1, out, v, { f: 180, f1: 520, dur: 0.18, type: "sine", vol: 0.10 });
           return 0.4;
         }});
     },
@@ -351,47 +356,56 @@ const AudioEngine = (() => {
     /* ---- 6 "giọng" quái chết — phân biệt bằng tai ---- */
     death(kind) {
       switch (kind) {
-        case "chaser": // zap nasal: sawtooth 800→200 + bandpass
+        case "chaser": // boing! lò xo nảy — sine dip rồi vọt lên
           oneShot({ type: "death", cat: "death",
             build(a, t, out, v) {
-              const f0 = 800 * dz();
-              const o = oscNode(a, v, "sawtooth", f0);
-              o.frequency.setValueAtTime(f0, t);
-              o.frequency.exponentialRampToValueAtTime(200, t + 0.18);
-              const flt = a.createBiquadFilter();
-              flt.type = "bandpass"; flt.frequency.value = 1200; flt.Q.value = 3;
-              const g = adsr(a, t, 0.22, 0.005, 0.18);
-              o.connect(flt); flt.connect(g); g.connect(out);
-              o.start(t); o.stop(t + 0.25);
-              return 0.25;
+              const o = oscNode(a, v, "sine", 420 * dz());
+              o.frequency.setValueAtTime(420 * dz(), t);
+              o.frequency.exponentialRampToValueAtTime(140, t + 0.09);
+              o.frequency.exponentialRampToValueAtTime(760, t + 0.2);
+              const g = adsr(a, t, 0.24, 0.005, 0.2);
+              o.connect(g); g.connect(out);
+              o.start(t); o.stop(t + 0.28);
+              blip(a, t + 0.02, out, v, { f: 1200, f1: 2400, dur: 0.06, type: "sine", vol: 0.06 });
+              return 0.28;
             }}); break;
-        case "chewer": // nghiến gritty: noise burst + lowpass + grind
+        case "chewer": // nom-nom! nhai chóp chép vui
           oneShot({ type: "death", cat: "death",
             build(a, t, out, v) {
-              noiseHit(a, t, out, v, { dur: 0.22, type: "lowpass", f: 900, f1: 250, vol: 0.30 });
-              blip(a, t, out, v, { f: 140, f1: 55, dur: 0.2, type: "square", vol: 0.12 });
+              [0, 0.09, 0.18].forEach((dt, i) =>
+                blip(a, t + dt, out, v, { f: 500 - i * 90, f1: 220 - i * 40,
+                                         dur: 0.07, type: "square", vol: 0.14 }));
+              noiseHit(a, t, out, v, { dur: 0.12, type: "bandpass", f: 1800, q: 2, vol: 0.08 });
+              blip(a, t + 0.26, out, v, { f: 700, f1: 1400, dur: 0.09, type: "sine", vol: 0.10 });
+              return 0.38;
+            }}); break;
+        case "tank": sfx.explosion(1.0); break; // BÙM-boing cartoon
+        case "dasher": // slide whistle vút lên — cartoon kinh điển
+          oneShot({ type: "death", cat: "death",
+            build(a, t, out, v) {
+              const o = oscNode(a, v, "sine", 500 * dz());
+              o.frequency.setValueAtTime(500 * dz(), t);
+              o.frequency.exponentialRampToValueAtTime(2600, t + 0.22);
+              const g = adsr(a, t, 0.26, 0.01, 0.22);
+              o.connect(g); g.connect(out);
+              o.start(t); o.stop(t + 0.3);
+              noiseHit(a, t, out, v, { dur: 0.2, type: "highpass", f: 3000, f1: 8000, vol: 0.06 });
               return 0.3;
             }}); break;
-        case "tank": sfx.explosion(1.0); break; // nổ trầm
-        case "dasher": // whoosh: noise highpass sweep up
+        case "splitter": // pop-pop-POP! 3 cái tăng dần
           oneShot({ type: "death", cat: "death",
             build(a, t, out, v) {
-              noiseHit(a, t, out, v, { dur: 0.28, type: "highpass", f: 700, f1: 6500, vol: 0.22 });
-              blip(a, t, out, v, { f: 300, f1: 900, dur: 0.2, type: "sine", vol: 0.08 });
-              return 0.34;
+              [620, 780, 990].forEach((f0, i) =>
+                blip(a, t + i * 0.07, out, v, { f: f0, f1: f0 * 0.45,
+                                               dur: 0.08, type: "sine", vol: 0.22 }));
+              return 0.3;
             }}); break;
-        case "splitter": // pop kép: 2 sine pop cách 80ms
+        case "mini": // pew! chíu chíu siêu cao
           oneShot({ type: "death", cat: "death",
             build(a, t, out, v) {
-              blip(a, t, out, v, { f: 620, f1: 280, dur: 0.09, type: "sine", vol: 0.24 });
-              blip(a, t + 0.08, out, v, { f: 520, f1: 240, dur: 0.09, type: "sine", vol: 0.24 });
-              return 0.25;
-            }}); break;
-        case "mini": // chíu cao: sine 2000→3000
-          oneShot({ type: "death", cat: "death",
-            build(a, t, out, v) {
-              blip(a, t, out, v, { f: 2000, f1: 3000, dur: 0.12, type: "sine", vol: 0.16 });
-              return 0.18;
+              blip(a, t, out, v, { f: 2400, f1: 3600, dur: 0.09, type: "sine", vol: 0.14 });
+              blip(a, t + 0.05, out, v, { f: 3000, f1: 4200, dur: 0.07, type: "sine", vol: 0.10 });
+              return 0.16;
             }}); break;
         default:
           oneShot({ type: "death", cat: "death",
@@ -403,12 +417,14 @@ const AudioEngine = (() => {
     },
 
     /* ---- sync points §4 (worker khác gọi cùng frame với animation) ---- */
-    explosion(power) {
+    explosion(power) { // BÙM-boing! nổ kiểu cartoon
       const p = power || 1;
       oneShot({ type: "death", cat: "death",
         build(a, t, out, v) {
-          blip(a, t, out, v, { f: 120, f1: 30, dur: 0.5 * p, type: "sine", vol: 0.5 });
-          noiseHit(a, t, out, v, { dur: 0.45 * p, type: "lowpass", f: 500, f1: 120, vol: 0.30 });
+          blip(a, t, out, v, { f: 150, f1: 45, dur: 0.4 * p, type: "triangle", vol: 0.4 });
+          noiseHit(a, t, out, v, { dur: 0.35 * p, type: "lowpass", f: 900, f1: 250, vol: 0.25 });
+          blip(a, t + 0.12 * p, out, v, { f: 200, f1: 640, dur: 0.3, type: "sine", vol: 0.16 }); // boing tail
+          blip(a, t + 0.05, out, v, { f: 1200, f1: 2400, dur: 0.08, type: "sine", vol: 0.05 }); // sparkle
           return 0.6 * p;
         }});
     },
@@ -431,21 +447,27 @@ const AudioEngine = (() => {
         }});
     },
     boss_roar() {
-      // CRITICAL: boss spawn / boss chết
+      // CRITICAL: boss spawn / boss chết — BWOOO ngớ ngẩn kiểu tuba đồ chơi, KHÔNG rùng rợn
       duckMusic(5, 500);
       oneShot({ type: "boss", cat: "death", critical: true, bus: () => G.critBus,
         build(a, t, out, v) {
-          [65, 67, 62].forEach(f0 => {
-            const o = oscNode(a, v, "sawtooth", f0 * dz());
+          [98, 103, 92].forEach(f0 => { // G2 Ab2 F#2 — cao hơn, vui hơn
+            const o = oscNode(a, v, "square", f0 * dz());
             o.frequency.setValueAtTime(f0 * dz(), t);
-            o.frequency.exponentialRampToValueAtTime(38, t + 0.9);
-            const g = adsr(a, t, 0.22, 0.03, 0.9);
-            o.connect(g); g.connect(out);
-            o.start(t); o.stop(t + 1.0);
+            o.frequency.exponentialRampToValueAtTime(70, t + 0.7);
+            // wobble hài hước
+            const lfo = a.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 9;
+            const lg = a.createGain(); lg.gain.value = 12;
+            lfo.connect(lg); lg.connect(o.frequency);
+            lfo.start(t); lfo.stop(t + 0.8); v.nodes.push(lfo);
+            const flt = a.createBiquadFilter();
+            flt.type = "lowpass"; flt.frequency.value = 900;
+            const g = adsr(a, t, 0.5, 0.03, 0.7);
+            o.connect(flt); flt.connect(g); g.connect(out);
+            o.start(t); o.stop(t + 0.85);
           });
-          blip(a, t, out, v, { f: 50, f1: 30, dur: 0.9, type: "sine", vol: 0.30 });
-          noiseHit(a, t, out, v, { dur: 0.8, type: "lowpass", f: 350, vol: 0.25 });
-          return 1.1;
+          blip(a, t + 0.55, out, v, { f: 300, f1: 900, dur: 0.25, type: "sine", vol: 0.12 }); // slide lên cuối
+          return 1.0;
         }});
     },
     phase_shift() {
@@ -475,22 +497,34 @@ const AudioEngine = (() => {
         }});
     },
     downlifter() {
-      // 1.5s downlifter: gameover / boss chết
+      // sad trombone "wah-wah-wahhhh" — buồn cười chứ không rùng rợn: gameover / boss chết
       oneShot({ type: "death", cat: "death",
         build(a, t, out, v) {
-          blip(a, t, out, v, { f: 420, f1: 48, dur: 1.5, type: "sawtooth", vol: 0.18, atk: 0.02 });
-          noiseHit(a, t, out, v, { dur: 1.5, type: "lowpass", f: 5000, f1: 200, vol: 0.22, atk: 0.02 });
-          return 1.6;
+          const notes = [392, 370, 349, 311]; // G4 F#4 F4 Eb4 — đi xuống từng bậc
+          notes.forEach((f0, i) => {
+            const o = oscNode(a, v, "sawtooth", f0 * dz());
+            o.frequency.setValueAtTime(f0 * dz(), t + i * 0.32);
+            o.frequency.linearRampToValueAtTime(f0 * 0.94 * dz(), t + i * 0.32 + 0.3);
+            const lfo = a.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 6;
+            const lg = a.createGain(); lg.gain.value = f0 * 0.03;
+            lfo.connect(lg); lg.connect(o.frequency);
+            lfo.start(t + i * 0.32); lfo.stop(t + i * 0.32 + 0.34); v.nodes.push(lfo);
+            const g = adsr(a, t + i * 0.32, 0.34, 0.02, 0.3);
+            o.connect(g); g.connect(out);
+            o.start(t + i * 0.32); o.stop(t + i * 0.32 + 0.38);
+          });
+          return 1.7;
         }});
     },
     fanfare() {
-      // Wave clear: E major lift
+      // Wave clear: ta-da! C major tưng bừng
       oneShot({ type: "pickup", cat: "pickup",
         build(a, t, out, v) {
-          [329.6, 415.3, 493.9, 659.3, 830.6].forEach((f, i) =>
-            blip(a, t + i * 0.085, out, v, { f, dur: 0.16, type: "triangle", vol: 0.11 }));
-          [164.8, 207.7, 246.9].forEach(f =>
+          [523.3, 659.3, 784, 1046.5, 1318.5].forEach((f, i) =>
+            blip(a, t + i * 0.08, out, v, { f, dur: 0.16, type: "triangle", vol: 0.11 }));
+          [261.6, 329.6, 392].forEach(f =>
             blip(a, t + 0.2, out, v, { f, dur: 0.8, type: "sine", vol: 0.08, atk: 0.15 }));
+          blip(a, t + 0.42, out, v, { f: 1568, dur: 0.3, type: "sine", vol: 0.08 }); // sparkle đỉnh
           return 1.1;
         }});
     },
@@ -537,14 +571,15 @@ const AudioEngine = (() => {
 
   /* ================= 3. Adaptive music engine ================= */
   const M2F = m => 440 * Math.pow(2, (m - 69) / 12);
-  // E minor → E Phrygian (danger/boss, thêm F) → E major lift (victory)
+  // FUN direction (2026-10-01, user feedback): C major / G Mixolydian — sáng, vui, tinh nghịch.
+  // Không còn minor/Phrygian u ám. BPM nhanh: base 120+, combat/boss 148-168.
   const STATES = {
-    MENU:    { bpm: 96,  inten: 0, scale: "min", pump: 0 },
-    CALM:    { bpm: 116, inten: 1, scale: "min", pump: 2 },
-    COMBAT:  { bpm: 132, inten: 3, scale: "min", pump: 4 },
-    DANGER:  { bpm: 140, inten: 3, scale: "phr", pump: 5 },
-    BOSS:    { bpm: 150, inten: 4, scale: "phr", pump: 6 },
-    VICTORY: { bpm: 128, inten: 3, scale: "maj", pump: 3 },
+    MENU:    { bpm: 120, inten: 0, scale: "maj", pump: 0 },
+    CALM:    { bpm: 128, inten: 1, scale: "maj", pump: 2 },
+    COMBAT:  { bpm: 148, inten: 3, scale: "mix", pump: 4 },
+    DANGER:  { bpm: 156, inten: 3, scale: "mix", pump: 5 },
+    BOSS:    { bpm: 168, inten: 4, scale: "maj", pump: 6 },
+    VICTORY: { bpm: 140, inten: 3, scale: "maj", pump: 3 },
   };
   // Ưu tiên: GAMEOVER > BOSS > DANGER > VICTORY > COMBAT > CALM > MENU
   const PRIO = { MENU: 0, CALM: 1, COMBAT: 2, VICTORY: 3, DANGER: 4, BOSS: 5, GAMEOVER: 6 };
@@ -552,26 +587,25 @@ const AudioEngine = (() => {
     menu: ["MENU", 0], game: ["CALM", 1],
     act1: ["CALM", 1], act2: ["COMBAT", 3], act3: ["COMBAT", 4],
   };
-  const PROG = { // hợp âm pad theo bar (MIDI)
-    MENU:    [[40, 43, 47], [48, 52, 55], [43, 47, 50], [50, 54, 57]], // Em C G D
-    CALM:    [[40, 43, 47], [40, 43, 47], [48, 52, 55], [50, 54, 57]],
-    COMBAT:  [[40, 43, 47], [40, 43, 47], [48, 52, 55], [50, 54, 57]],
-    DANGER:  [[40, 43, 47], [40, 43, 47], [40, 43, 47], [50, 54, 57]],
-    BOSS:    [[40, 43, 47], [40, 43, 47], [41, 44, 48], [39, 43, 46]],
-    VICTORY: [[40, 44, 47], [45, 49, 52], [47, 51, 54], [40, 44, 47]], // E A B E major
+  const PROG = { // hợp âm pad theo bar (MIDI) — C major vui nhộn: I–V–vi–IV
+    MENU:    [[48, 52, 55], [55, 59, 62], [57, 60, 64], [53, 57, 60]], // C G Am F
+    CALM:    [[48, 52, 55], [48, 52, 55], [55, 59, 62], [53, 57, 60]], // C C G F
+    COMBAT:  [[48, 52, 55], [55, 59, 62], [48, 52, 55], [53, 57, 60]], // C G C F
+    DANGER:  [[48, 52, 55], [55, 59, 62], [55, 59, 62], [53, 57, 60]], // C G G F
+    BOSS:    [[48, 52, 55], [48, 52, 55], [53, 57, 60], [55, 59, 62]], // C C F G — hùng tráng
+    VICTORY: [[48, 52, 55], [57, 60, 64], [53, 57, 60], [55, 59, 62]], // C Am F G
   };
-  const BASS_PAT = { // 16 step/bar, 0 = nghỉ (MIDI)
-    MENU:   [40,0,0,0, 0,0,0,0, 48,0,0,0, 0,0,0,0],
-    CALM:   [40,0,0,0, 0,0,43,0, 0,0,45,0, 0,0,47,0],
-    COMBAT: [40,0,40,0, 43,0,40,0, 45,0,40,0, 47,0,45,43],
-    DANGER: [40,0,40,39, 40,0,43,0, 40,0,39,0, 45,0,43,41], // D#2 tạo tension
-    BOSS:   [40,40,40,0, 40,40,43,0, 40,40,40,0, 45,43,41,39], // gallop
-    VICTORY:[40,0,0,0, 44,0,0,0, 47,0,0,0, 52,0,51,0],
+  const BASS_PAT = { // 16 step/bar, 0 = nghỉ (MIDI) — bass nảy tưng tưng, root C
+    MENU:   [36,0,0,0, 0,0,0,0, 43,0,0,0, 0,0,41,0],
+    CALM:   [36,0,36,0, 0,0,43,0, 41,0,43,0, 45,0,43,0],
+    COMBAT: [36,0,36,48, 36,0,43,0, 41,0,41,53, 43,0,45,43],
+    DANGER: [36,0,36,48, 36,0,43,0, 36,0,38,40, 41,0,43,45],
+    BOSS:   [36,36,48,0, 36,36,43,0, 41,41,53,0, 43,45,43,41], // gallop vui
+    VICTORY:[36,0,0,0, 43,0,0,0, 41,0,0,0, 43,0,45,0],
   };
   const ARP_SCALE = {
-    min: [64, 67, 69, 71, 74, 76, 79],       // E minor pentatonic+
-    phr: [64, 65, 67, 69, 71, 72, 74],       // E Phrygian (thêm F4)
-    maj: [64, 66, 68, 71, 73, 76, 78, 80],    // E major, up 2 octave
+    maj: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76], // C major 2 octave — sáng rực
+    mix: [55, 57, 59, 60, 62, 64, 65, 67, 69],     // G Mixolydian — tinh nghịch
   };
   const ARP_PAT = [0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 4, 5, 4, 3, 2, 1];
 
@@ -579,7 +613,7 @@ const AudioEngine = (() => {
   function ensureSeq() {
     if (!seq) seq = { on: false, timer: null, step: 0, nextT: 0,
                       state: "MENU", prevState: "MENU", intensity: 0,
-                      data: STATES.MENU, bpm: 96, pending: null,
+                      data: STATES.MENU, bpm: 120, pending: null,
                       layers: { pad: 0, bass: 0, drums: 0, arp: 0, fx: 0 } };
     return seq;
   }

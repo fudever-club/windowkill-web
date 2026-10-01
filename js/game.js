@@ -19,9 +19,9 @@ const qp = new URLSearchParams(location.search);
 
 /* ---------------- config ---------------- */
 const DIFFS = {
-  chill:    { label: "Chill",       hpMul: 0.7,  spMul: 0.85, chew: 1.3,  shipHp: 4, scoreMul: 1.0, spawnMul: 1.2 },
-  normal:   { label: "Thường",      hpMul: 1.0,  spMul: 1.0,  chew: 0.9,  shipHp: 3, scoreMul: 1.0, spawnMul: 1.0 },
-  hardcore: { label: "Khắc nghiệt", hpMul: 1.45, spMul: 1.15, chew: 0.65, shipHp: 2, scoreMul: 1.6, spawnMul: 0.85 },
+  chill:    { label: "Chill",       hpMul: 0.7,  spMul: 0.85, chew: 1.3,  shipHp: 4, spawnMul: 1.2 },
+  normal:   { label: "Thường",      hpMul: 1.0,  spMul: 1.0,  chew: 0.9,  shipHp: 3, spawnMul: 1.0 },
+  hardcore: { label: "Khắc nghiệt", hpMul: 1.45, spMul: 1.15, chew: 0.65, shipHp: 2, spawnMul: 0.85 },
 };
 DIFFS.hard = DIFFS.hardcore; // launcher gửi diff=hard — alias để độ khó Khắc nghiệt có hiệu lực
 const DIFF = DIFFS[qp.get("diff")] || DIFFS.normal;
@@ -994,8 +994,7 @@ function updateBombs(dt) {
 }
 
 function maybeTriggerBomb(n) {
-  const act = actOf(n);
-  if (act < 2 || n < 8 || G.bombWave === n) return;
+  if (n < 8 || G.bombWave === n) return;
   if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
   G.bombWave = n;
   let made = 0;
@@ -1239,8 +1238,7 @@ function updateChicks(dt) {
 }
 
 function maybeTriggerMother(n) {
-  const act = actOf(n);
-  if (act < 2 || n < 7 || G.motherWave === n) return;
+  if (n < 10 || G.motherWave === n) return;
   if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
   if (SatManager.count() > 1) return;
   G.motherWave = n;
@@ -1315,8 +1313,8 @@ function onSuperloveClose(mode, sat) {
       const a = Math.random() * Math.PI * 2;
       G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, v: 1, t: rand(0, 9) });
     }
-    G.score += 800;
-    addFloat(p.x, p.y - 34, "💖 Tình yêu tan vỡ! +4💎 +800", "#ff8fab", true);
+    G.score += 80; // §6/§1.10: phá siêu-popup = 80 cố định
+    addFloat(p.x, p.y - 34, "💖 Tình yêu tan vỡ! +4💎 +80", "#ff8fab", true);
     AudioEngine.sfx.pickup();
   } else if (mode === "manual") {
     // đóng tay siêu-popup: 3 trái tim độc bay vào tàu + hất văng
@@ -1380,20 +1378,20 @@ function updateLovers(dt) {
     if (sat.sim) {
       const ax = sat.x + sat.sw / 2, ay = sat.y + sat.sh / 2;
       const bx = p.x + p.sw / 2, by = p.y + p.sh / 2;
-      const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy) || 1;
+      const dx = bx - ax, dy = by - ay, d = hypot(dx, dy) || 1; // OPT: fast hypot (PR #19)
       sat.vx = dx / d * sp; sat.vy = dy / d * sp;
       bounceSimSat(sat, 1, dt);
       if (d < 85) mergeLovers(sat, p);
     } else if (sat.canMove && sat.win && !sat.win.closed) {
+      // OPT: tính tâm 2 popup 1 lần/frame, tái dùng d cho cả steer + merge check
+      const a = loverScreen(sat), bpos = loverScreen(p);
+      const dx = bpos.x - a.x, dy = bpos.y - a.y, d = hypot(dx, dy) || 1;
       sat.steerT = (sat.steerT || 0) - dt;
       if (sat.steerT <= 0) {
         sat.steerT = 1.2;
-        const a = loverScreen(sat), bpos = loverScreen(p);
-        const dx = bpos.x - a.x, dy = bpos.y - a.y, d = Math.hypot(dx, dy) || 1;
         SatManager.steer(sat.id, dx / d * sp, dy / d * sp);
       }
-      const a = loverScreen(sat), bpos = loverScreen(p);
-      if (Math.hypot(bpos.x - a.x, bpos.y - a.y) < (sat.w + p.w) / 2 * 0.7) mergeLovers(sat, p);
+      if (d < (sat.w + p.w) / 2 * 0.7) mergeLovers(sat, p);
     }
     // thất tình → đẻ chaser trả thù
     if (sat.heartbroken) {
@@ -1413,6 +1411,7 @@ function updateSuperlove(dt) {
   for (const sat of SatManager.list()) {
     if (sat.role !== "superlove" || sat.dead) continue;
     if (performance.now() - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; }
+    updateSayNangAura(sat); // CEO §9-Q2: aura "say nắng" — quái trong 200px tấn công lẫn nhau
     // trôi lững lờ
     if (sat.sim) bounceSimSat(sat, 1, dt);
     else if (sat.canMove && sat.win && !sat.win.closed) {
@@ -1433,6 +1432,42 @@ function updateSuperlove(dt) {
       AudioEngine.sfx.shrink();
       addFloat(p.x, p.y - 30, "💘!", "#ff8fab");
     }
+  }
+}
+
+/* CEO chốt §9-Q2 (2026-10-01): aura "say nắng" của siêu-popup M7 — mọi độ khó.
+ * Quái trong bán kính 200px bị "say nắng" 6s (refresh khi còn trong aura):
+ * thay vì đuổi tàu, chúng TẤN CÔNG LẪN NHAU. Kill do say nắng vẫn cộng điểm gốc
+ * cho player (§6 "điểm gốc cố định") — đây là "chaos vui vẻ", không phải bug. */
+function updateSayNangAura(sat) {
+  const p = loverAnchor(sat), R = 200;
+  for (const e of G.enemies) {
+    if (e.dead) continue;
+    const dx = e.x - p.x, dy = e.y - p.y;
+    if (dx * dx + dy * dy < R * R) {
+      if (!(e.sayNangT > 0)) {
+        e.sayNangT = 6;
+        addFloat(e.x, e.y - e.r - 12, "💘 say nắng!", "#ff8fab");
+        AudioEngine.sfx.pickup();
+      } else e.sayNangT = 6; // còn trong aura → refresh 6s
+    }
+  }
+}
+
+/* quái "say nắng": đuổi quái gần nhất còn sống, chạm → cắn 1 dmg (không đuổi tàu nữa) */
+function sayNangUpdate(e, dt, spd) {
+  let tgt = null, best = Infinity;
+  for (const o of G.enemies) {
+    if (o === e || o.dead) continue;
+    const d2v = dist2(e.x, e.y, o.x, o.y);
+    if (d2v < best) { best = d2v; tgt = o; }
+  }
+  if (!tgt) return; // chỉ còn 1 mình → đứng yên, hết say nắng sẽ đuổi tàu lại
+  const dx = tgt.x - e.x, dy = tgt.y - e.y, d = Math.hypot(dx, dy) || 1;
+  e.x += dx / d * spd * dt; e.y += dy / d * spd * dt;
+  if (d < e.r + tgt.r + 4) {
+    damageEnemy(tgt, Math.max(1, e.dmg || 1), null);
+    e.kbx -= dx / d * 80; e.kby -= dy / d * 80; // hất nhẹ ra để khỏi dính chùm cắn liên tục
   }
 }
 
@@ -1469,10 +1504,10 @@ function maybeTriggerLove(n) {
 }
 
 /* ---------------- M10 — GƯƠNG THẦN LẦY LỘI (Silly Mirror) ----------------
- * Act 2+ (wave ≥ 11), mỗi wave 1 lần, tối đa 1 gương sống.
+ * Wave ≥ 10, mỗi wave 1 lần, tối đa 1 gương sống.
  * Gương (6 HP) chiếu "vùng gương" bán kính 85px: đạn player bay vào bị PHẢN CHIỀU
  * ngược lại thành đạn địch (1 dmg). Đừng bắn vào gương!
- * Phá gương → +2 gem +300. ĐÓNG TAY = gương vỡ: 4 mảnh vỡ bay vào tàu.
+ * Phá gương → +2 gem +60. ĐÓNG TAY = gương vỡ: 4 mảnh vỡ bay vào tàu.
  * Fallback: khung giả — vùng gương vẽ quanh khung. */
 function mirrorAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
@@ -1488,8 +1523,8 @@ function onMirrorClose(mode, sat) {
       const a = Math.random() * Math.PI * 2;
       G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
     }
-    G.score += 300;
-    addFloat(p.x, p.y - 30, "🪞 Phá gương! +2💎 +300", "#a5f3fc", true);
+    G.score += 60; // §6/§2.10: phá gương = 60 cố định
+    addFloat(p.x, p.y - 30, "🪞 Phá gương! +2💎 +60", "#a5f3fc", true);
     AudioEngine.sfx.pickup();
   } else if (mode === "manual") {
     // đóng tay: gương vỡ — 4 mảnh vỡ bay vào tàu
@@ -1508,11 +1543,15 @@ function onMirrorClose(mode, sat) {
 
 /* đạn player bay vào vùng gương → phản chiếu thành đạn địch; trả về true nếu đã phản */
 function mirrorReflect(bl) {
+  if (!SatManager.anyRole("mirror")) return false; // OPT: không gương sống → skip, tránh alloc SatManager.list() mỗi viên đạn
   for (const m of SatManager.list()) {
     if (m.role !== "mirror" || m.dead) continue;
     if (bl.mirrorId === m.id) continue; // mỗi gương chỉ phản 1 viên 1 lần
-    const a = mirrorAnchor(m), R = 85;
-    if (dist2(bl.x, bl.y, a.x, a.y) < R * R) {
+    // OPT: dùng anchor đã cache trong updateMirrors (1 lần/frame), fallback tính trực tiếp
+    const ax = m._mx !== undefined ? m._mx : mirrorAnchor(m).x;
+    const ay = m._my !== undefined ? m._my : mirrorAnchor(m).y;
+    const R = 85;
+    if (dist2(bl.x, bl.y, ax, ay) < R * R) {
       bl.mirrorId = m.id;
       G.ebullets.push({
         x: bl.x, y: bl.y, vx: -bl.vx, vy: -bl.vy,
@@ -1531,6 +1570,7 @@ function updateMirrors(dt) {
   for (const sat of SatManager.list()) {
     if (sat.role !== "mirror" || sat.dead) continue;
     if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
+    const _ma = mirrorAnchor(sat); sat._mx = _ma.x; sat._my = _ma.y; // OPT: cache anchor 1 lần/frame cho mirrorReflect
     if (sat.sim) { // gương lững lờ trôi cho khó ngắm
       sat.steerT = (sat.steerT || 0);
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 45; sat.vy = Math.sin(a) * 45; }
@@ -1540,8 +1580,7 @@ function updateMirrors(dt) {
 }
 
 function maybeTriggerMirror(n) {
-  const act = actOf(n);
-  if (act < 2 || n < 11 || G.mirrorWave === n) return;
+  if (n < 10 || G.mirrorWave === n) return;
   if (SatManager.anyRole("mirror") || SatManager.count() >= 2) return;
   G.mirrorWave = n;
   const sat = SatManager.request("mirror", {
@@ -1587,19 +1626,28 @@ function spitVacuum(sat) {
 
 function onVacuumClose(mode, sat) {
   const p = vacAnchor(sat);
-  const n = sat.swallowed ? sat.swallowed.length : 0;
+  const swallowed = sat.swallowed || [];
+  const n = swallowed.length;
   if (mode === "killed") {
     burst(p.x, p.y, 36, ["#7c3aed", "#ffd166", "#ffffff"], 400);
     jxShake(7, 320, 5);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
-      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, v: 1, t: rand(0, 9) });
+    // §6/§3.4: quái bị nuốt "chết luôn" → điểm gốc từng con + gem như giết thường + 40 phá máy
+    let pts = 40, gems = 0;
+    for (const type of swallowed) {
+      const def = MONSTER_REGISTRY[type];
+      pts += def && def.score ? def.score : 10;
+      const gn = type === "tank" ? 3 : 1, xv = def && def.xp ? def.xp : 1;
+      for (let i = 0; i < gn; i++) {
+        const a = Math.random() * Math.PI * 2;
+        G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, v: xv, t: rand(0, 9) });
+      }
+      gems += gn;
     }
+    G.score += pts;
     if (n > 0) {
-      G.score += 150 * n;
-      addFloat(p.x, p.y - 34, `Phá máy hút! +${n}💎 +${150 * n}`, "#ffd166", true);
+      addFloat(p.x, p.y - 34, `Phá máy hút! +${gems}💎 +${pts}`, "#ffd166", true);
     } else {
-      addFloat(p.x, p.y - 34, "Phá máy hút!", "#c084fc", true);
+      addFloat(p.x, p.y - 34, "Phá máy hút! +40", "#c084fc", true);
     }
     AudioEngine.sfx.pickup();
   } else if (mode === "manual") {
@@ -1620,23 +1668,54 @@ function updateBlackholes(dt) {
     sat.swallowed = sat.swallowed || [];
     const p = vacAnchor(sat), R = 240;
     // hút quái xung quanh (xoáy trôn ốc)
+    // OPT: dist2 kiểm tra tầm trước — chỉ sqrt khi quái đã trong vùng hút
+    const R2 = R * R;
     for (const e of G.enemies) {
       if (e.dead || e.type === "boss") continue;
-      const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy);
-      if (d < R && d > 1) {
-        const pull = (1 - d / R) * 640;
-        e.x += dx / d * pull * dt;
-        e.y += dy / d * pull * dt;
-        // xoáy tiếp tuyến cho vui mắt
-        e.x += -dy / d * pull * 0.45 * dt;
-        e.y += dx / d * pull * 0.45 * dt;
-        if (d < 26) {
-          e.dead = true; // nuốt: mất luôn, không điểm/kill
-          sat.swallowed.push(e.type);
-          burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+      const dx = p.x - e.x, dy = p.y - e.y, d2 = dx * dx + dy * dy;
+      if (d2 < R2) {
+        const d = Math.sqrt(d2);
+        if (d > 1) {
+          const pull = (1 - d / R) * 640;
+          const inv = 1 / d;
+          e.x += dx * inv * pull * dt;
+          e.y += dy * inv * pull * dt;
+          // xoáy tiếp tuyến cho vui mắt
+          e.x += -dy * inv * pull * 0.45 * dt;
+          e.y += dx * inv * pull * 0.45 * dt;
+          if (d < 26) {
+            e.dead = true; // nuốt: mất luôn, không điểm/kill
+            sat.swallowed.push(e.type);
+            burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+            AudioEngine.sfx.slurp();
+            addFloat(p.x + rand(-20, 20), p.y - 24, "Hút!", "#c084fc");
+            if (sat.swallowed.length >= 3) spitVacuum(sat);
+          }
+        }
+      }
+    }
+    // CEO chốt §9-Q4 (2026-10-01): hố đen tương tác gem theo độ khó —
+    // CHỈ Khắc nghiệt mới nuốt gem mất luôn; Chill/Thường: gem tới tâm bị HẤT VĂNG ra ngoài
+    const hardVac = (typeof DIFF_KEY !== "undefined" && (DIFF_KEY === "hardcore" || DIFF_KEY === "hard"));
+    for (let i = G.gems.length - 1; i >= 0; i--) {
+      const gm = G.gems[i];
+      const gdx = p.x - gm.x, gdy = p.y - gm.y, gd = Math.hypot(gdx, gdy);
+      if (gd < R && gd > 1) {
+        const pull = (1 - gd / R) * 480;
+        gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
+        gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
+        if (gd < 26) {
           AudioEngine.sfx.slurp();
-          addFloat(p.x + rand(-20, 20), p.y - 24, "Hút!", "#c084fc");
-          if (sat.swallowed.length >= 3) spitVacuum(sat);
+          if (hardVac) { // Khắc nghiệt: nuốt mất luôn
+            G.gems.splice(i, 1);
+            burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+            addFloat(p.x + rand(-20, 20), p.y - 24, "Hố đen nuốt gem!", "#c084fc");
+          } else { // Chill/Thường: hất văng ra ngoài, không mất vĩnh viễn
+            const ga = Math.atan2(gm.y - p.y, gm.x - p.x) + rand(-0.4, 0.4);
+            gm.x = p.x + Math.cos(ga) * 40; gm.y = p.y + Math.sin(ga) * 40;
+            gm.vx = Math.cos(ga) * 420; gm.vy = Math.sin(ga) * 420;
+            burst(gm.x, gm.y, 6, ["#7df9ff", "#ffffff"], 160);
+          }
         }
       }
     }
@@ -1903,7 +1982,7 @@ function newShip() {
     x: window.innerWidth / 2, y: window.innerHeight / 2, r: 13,
     hp: DIFF.shipHp, maxHp: DIFF.shipHp,
     speed: 275, fireInt: 0.21, fireT: 0, streams: 1, dmg: 1, pierce: 0,
-    magnet: 125, thorns: 0, bulletSpd: 560, slow: 0, dropMul: 1, scoreMul: DIFF.scoreMul,
+    magnet: 125, thorns: 0, bulletSpd: 560, slow: 0, dropMul: 1,
     kbvx: 0, kbvy: 0,
     iframes: 0, ang: 0, shieldT: 0, regenT: 0, magnetT: 0, overdriveT: 0,
   };
@@ -1929,7 +2008,7 @@ const UPS = [
   { ico: "i-pierce", t: "Đạn xuyên +1", d: "Đạn bay xuyên thêm quái.", apply: s => s.pierce += 1 },
   { ico: "i-magnet", t: "Nam châm +60%", d: "Hút gem từ xa hơn.", apply: s => s.magnet *= 1.6 },
   { ico: "i-shield", t: "Giáp gai", d: "Va chạm hất văng quái và gây sát thương.", apply: s => s.thorns += 1 },
-  { ico: "i-gem", t: "Tham lam", d: "+30% điểm mọi nguồn.", apply: s => s.scoreMul *= 1.3 },
+  { ico: "i-gem", t: "Tham lam", d: "Mỗi 💎 cho thêm +1 XP.", apply: s => { s.xpPerGem = (s.xpPerGem || 0) + 1; } },
   { ico: "i-bolt", t: "Đạn siêu tốc", d: "+25% tốc độ & tầm bay đạn.", apply: s => s.bulletSpd *= 1.25 },
   { ico: "i-clover", t: "May mắn", d: "+50% tỉ lệ rớt vật phẩm.", apply: s => s.dropMul *= 1.5 },
   { ico: "i-snow", t: "Đạn băng", d: "Quái trúng đạn bị làm chậm 1.5s.", apply: s => s.slow = 1.5 },
@@ -2150,15 +2229,15 @@ const BEHAVIORS = {
 };
 
 const ACTS = [
-  { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, scoreMul: 1.0, bgStage: 1,
+  { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, bgStage: 1,
     palette: { bg0: "#0b1e3a", bg1: "#04080f", grid: "#ffffff08", edge: "rgba(255,110,196,0.28)" },
     music: "act1", sub: "Lưới neon — bắn quái tím trước, chúng gặm cửa sổ!",
     boss: { name: "GÃ GẶM KHỔNG LỒ", color: "#8b2fc9", hpMul: 1.0, shot: "ring", slam: 26, adds: ["chewer", "chewer"] } },
-  { id: 2, name: "DEEP VOID", waves: [11, 20], hpMul: 1.35, spMul: 1.08, scoreMul: 1.25, bgStage: 3,
+  { id: 2, name: "DEEP VOID", waves: [11, 20], hpMul: 1.35, spMul: 1.08, bgStage: 3,
     palette: { bg0: "#160b33", bg1: "#05030d", grid: "#b26bff10", edge: "rgba(178,107,255,0.35)" },
     music: "act2", sub: "Hư không sâu — coi chừng quái bắn xa và cảm tử!",
     boss: { name: "VOID REAPER", color: "#5b21b6", hpMul: 1.6, shot: "aimed", slam: 32, adds: ["dasher"] } },
-  { id: 3, name: "CORE BREACH", waves: [21, Infinity], hpMul: 1.8, spMul: 1.15, scoreMul: 1.6, bgStage: 2,
+  { id: 3, name: "CORE BREACH", waves: [21, Infinity], hpMul: 1.8, spMul: 1.15, bgStage: 2,
     palette: { bg0: "#331016", bg1: "#0d0505", grid: "#ff547010", edge: "rgba(255,84,112,0.40)" },
     music: "act3", sub: "Lõi vỡ — tổng lực! Giữ cửa sổ sống sót.",
     boss: { name: "CORE TYRANT", color: "#b91c1c", hpMul: 2.3, shot: "spiral", slam: 38, adds: ["chewer", "dasher"] } },
@@ -2411,8 +2490,16 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     bombWave: 0, giantWave: 0, motherWave: 0,
+    loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
   });
   G.ship = newShip();
+  // §6.4.7: tooltip điểm 1 lần duy nhất sau update — "Điểm = tổng điểm gốc — không nhân."
+  try {
+    if (!localStorage.getItem("wk_score_tip_seen")) {
+      localStorage.setItem("wk_score_tip_seen", "1");
+      setTimeout(() => { try { setBanner("⭐ Điểm = tổng điểm gốc — không nhân.", ""); } catch (e) {} }, 2500);
+    }
+  } catch (e) {}
   ["ov-over", "ov-draft", "ov-pause"].forEach(id => $(id).classList.remove("show"));
   // WOW: reset juice/cinema + hàng đợi spawn
   G.dying = []; G.pendingSpawns = 0; G.waveKills = 0; G.bossCine = false; bossSpawnTok++;
@@ -2436,8 +2523,7 @@ function killEnemy(e) {
   G.combo++; G.comboT = 2.5;
   const def = MONSTER_REGISTRY[e.type];
   const base = def ? def.score : 10;
-  const actMul = ACTS[(G.act || 1) - 1].scoreMul;
-  const pts = Math.round((base + G.combo * 2) * G.ship.scoreMul * actMul);
+  const pts = base; // §6 "điểm gốc cố định": mỗi kill = đúng điểm gốc, không cộng/không nhân
   G.score += pts;
   // WOW: death anim + burst + hit-stop theo loại (tank/splitter/elite)
   if (window.Juice) {
@@ -2495,7 +2581,7 @@ function killBoss() {
   for (const sat of SatManager.list()) // M2: hết boss → mảnh tự đóng
     if (sat.role === "fragment" && !sat.dead) SatManager.kill(sat.id, "cleanup");
   if (typeof BG !== "undefined") BG.setDim(0); // hết dim nền
-  const pts = Math.round(500 * G.ship.scoreMul);
+  const pts = 500; // §6: boss = 500 cố định
   G.score += pts; G.kills++;
   try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
   jxShake(12, 700, 10); windowJitter(30);
@@ -2662,16 +2748,21 @@ function update(dt) {
   for (const e of G.enemies) {
     if (e.dead) continue;
     e.t += dt; e.flash = Math.max(0, e.flash - dt); e.slowT = Math.max(0, e.slowT - dt);
+    e.sayNangT = Math.max(0, (e.sayNangT || 0) - dt); // CEO §9-Q2: đếm ngược "say nắng"
     const spd = e.speed * (e.slowT > 0 ? 0.45 : 1);
     // knockback vật lý
     e.x += e.kbx * dt; e.y += e.kby * dt; e.kbx *= 0.9; e.kby *= 0.9;
 
-    // data-driven: mỗi quái chạy strategy của nó (BEHAVIORS[e.behavior])
-    const bh = BEHAVIORS[e.behavior] || BEHAVIORS.chase;
-    bh.update(e, dt, s, spd);
+    // CEO §9-Q2: quái "say nắng" (aura M7) tấn công lẫn nhau thay vì đuổi tàu — mọi độ khó
+    if (e.sayNangT > 0) sayNangUpdate(e, dt, spd);
+    else {
+      // data-driven: mỗi quái chạy strategy của nó (BEHAVIORS[e.behavior])
+      const bh = BEHAVIORS[e.behavior] || BEHAVIORS.chase;
+      bh.update(e, dt, s, spd);
+    }
     if (G.phase !== "play") return;
-    // chạm tàu (healer dmg=0 -> không gây sát thương)
-    if (dist2(e.x, e.y, s.x, s.y) < (e.r + s.r) * (e.r + s.r)) {
+    // chạm tàu (healer dmg=0 -> không gây sát thương; quái say nắng không cắn tàu)
+    if (e.sayNangT <= 0 && dist2(e.x, e.y, s.x, s.y) < (e.r + s.r) * (e.r + s.r)) {
       if (e.dmg > 0) hurtShip(e.dmg, e.x, e.y);
       if (G.phase !== "play") return;
       const dx = e.x - s.x, dy = e.y - s.y, d = hypot(dx, dy) || 1;
@@ -2794,9 +2885,8 @@ function update(dt) {
     else { gm.x += gm.vx * dt; gm.y += gm.vy * dt; gm.vx *= 0.94; gm.vy *= 0.94; }
     if (d < 22) {
       G.gems.splice(i, 1); AudioEngine.sfx.gem();
-      G.score += Math.round(5 * s.scoreMul);
       burst(gm.x, gm.y, 6, ["#7df9ff", "#fff"], 140);
-      gainXp(gm.v);
+      gainXp(gm.v + (s.xpPerGem || 0)); // §6: gem = 0 điểm, chỉ XP (Tham lam: +1 XP/gem)
       if (G.phase !== "play") return;
     }
   }
@@ -3000,6 +3090,11 @@ function render(now) {
       // fallback: quái mới chưa có nhánh vẽ riêng vẫn chạy được — hình tròn màu registry
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;
       ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+    }
+    // CEO §9-Q2: quái "say nắng" vẽ 💘 trên đầu
+    if (e.sayNangT > 0) {
+      ctx.fillStyle = "#ff8fab"; ctx.font = "15px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("💘", 0, -e.r - 12);
     }
     ctx.restore(); ctx.globalAlpha = 1;
     if (e.hp > 4) {

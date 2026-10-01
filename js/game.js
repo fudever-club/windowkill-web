@@ -2458,7 +2458,7 @@ function startWave(n) {
         G.spawnQueue.sort(() => Math.random() - 0.5);
         G.spawnT = 0;
         V2.stageFxEnter();
-        setBanner(I18N.t("campaign.wave", { n: n }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
+        setBanner(I18N.t("campaign.wave", { n: n, stage: V2.stageId }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
         return;
       }
     } catch (er) {}

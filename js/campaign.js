@@ -18,7 +18,8 @@
     try {
       if (typeof I18N !== "undefined" && I18N && typeof I18N.t === "function") {
         var v = I18N.t("campaign." + key);
-        if (typeof v === "string" && v) return v;
+        // I18N.t trả về key thô khi thiếu bản dịch — không được trả key thô ra UI
+        if (typeof v === "string" && v && v !== "campaign." + key) return v;
       }
     } catch (e) { /* I18N chưa có — dùng fallback */ }
     return fallback;
@@ -27,6 +28,14 @@
     return String(s).replace(/\{(\w+)\}/g, function (_, k) {
       return (vars && vars[k] != null) ? vars[k] : "{" + k + "}";
     });
+  }
+  /* Tên ải theo ngôn ngữ hiện tại (mặc định VI) */
+  function stageName(st) {
+    try {
+      if (typeof I18N !== "undefined" && I18N && typeof I18N.getLang === "function" &&
+          I18N.getLang() === "en" && st.nameEn) return st.nameEn;
+    } catch (e) {}
+    return st.nameVi;
   }
 
   /* ---------------- Difficulty config: embed + fetch override ----------------
@@ -122,6 +131,7 @@
     {
       id: 1,
       nameVi: "MÀN HÌNH XANH",
+      nameEn: "BLUE SCREEN",
       descVi: "Sân tập cho lính mới: quái chậm, cửa sổ rộng.",
       mechanicVi: "Quái tím xuất hiện từ wave 2.",
       palette: { bgGradient: ["#001133", "#0066CC"], gridColor: "#004C99", particleColor: "#66B2FF", particleType: "square" },
@@ -144,6 +154,7 @@
     {
       id: 2,
       nameVi: "TƯỜNG LỬA",
+      nameEn: "FIREWALL",
       descVi: "Viền cửa sổ mọc gai — chạm vào là đau.",
       mechanicVi: "Gai bật/tắt theo chu kỳ 6s. Đừng đứng sát viền.",
       palette: { bgGradient: ["#1A0D00", "#CC3300"], gridColor: "#FF7722", particleColor: "#FF7722", particleType: "ember" },
@@ -166,6 +177,7 @@
     {
       id: 3,
       nameVi: "TRỌNG LỰC 404",
+      nameEn: "GRAVITY 404",
       descVi: "Mọi thứ trơn như băng, kể cả cú đẩy cửa sổ.",
       mechanicVi: "Thả phím tàu vẫn trôi — bay ngược để phanh.",
       palette: { bgGradient: ["#0D0221", "#3A0CA3"], gridColor: "#9D4EDD", particleColor: "#9D4EDD", particleType: "orbit" },
@@ -188,6 +200,7 @@
     {
       id: 4,
       nameVi: "CÚP ĐIỆN",
+      nameEn: "BLACKOUT",
       descVi: "Đèn tắt định kỳ, chỉ còn mắt đỏ của quái.",
       mechanicVi: "Nhìn mắt đỏ, nghe tiếng gầm để định vị.",
       palette: { bgGradient: ["#000000", "#0A0A1A"], gridColor: "#00E5FF", particleColor: "#00E5FF", particleType: "spark" },
@@ -210,6 +223,7 @@
     {
       id: 5,
       nameVi: "TRÀN BỘ NHỚ",
+      nameEn: "MEMORY OVERFLOW",
       descVi: "Vùng an toàn thu hẹp dần. Quản lý 2 \"máu\" cùng lúc.",
       mechanicVi: "Nhặt patch xanh để nới vùng an toàn.",
       palette: { bgGradient: ["#0D1B00", "#2D6A00"], gridColor: "#3A6B1E", particleColor: "#8AFF5A", particleType: "hexrain" },
@@ -519,7 +533,7 @@
       out.toast = _t("endless_unlocked", "Đã mở CHẾ ĐỘ VÔ TẬN!");
     } else {
       out.unlockedStage = setUnlockedStage(pid, stageId + 1);
-      out.toast = _fmt(_t("stage_unlocked", "Đã mở ải mới: {name}!"), { name: STAGES[stageId].nameVi });
+      out.toast = _fmt(_t("stage_unlocked", "Đã mở ải mới: {name}!"), { name: stageName(STAGES[stageId]) });
     }
     return out;
   }

@@ -330,6 +330,7 @@
     try {
       if (!window.I18N) return;
       const vt = (k, fb) => { try { const v = I18N.t(k); return (!v || v === k) ? fb : v; } catch (e) { return fb; } };
+      const stName = (st) => { try { return (I18N.getLang() === "en" && st.nameEn) ? st.nameEn : st.nameVi; } catch (e) { return st.nameVi; } };
       const lang = (window.I18N && I18N.lang) || "vi";
 
       /* 1. Language toggle — chèn vào settings panel */
@@ -389,7 +390,7 @@
             return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
               style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
               <div style="font-weight:800">${lock ? "🔒" : "🪟"} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
-              <div style="font-size:12.5px">${escapeHtml(st.nameVi)}</div>
+              <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
               <div style="font-size:11.5px;color:#5f7ba3">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
             </button>`;
           }).join("");

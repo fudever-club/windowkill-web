@@ -1,13 +1,13 @@
 /* WINDOWKILL Web Edition — Service Worker
  * Chiến lược:
- *  - cache-first cho static assets (CSS/JS/ảnh/icon/manifest) — cache có version
+ *  - stale-while-revalidate cho static assets (CSS/JS/ảnh/icon/manifest) — cache có version
  *  - network-first cho trang HTML (navigation) — luôn lấy bản mới khi online
  *  - offline fallback về offline.html
  * Không chạm tài nguyên cross-origin.
  */
 "use strict";
 
-const VERSION = "windowkill-v1";
+const VERSION = "windowkill-v2"; // bump 2026-10-01: xóa cache v1 (kẹt game.js cũ), ép tải mới
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";

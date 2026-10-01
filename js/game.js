@@ -42,6 +42,7 @@ window.addEventListener("resize", () => { fit(); if (typeof refreshBG === "funct
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const dist2 = (ax, ay, bx, by) => { const dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; };
+const hypot = (x, y) => Math.sqrt(x * x + y * y); // OPT: nhanh hơn Math.hypot 2-4x với 2 đối số
 
 /* ---------------- điều khiển cửa sổ thật ---------------- */
 const winCtrl = { tested: false, ok: true, expect: 0 };
@@ -90,11 +91,11 @@ function growWindow(dw, dh) { // vá cửa sổ sau mỗi wave
 function pushWindow(dx, dy) {
   if (!winCtrl.ok) return;
   wvx += dx; wvy += dy;
-  const sp = Math.hypot(wvx, wvy), MAX = 950;
+  const sp = hypot(wvx, wvy), MAX = 950;
   if (sp > MAX) { wvx *= MAX / sp; wvy *= MAX / sp; }
 }
 function applyWindowMotion(dt) {
-  if (Math.hypot(wvx, wvy) > 2 && winCtrl.ok) {
+  if (hypot(wvx, wvy) > 2 && winCtrl.ok) {
     try { window.moveBy(wvx * dt, wvy * dt); } catch (e) {}
     try {
       const aw = window.screen.availWidth || 1920, ah = window.screen.availHeight || 1080;
@@ -763,14 +764,14 @@ function launchDebris(sat) {
   AudioEngine.sfx.shoot();
   if (sat.sim) {
     const s = G.ship, cx = sat.x + sat.sw / 2, cy = sat.y + sat.sh / 2;
-    const d = Math.hypot(s.x - cx, s.y - cy) || 1;
+    const d = hypot(s.x - cx, s.y - cy) || 1;
     sat.vx = (s.x - cx) / d * sp; sat.vy = (s.y - cy) / d * sp;
   } else {
     let sx, sy;
     try { sx = sat.win.screenX + sat.w / 2; sy = sat.win.screenY + sat.h / 2; }
     catch (e) { return; }
     const mx = window.screenX + window.outerWidth / 2, my = window.screenY + window.outerHeight / 2;
-    const d = Math.hypot(mx - sx, my - sy) || 1;
+    const d = hypot(mx - sx, my - sy) || 1;
     sat.vx = (mx - sx) / d * sp; sat.vy = (my - sy) / d * sp;
     SatManager.steer(sat.id, sat.vx, sat.vy);
   }
@@ -789,7 +790,7 @@ function updateDebris(dt) {
       sat.x += sat.vx * dt; sat.y += sat.vy * dt;
       const s = G.ship, b = bounds();
       const cx = sat.x + sat.sw / 2, cy = sat.y + sat.sh / 2;
-      if (Math.hypot(s.x - cx, s.y - cy) < s.r + 34) {
+      if (dist2(s.x, s.y, cx, cy) < (s.r + 34) * (s.r + 34)) {
         hurtShip(1, cx, cy);
         SatManager.kill(sat.id, "impact");
         continue;
@@ -864,7 +865,7 @@ function bounceSimSat(s, mul, dt) {
 function knockShip(fx, fy, power) {
   const s = G.ship;
   if (!s || G.phase !== "play") return;
-  const dx = s.x - fx, dy = s.y - fy, d = Math.hypot(dx, dy) || 1;
+  const dx = s.x - fx, dy = s.y - fy, d = hypot(dx, dy) || 1;
   const p = Math.min(power, 700);
   s.kbvx = (s.kbvx || 0) + dx / d * p;
   s.kbvy = (s.kbvy || 0) + dy / d * p;
@@ -1251,7 +1252,7 @@ function updateFragments(dt) {
       sat.x += sat.vx * dt; sat.y += sat.vy * dt;
       const b = bounds(), s = G.ship;
       const cx = sat.x + sat.sw / 2, cy = sat.y + sat.sh / 2;
-      if (sat.shipCD <= 0 && Math.hypot(s.x - cx, s.y - cy) < s.r + 30) {
+      if (sat.shipCD <= 0 && dist2(s.x, s.y, cx, cy) < (s.r + 30) * (s.r + 30)) {
         sat.shipCD = 1; hurtShip(1, cx, cy);
         sat.vx *= -1; sat.vy *= -1;
       }
@@ -1273,7 +1274,7 @@ function updateFragments(dt) {
           // telegraph tím 0.5s khi mảnh bay gần cửa sổ chính (<250px)
           const nearX = Math.max(mx - (sx + sat.w), sx - (mx + mw), 0);
           const nearY = Math.max(my - (sy + sat.h), sy - (my + mh), 0);
-          const nearD = Math.hypot(nearX, nearY);
+          const nearD = hypot(nearX, nearY);
           if (nearD < 250 && !sat.warned) { sat.warned = true; SatManager.warn(sat.id); }
           else if (nearD >= 250) sat.warned = false;
           if (sx < mx + mw && sx + sat.w > mx && sy < my + mh && sy + sat.h > my) {
@@ -1362,13 +1363,13 @@ canvas.addEventListener("touchcancel", touchEnd);
 function touchMoveVec() {
   if (touch.moveId === null) return null;
   const dx = touch.moveX - touch.moveOX, dy = touch.moveY - touch.moveOY;
-  const d = Math.hypot(dx, dy);
+  const d = hypot(dx, dy);
   if (d < 12) return null;
   const m = Math.min(d, 60) / 60;
   return { x: dx / d * m, y: dy / d * m };
 }
 function touchAim() {
-  const d = Math.hypot(touch.aimDX, touch.aimDY);
+  const d = hypot(touch.aimDX, touch.aimDY);
   if (touch.aimId === null || d < 14) return null;
   return { x: touch.aimDX / d, y: touch.aimDY / d, fire: d > 24 };
 }
@@ -1523,13 +1524,13 @@ const MONSTER_REGISTRY = {
 
 const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
-    const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const wob = Math.sin(e.t * 6) * 12;
     e.x += (dx / d * spd + -dy / d * wob) * dt;
     e.y += (dy / d * spd + dx / d * wob) * dt;
   } },
   weave: { update(e, dt, s, spd) { // zigzag biên độ lớn, khó đoán
-    const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const wob = Math.sin(e.t * 7) * 110;
     e.x += (dx / d * spd + -dy / d * wob) * dt;
     e.y += (dy / d * spd + dx / d * wob) * dt;
@@ -1539,10 +1540,10 @@ const BEHAVIORS = {
       const sh = typeof shieldTarget === "function" ? shieldTarget() : null; // M3: chewer trong 300px ưu tiên bám khiên
       let p = nearestEdgePoint(e.x, e.y), useShield = false;
       if (sh) {
-        const ds = Math.hypot(sh.x - e.x, sh.y - e.y);
+        const ds = hypot(sh.x - e.x, sh.y - e.y);
         if (ds < 300) { useShield = true; p = { x: sh.x, y: sh.y, edge: sh.edge }; }
       }
-      const d = Math.hypot(p.x - e.x, p.y - e.y);
+      const d = hypot(p.x - e.x, p.y - e.y);
       if (d < 16) {
         e.latched = p.edge; e.onShield = useShield; e.x = p.x; e.y = p.y;
         addFloat(e.x, e.y - 24, useShield ? "⚠ Gặm khiên!" : "⚠ Gặm viền!", useShield ? "#38bdf8" : "#c084fc");
@@ -1571,11 +1572,11 @@ const BEHAVIORS = {
   dash: { update(e, dt, s, spd) { // stalk -> aim (telegraph) -> dash
     e.stateT -= dt;
     if (e.state === "stalk") {
-      const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy) || 1;
+      const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
       e.x += dx / d * spd * dt; e.y += dy / d * spd * dt;
       if (d < 260 && e.stateT <= 0) { e.state = "aim"; e.stateT = 0.7; }
     } else if (e.state === "aim") {
-      const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy) || 1;
+      const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
       e.dx = dx / d; e.dy = dy / d;
       if (e.stateT <= 0) { e.state = "dash"; e.stateT = 0.45; AudioEngine.sfx.shoot(); }
     } else {
@@ -1584,7 +1585,7 @@ const BEHAVIORS = {
     }
   } },
   spit: { update(e, dt, s, spd) { // giữ cự ly, strafe, bắn đạn tầm xa
-    const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const want = 320, dir = d > want + 40 ? 1 : d < want - 40 ? -1 : 0;
     const strafe = Math.sin(e.t * 2.1 + e.x * 0.01) > 0 ? 1 : -1;
     e.x += (dx / d * dir * spd + -dy / d * strafe * spd * 0.6) * dt;
@@ -1606,7 +1607,7 @@ const BEHAVIORS = {
     }
     e.healTarget = tgt;
     if (tgt) {
-      const dx = tgt.x - e.x, dy = tgt.y - e.y, d = Math.hypot(dx, dy) || 1;
+      const dx = tgt.x - e.x, dy = tgt.y - e.y, d = hypot(dx, dy) || 1;
       if (d > 90) { e.x += dx / d * spd * dt; e.y += dy / d * spd * dt; }
       else {
         e.healT += dt;
@@ -1617,7 +1618,7 @@ const BEHAVIORS = {
         }
       }
     } else { // không ai cần hồi -> giữ khoảng cách với tàu
-      const dx = e.x - s.x, dy = e.y - s.y, d = Math.hypot(dx, dy) || 1;
+      const dx = e.x - s.x, dy = e.y - s.y, d = hypot(dx, dy) || 1;
       if (d < 200) { e.x += dx / d * spd * dt; e.y += dy / d * spd * dt; }
     }
   } },
@@ -1629,7 +1630,7 @@ const BEHAVIORS = {
       return;
     }
     const p = nearestEdgePoint(e.x, e.y);
-    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+    const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
     if (d < 46) {
       e.fuse = 0.8;
       AudioEngine.sfx.shrink();
@@ -2042,7 +2043,7 @@ function update(dt) {
   if (keys.KeyD || keys.ArrowRight) mx += 1;
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
-  const ml = Math.hypot(mx, my);
+  const ml = hypot(mx, my);
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml);
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
@@ -2055,7 +2056,7 @@ function update(dt) {
     s.x += s.kbvx * dt; s.y += s.kbvy * dt;
     const dk = Math.pow(0.02, dt);
     s.kbvx *= dk; s.kbvy *= dk;
-    if (Math.hypot(s.kbvx, s.kbvy) < 10) { s.kbvx = 0; s.kbvy = 0; }
+    if (dist2(s.kbvx, s.kbvy, 0, 0) < 100) { s.kbvx = 0; s.kbvy = 0; }
     s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);
     s.y = clamp(s.y, b.y + s.r, b.y + b.h - s.r);
   }
@@ -2095,7 +2096,7 @@ function update(dt) {
       // CHIÊU SIGNATURE: bắn vào viền -> đẩy cửa sổ
       const ex = bl.x < b.x ? "left" : bl.x > b.x + b.w ? "right" : null;
       const edge = ex || (bl.y < b.y ? "top" : "bottom");
-      const sp = Math.hypot(bl.vx, bl.vy);
+      const sp = hypot(bl.vx, bl.vy);
       pushWindow(bl.vx / sp * 300, bl.vy / sp * 300);
       AudioEngine.sfx.thud();
       burst(clamp(bl.x, b.x, b.x + b.w), clamp(bl.y, b.y, b.y + b.h), 8, ["#9df3ff", "#fff"], 200);
@@ -2158,7 +2159,7 @@ function update(dt) {
     if (dist2(e.x, e.y, s.x, s.y) < (e.r + s.r) * (e.r + s.r)) {
       if (e.dmg > 0) hurtShip(e.dmg, e.x, e.y);
       if (G.phase !== "play") return;
-      const dx = e.x - s.x, dy = e.y - s.y, d = Math.hypot(dx, dy) || 1;
+      const dx = e.x - s.x, dy = e.y - s.y, d = hypot(dx, dy) || 1;
       const kb = 40 + s.thorns * 60;
       e.kbx += dx / d * kb * 8; e.kby += dy / d * kb * 8;
       if (s.thorns > 0) damageEnemy(e, s.thorns, null);
@@ -2218,7 +2219,7 @@ function update(dt) {
         } catch (err) {}
       }
     }
-    const dx = s.x - bs.x, dy = s.y - bs.y, d = Math.hypot(dx, dy) || 1;
+    const dx = s.x - bs.x, dy = s.y - bs.y, d = hypot(dx, dy) || 1;
     bs.x += dx / d * 34 * dt; bs.y += dy / d * 34 * dt;
     bs.atkT -= dt; bs.spawnT -= dt; bs.slamT -= dt;
     if (bs.atkT <= 0) {
@@ -2264,7 +2265,7 @@ function update(dt) {
     if (dist2(bs.x, bs.y, s.x, s.y) < (bs.r + s.r) * (bs.r + s.r)) {
       hurtShip(1, bs.x, bs.y);
       if (G.phase !== "play") return;
-      const d2 = Math.hypot(dx, dy) || 1;
+      const d2 = hypot(dx, dy) || 1;
       s.x -= dx / d2 * 60; s.y -= dy / d2 * 60;
     }
   }
@@ -2272,7 +2273,7 @@ function update(dt) {
   /* gems */
   for (let i = G.gems.length - 1; i >= 0; i--) {
     const gm = G.gems[i]; gm.t += dt;
-    const dx = s.x - gm.x, dy = s.y - gm.y, d = Math.hypot(dx, dy) || 1;
+    const dx = s.x - gm.x, dy = s.y - gm.y, d = hypot(dx, dy) || 1;
     const magR = s.magnetT > 0 ? 1e9 : s.magnet; // magnet pickup: hút toàn bộ gem
     if (d < magR) { gm.x += dx / d * 360 * dt; gm.y += dy / d * 360 * dt; }
     else { gm.x += gm.vx * dt; gm.y += gm.vy * dt; gm.vx *= 0.94; gm.vy *= 0.94; }
@@ -2355,9 +2356,9 @@ function render(now) {
   SatManager.drawSims();
   if (typeof drawCracks === "function") drawCracks(); // M4: vết nứt viền arena
 
-  // gems
+  // gems (OPT: set font 1 lần, không set lại mỗi gem)
+  ctx.font = "17px sans-serif"; ctx.textAlign = "center";
   G.gems.forEach(gm => {
-    ctx.font = "17px sans-serif"; ctx.textAlign = "center";
     ctx.fillText("💎", gm.x, gm.y + Math.sin(gm.t * 5) * 3);
   });
   // pickups (heart/shield/nuke dùng emoji cũ; magnet/overdrive vẽ tay — không emoji mới)
@@ -2399,8 +2400,8 @@ function render(now) {
 
   // quái
   // WOW: vẽ thêm entity đang chạy death-anim (~150ms sau khi chết)
-  const drawList = (G.dying && G.dying.length) ? G.enemies.concat(G.dying) : G.enemies;
-  drawList.forEach(e => {
+  // OPT: tách hàm vẽ 1 quái — 2 vòng lặp riêng, không concat alloc mỗi frame
+  function drawOneEnemy(e) {
     if (e.dead && !e.jfDeath) return;
     ctx.save(); ctx.translate(e.x, e.y);
     if (e.flash > 0) ctx.globalAlpha = 0.45;
@@ -2490,7 +2491,9 @@ function render(now) {
       ctx.fillStyle = "#00000088"; ctx.fillRect(e.x - 16, e.y - e.r - 12, 32, 5);
       ctx.fillStyle = "#ff5470"; ctx.fillRect(e.x - 16, e.y - e.r - 12, 32 * clamp(e.hp / (e.maxHp || e.hp), 0, 1), 5);
     }
-  });
+  }
+  for (let _ei = 0; _ei < G.enemies.length; _ei++) drawOneEnemy(G.enemies[_ei]);
+  if (G.dying && G.dying.length) for (let _dj = 0; _dj < G.dying.length; _dj++) drawOneEnemy(G.dying[_dj]);
 
   // boss
   const bs = G.boss;
@@ -2642,6 +2645,32 @@ function render(now) {
 }
 
 /* ---------------- loop & boot ---------------- */
+// OPT: FPS monitor + adaptive quality — tự giảm FX khi máy yếu (dùng chung cho mobile team)
+let _fpsAcc = 0, _fpsN = 0, _fpsWin = 0, _lowSec = 0, _okSec = 0, _perfReduced = false, _lastFps = 60;
+function perfTick(rawDt) {
+  _fpsAcc += rawDt; _fpsN++; _fpsWin += rawDt;
+  if (_fpsWin >= 1) {
+    _lastFps = _fpsN / Math.max(_fpsAcc, 1e-6);
+    _fpsAcc = 0; _fpsN = 0; _fpsWin = 0;
+    if (!_perfReduced) {
+      _lowSec = _lastFps < 45 ? _lowSec + 1 : 0;
+      if (_lowSec >= 2) {
+        _perfReduced = true; _okSec = 0;
+        try { if (typeof BG !== "undefined") BG.setQuality("reduced"); } catch (e) {}
+        try { if (window.Juice) Juice.setPerfQuality("reduced"); } catch (e) {}
+      }
+    } else {
+      _okSec = _lastFps > 55 ? _okSec + 1 : 0;
+      if (_okSec >= 5) {
+        _perfReduced = false; _lowSec = 0;
+        try { if (typeof BG !== "undefined") BG.setQuality("full"); } catch (e) {}
+        try { if (window.Juice) Juice.setPerfQuality("full"); } catch (e) {}
+      }
+    }
+  }
+}
+if (typeof window !== "undefined") window.WKPerf = { get fps() { return _lastFps; }, get reduced() { return _perfReduced; } };
+
 function loop(now) {
   const rawDt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   // WOW: Juice timescale (hit-stop / slow-mo) điều khiển dt gameplay
@@ -2657,24 +2686,30 @@ function loop(now) {
   // WOW: Cinema clock — banner/combo/boss cine/heartbeat/trail (tự đọc info.player)
   if (window.Cinema) { try { Cinema.update(rawDt, cineInfo()); } catch (e) {} }
   // WOW: dọn entity khi death-anim chạy xong
-  if (G.dying && G.dying.length) { try { G.dying = G.dying.filter(e => e.jfDeath); } catch (e) {} }
+  if (G.dying && G.dying.length) { try { // OPT: compaction in-place, không alloc array/closure
+      let _dw = 0;
+      for (let _di = 0; _di < G.dying.length; _di++) { if (G.dying[_di].jfDeath) G.dying[_dw++] = G.dying[_di]; }
+      G.dying.length = _dw;
+    } catch (e) {} }
   // WOW: music state + background state mỗi 500ms
   musicT += rawDt;
   if (musicT >= 0.5) { musicT = 0; wowMusicTick(); }
+  perfTick(rawDt); // OPT: adaptive quality
   render(now);
   requestAnimationFrame(loop);
 }
 
 // WOW: info cho Cinema.update/drawFront — heartbeat + trail tự chạy bên trong
-function cineInfo() {
-  const s = G.ship;
-  return {
-    W: window.innerWidth, H: window.innerHeight,
-    player: s ? {
-      x: s.x, y: s.y, vx: 0, vy: 0, speed: s.moveSpeed || 0, rot: s.ang || 0, r: 13,
-      hp: s.hp, maxHp: s.maxHp, shieldT: s.shieldT || 0
-    } : null
-  };
+const _cineInfo = { W: 0, H: 0, player: { x: 0, y: 0, vx: 0, vy: 0, speed: 0, rot: 0, r: 13, hp: 0, maxHp: 0, shieldT: 0 } };
+function cineInfo() { // OPT: tái dùng object, không alloc mỗi frame
+  const s = G.ship, p = _cineInfo.player;
+  _cineInfo.W = window.innerWidth; _cineInfo.H = window.innerHeight;
+  if (s) {
+    p.x = s.x; p.y = s.y; p.speed = s.moveSpeed || 0; p.rot = s.ang || 0;
+    p.hp = s.hp; p.maxHp = s.maxHp; p.shieldT = s.shieldT || 0;
+    _cineInfo.player = p;
+  } else _cineInfo.player = null;
+  return _cineInfo;
 }
 
 // WOW: đồng bộ music state + background state (danger/lowhp/boss/breather)

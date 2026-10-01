@@ -109,6 +109,42 @@ function windowJitter(power) {
   try { window.moveBy((Math.random() - .5) * power, (Math.random() - .5) * power); } catch (e) {}
 }
 
+// WOW: camera shake qua Juice theo bảng tier §1 juice.js (hit 2/120/p1 · chết 3/160/p2 ·
+// nổ lớn 6/300/p4 · player hurt 8/350/p8 · boss chết 12/700/p10 · chewer cắn 2/150/p3).
+// G.shake vẫn được set để render fallback khi không có Juice.
+function jxShake(amp, ms, prio) {
+  G.shake = amp;
+  if (window.Juice) { try { Juice.addShake(amp, ms, prio); } catch (e) {} }
+}
+
+// WOW: drawFn cho Juice.drawGhosts — wrapper đã translate/rotate/scale + alpha,
+// chỉ cần vẽ thân tàu tại (g.x, g.y)
+function drawShipGhost(c, g) {
+  c.fillStyle = "#7dd3fc";
+  c.beginPath();
+  c.moveTo(g.x + 16, g.y); c.lineTo(g.x - 11, g.y - 11); c.lineTo(g.x - 6, g.y); c.lineTo(g.x - 11, g.y + 11);
+  c.closePath(); c.fill();
+}
+
+// WOW: vẽ boss cho Cinema bossIntro/bossDeath — chữ ký (ctx, x, y, scale, alpha)
+function drawBossShape(c, x, y, s, a, color) {
+  const col = color || "#8b2fc9";
+  const t = performance.now() / 1000;
+  c.save();
+  c.translate(x, y); c.scale(s || 1, s || 1); c.globalAlpha = (a == null ? 1 : a);
+  c.rotate(Math.sin(t * 0.8) * 0.12);
+  c.shadowColor = col; c.shadowBlur = 26;
+  c.fillStyle = col;
+  c.fillRect(-34, -34, 68, 68);
+  c.shadowBlur = 0;
+  c.strokeStyle = "#fff"; c.lineWidth = 3;
+  c.strokeRect(-34, -34, 68, 68);
+  c.fillStyle = "rgba(255,255,255,.16)";
+  c.fillRect(-22, -22, 44, 44);
+  c.fillStyle = "#fff";
+  c.beginPath(); c.arc(0, 0, 9 + Math.sin(t * 6) * 2, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
 /* ---------------- Satellite Window System (multi-window, MULTIWINDOW-SPEC.md) ----------------
  * 1 cửa sổ chính + tối đa 3 popup vệ tinh. Vệ tinh là dumb renderer:
  * logic ở cửa sổ chính, vệ tinh chỉ vẽ + báo click + drift theo lệnh.
@@ -894,9 +930,12 @@ const G = {
   boss: null, spawnQueue: [], spawnT: 0, waveBreak: 0, waveClearShown: false,
   banner: "", bannerT: 0, bannerSub: "",
   xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
+  dying: [], pendingSpawns: 0, waveKills: 0, bossCine: false, // WOW sprint
   cracks: [], // vết nứt viền arena (M4 mô phỏng)
 };
 let lastT = performance.now();
+let musicT = 0; // WOW: music/bg-state tick 500ms
+let bossSpawnTok = 0; // WOW: huỷ boss intro cũ nếu restart giữa chừng
 
 function newShip() {
   return {
@@ -935,10 +974,32 @@ const UPS = [
 ];
 function openDraft() {
   G.phase = "draft";
-  const box = $("draft-cards"); box.innerHTML = "";
   const pool = UPS.filter(u => !u.can || u.can(G.ship));
   const picks = [];
   while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  if (!picks.length) { G.phase = "play"; return; }
+  // WOW: draft qua Cinema (DOM overlay + phím 1/2/3); fallback overlay cũ
+  if (window.Cinema) {
+    const ups = picks.map(u => ({ name: u.t, desc: u.d, icon: '<svg class="ic" aria-hidden="true"><use href="#' + u.ico + '"/></svg>' }));
+    let ok = false;
+    try {
+      Cinema.showDraft(ups, (idx) => {
+        const u = picks[idx];
+        if (u) {
+          u.apply(G.ship); AudioEngine.sfx.up();
+          addFloat(G.ship.x, G.ship.y - 32, u.t, "#9df3ff", true);
+        }
+        G.phase = "play"; lastT = performance.now();
+      }, { x: G.ship.x, y: G.ship.y });
+      ok = true;
+    } catch (err) {}
+    if (ok) return;
+  }
+  openDraftLegacy(picks);
+}
+// Overlay draft cũ (fallback khi không có Cinema)
+function openDraftLegacy(picks) {
+  const box = $("draft-cards"); box.innerHTML = "";
   picks.forEach(u => {
     const d = document.createElement("div"); d.className = "card";
     d.innerHTML = `<div class="ico"><svg class="ic" aria-hidden="true"><use href="#${u.ico}"/></svg></div><div class="t">${u.t}</div><div class="d">${u.d}</div>`;
@@ -1044,7 +1105,7 @@ const BEHAVIORS = {
         else {
           const dd = { left: [14, 0], right: [14, 0], top: [0, 14], bottom: [0, 14] }[e.latched];
           shrinkWindow(dd[0], dd[1]);
-          AudioEngine.sfx.shrink(); G.shake = Math.max(G.shake, 5);
+          AudioEngine.sfx.shrink(); jxShake(2, 150, 3); // WOW tier: chewer cắn
           burst(e.x, e.y, 8, ["#c084fc", "#7c3aed"], 160);
         }
       }
@@ -1191,7 +1252,28 @@ function mkEnemy(type, x, y) {
 }
 function spawnEnemyAt(type, x, y) {
   const e = mkEnemy(type, x, y);
-  if (e) G.enemies.push(e);
+  if (!e) return null;
+  // WOW: vòng cảnh báo spawn 400ms (elite 500ms) trước khi quái active;
+  // quái chưa vào G.enemies nên không gây damage trong lúc warning + materialize
+  if (window.Juice) {
+    G.pendingSpawns = (G.pendingSpawns || 0) + 1;
+    try {
+      Juice.spawnWarning(x, y, e.r, { elite: e.r >= 23 }).then(
+        () => {
+          G.pendingSpawns = Math.max(0, (G.pendingSpawns || 1) - 1);
+          if (G.phase === "over") return; // game over trong lúc warning → huỷ
+          G.enemies.push(e);
+          try { Juice.materialize(e); } catch (err) {}
+        },
+        () => { G.pendingSpawns = Math.max(0, (G.pendingSpawns || 1) - 1); }
+      );
+    } catch (err) {
+      G.pendingSpawns = Math.max(0, (G.pendingSpawns || 1) - 1);
+      G.enemies.push(e);
+    }
+    return e;
+  }
+  G.enemies.push(e);
   return e;
 }
 function spawnEnemy(type) {
@@ -1202,7 +1284,7 @@ function detonateKamikaze(e) {
   e.dead = true;
   shrinkWindow(20, 16); // nổ gặm cửa sổ
   if (G.phase !== "play") return;
-  AudioEngine.sfx.bigboom(); G.shake = Math.max(G.shake, 10); windowJitter(20);
+  AudioEngine.sfx.bigboom(); jxShake(6, 300, 4); windowJitter(20); // WOW tier: nổ lớn
   burst(e.x, e.y, 26, ["#ff7a1a", "#ffd166", "#fff"], 340);
   addFloat(e.x, e.y - 24, "BÙM! -cửa sổ", "#ff7a1a", true);
   const s = G.ship;
@@ -1222,7 +1304,7 @@ function buildSpawnQueue(n) {
   return q;
 }
 function startWave(n) {
-  G.wave = n;
+  G.wave = n; G.waveKills = 0;
   G.waveClearShown = false;
   const act = actOf(n), cfg = ACTS[act - 1];
   const changed = act !== G.act;
@@ -1234,8 +1316,17 @@ function startWave(n) {
   G.spawnQueue.sort(() => Math.random() - 0.5);
   G.spawnT = 0;
   maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
-  if (changed) setBanner(`ACT ${act} — ${cfg.name}`, cfg.sub);
-  else setBanner(`WAVE ${n}`, n === 1 ? "Bắn quái tím trước — chúng gặm cửa sổ!" : pickSub());
+  const sub = n === 1 ? "Bắn quái tím trước — chúng gặm cửa sổ!" : pickSub();
+  // WOW: wave banner qua Cinema (fallback setBanner cũ)
+  if (window.Cinema) {
+    try {
+      if (changed) { try { Cinema.stageTransition(); } catch (e) {} }
+      Cinema.waveBanner(n, { boss: false, sub: changed ? `ACT ${act} — ${cfg.name}: ${cfg.sub}` : sub });
+    } catch (err) {
+      setBanner(changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`, changed ? cfg.sub : sub);
+    }
+  } else if (changed) setBanner(`ACT ${act} — ${cfg.name}`, cfg.sub);
+  else setBanner(`WAVE ${n}`, sub);
 }
 function pickSub() {
   return ["Quái tím gặm viền cửa sổ — bắn chúng xuống!",
@@ -1244,15 +1335,30 @@ function pickSub() {
           "Giữ khoảng cách với quái vàng — nó lao tới!"][Math.floor(Math.random() * 4)];
 }
 function setBanner(t, sub = "") { G.banner = t; G.bannerSub = sub; G.bannerT = 2.4; }
-function spawnBoss() {
+async function spawnBoss() {
   const b = bounds();
   const v = ACTS[(G.act || 1) - 1].boss; // boss variant theo Act
   const hp = (130 + G.wave * 14) * DIFF.hpMul * v.hpMul;
   G.boss = { x: b.x + b.w / 2, y: b.y + 130, r: 46, hp, maxHp: hp, t: 0,
-    atkT: 2.2, spawnT: 5, slamT: 11,
+    atkT: 2.2, spawnT: 5, slamT: 11, phase: 1,
     name: v.name, color: v.color, shot: v.shot, slam: v.slam, adds: v.adds };
-  setBanner(`⚠ BOSS: ${v.name}`, "Nó nện cửa sổ — giữ cửa sổ sống sót!");
-  AudioEngine.sfx.boss();
+  // WOW: boss intro cinematic (~3.1s, lock update) — game không vẽ boss đè (G.bossCine)
+  if (window.Cinema) {
+    const tok = ++bossSpawnTok;
+    G.bossCine = true;
+    try {
+      try { AudioEngine.sfx.boss_roar(); } catch (e2) { try { AudioEngine.sfx.boss(); } catch (e3) {} }
+      await Cinema.bossIntro(G.boss, v.name, `ACT ${G.act} — ${ACTS[(G.act || 1) - 1].name}`,
+        { drawBoss: (c, x, y, s, a) => drawBossShape(c, x, y, s, a, v.color) });
+    } catch (err) {}
+    G.bossCine = false;
+    if (tok !== bossSpawnTok) return; // restart giữa intro → bỏ
+    try { Cinema.bgState("boss"); } catch (err) {}
+  } else {
+    setBanner(`⚠ BOSS: ${v.name}`, "Nó nện cửa sổ — giữ cửa sổ sống sót!");
+    AudioEngine.sfx.boss();
+  }
+  try { AudioEngine.setMusicState("BOSS"); } catch (err) {}
   if (typeof BG !== "undefined") BG.setDim(0.45); // dim nền khi boss xuất hiện (art-direction §3 L5)
   G.spawnQueue = v.adds.slice();
 }
@@ -1294,21 +1400,31 @@ function pauseGame(on) {
 }
 function hurtShip(dmg, srcx, srcy) {
   const s = G.ship;
-  if (s.iframes > 0 || s.shieldT > 0 || G.phase !== "play") return;
+  if (G.phase !== "play") return;
+  // WOW: khiên chặn đòn → shield block FX (flash + tia lửa + rung nhẹ + âm thanh)
+  if (s.shieldT > 0) {
+    if (window.Cinema) { try { Cinema.shieldBlock(s.x, s.y); } catch (e) {} }
+    return;
+  }
+  if (s.iframes > 0) return;
   s.hp -= dmg; s.iframes = 0.9;
-  AudioEngine.sfx.hurt(); windowJitter(22); G.shake = Math.max(G.shake, 9);
+  AudioEngine.sfx.hurt(); windowJitter(22); jxShake(8, 350, 8); // WOW tier: player hurt
   burst(s.x, s.y, 16, ["#ff5470", "#fff"], 260);
-  addFloat(s.x, s.y - 26, `-${dmg} ❤️`, "#ff8f8f", true);
+  // WOW: damage number đỏ thay float -dmg cũ
+  if (window.Juice) { try { Juice.damageNumber(s.x, s.y - 20, dmg, "playerHurt", null); } catch (e) {} }
+  else addFloat(s.x, s.y - 26, `-${dmg} ❤️`, "#ff8f8f", true);
   if (s.hp <= 0) die("ship");
 }
 function die(reason) {
   if (G.phase === "over") return;
   G.phase = "over";
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
-  AudioEngine.sfx.over(); AudioEngine.stopMusic();
+  AudioEngine.sfx.over();
+  try { AudioEngine.setMusicState("GAMEOVER"); } catch (e) {} // WOW: downlifter + pad
+  AudioEngine.stopMusic();
   const reasonTxt = reason === "window" ? "Cửa sổ vỡ nát!" : "Tàu nổ tung!";
   burst(G.ship.x, G.ship.y, 46, ["#0080FF", "#ffffff", "#8fc3ff"], 380);
-  windowJitter(30); G.shake = 14;
+  windowJitter(30); jxShake(12, 700, 10); // WOW tier: boss chết / player die
   if (bus) bus.postMessage({ type: "gameover", profileId: PROFILE_ID, score: G.score, wave: G.wave, act: G.act,
     kills: G.kills, time: Math.round(G.time), timeSec: Math.round(G.time), diff: DIFF_KEY, reason: reasonTxt });
   $("over-title").textContent = reasonTxt;
@@ -1333,6 +1449,10 @@ function resetGame() {
   });
   G.ship = newShip();
   ["ov-over", "ov-draft", "ov-pause"].forEach(id => $(id).classList.remove("show"));
+  // WOW: reset juice/cinema + hàng đợi spawn
+  G.dying = []; G.pendingSpawns = 0; G.waveKills = 0; G.bossCine = false; bossSpawnTok++;
+  if (window.Juice) { try { Juice.reset(); } catch (e) {} }
+  if (window.Cinema) { try { Cinema.reset(); } catch (e) {} }
   playActMusic(); // Act 1
   refreshBG(); // build background ải 1
   lastT = performance.now();
@@ -1347,16 +1467,32 @@ $("btn-quit2").onclick = () => window.close();
 function killEnemy(e) {
   if (e.dead) return;
   e.dead = true; G.kills++;
+  G.waveKills = (G.waveKills || 0) + 1;
   G.combo++; G.comboT = 2.5;
   const def = MONSTER_REGISTRY[e.type];
   const base = def ? def.score : 10;
   const actMul = ACTS[(G.act || 1) - 1].scoreMul;
   const pts = Math.round((base + G.combo * 2) * G.ship.scoreMul * actMul);
   G.score += pts;
-  AudioEngine.sfx.boom(); G.shake = Math.max(G.shake, 5);
+  // WOW: death anim + burst + hit-stop theo loại (tank/splitter/elite)
+  if (window.Juice) {
+    try {
+      Juice.onKill(e.type, e.r >= 23);
+      Juice.deathAnim(e.type, e, null);
+      Juice.burst(e.type, e.x, e.y);
+      G.dying.push(e); // giữ lại để vẽ death-anim (~150ms)
+    } catch (err) {}
+  }
+  if (e.type === "tank") jxShake(6, 300, 4); else jxShake(3, 160, 2);
+  // WOW: sfx.death theo loại quái (fallback boom cũ)
+  try { AudioEngine.sfx.death(e.type); } catch (err) { try { AudioEngine.sfx.boom(); } catch (e2) {} }
   burst(e.x, e.y, e.type === "tank" ? 26 : 14, [e.color, "#ffffff", "#ffd166"], 300);
-  addFloat(e.x, e.y - 16, `+${pts}`, "#fde68a");
-  if (G.combo >= 5 && G.combo % 5 === 0) addFloat(e.x, e.y - 40, `🔥 COMBO x${G.combo}!`, "#f9a8d4", true);
+  // WOW: damage number thay float +pts cũ (fallback khi không có Juice)
+  if (window.Juice) { try { Juice.damageNumber(e.x, e.y - 16, pts, "normal", null); } catch (err) {} }
+  else addFloat(e.x, e.y - 16, `+${pts}`, "#fde68a");
+  // WOW: combo qua Cinema (milestone x10/x25/x50/x100 nội bộ); fallback float cũ
+  if (window.Cinema) { try { Cinema.combo(G.combo); } catch (err) {} }
+  else if (G.combo >= 5 && G.combo % 5 === 0) addFloat(e.x, e.y - 40, `🔥 COMBO x${G.combo}!`, "#f9a8d4", true);
   if (def && def.onDeath) def.onDeath(e); // vd splitter đẻ mini
   const n = e.type === "tank" ? 3 : 1;
   for (let i = 0; i < n; i++) {
@@ -1375,7 +1511,9 @@ function killEnemy(e) {
 }
 function nukeBlast() {
   AudioEngine.sfx.nuke();
-  G.shake = 16; windowJitter(30);
+  jxShake(12, 700, 10); windowJitter(30);
+  // WOW: flash trắng toàn màn hình khi nuke nổ
+  if (window.Cinema) { try { Cinema.nukeFlash(); } catch (e) {} }
   addFloat(G.ship.x, G.ship.y - 40, "💣 NUKE!", "#ffd166", true);
   G.enemies.forEach(e => { if (!e.dead) { e.hp -= 15; if (e.hp <= 0) killEnemy(e); else { e.flash = 0.15; } } });
   if (G.boss && !G.boss.dead) {
@@ -1394,16 +1532,32 @@ function killBoss() {
   if (typeof BG !== "undefined") BG.setDim(0); // hết dim nền
   const pts = Math.round(500 * G.ship.scoreMul);
   G.score += pts; G.kills++;
-  AudioEngine.sfx.bigboom(); G.shake = 16; windowJitter(30);
+  try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
+  jxShake(12, 700, 10); windowJitter(30);
   burst(bs.x, bs.y, 60, ["#c084fc", "#fff", "#ffd166"], 420);
+  // WOW: boss burst + hit-stop elite + damage number vàng
+  if (window.Juice) {
+    try { Juice.burst("boss", bs.x, bs.y); Juice.onKill("boss", true); } catch (err) {}
+    try { Juice.damageNumber(bs.x, bs.y - 60, pts, "crit", null); } catch (err) {}
+  }
   addFloat(bs.x, bs.y - 50, `BOSS HẠ! +${pts}`, "#fde68a", true);
+  // WOW: death cinematic (~2.1s, lock update) — banner "BOSS BỊ HẠ!" do Cinema vẽ
+  if (window.Cinema) {
+    G.bossCine = true;
+    try {
+      Cinema.bossDeath(bs, { player: G.ship, drawBoss: (c, x, y, s, a) => drawBossShape(c, x, y, s, a, bs.color) })
+        .then(() => { G.bossCine = false; }, () => { G.bossCine = false; });
+    } catch (err) { G.bossCine = false; }
+  } else {
+    setBanner(`WAVE ${G.wave} CLEAR — ${ACTS[(G.act || 1) - 1].name}`, "Cửa sổ được vá lại +40px");
+  }
+  try { AudioEngine.setMusicState("VICTORY"); } catch (err) {}
   for (let i = 0; i < 6; i++) {
     const a = Math.random() * Math.PI * 2;
     G.gems.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, v: 2, t: rand(0, 9) });
   }
   G.pickups.push({ kind: "nuke", x: bs.x - 40, y: bs.y, t: 0 });
   G.pickups.push({ kind: "heart", x: bs.x + 40, y: bs.y, t: 0 });
-  setBanner(`WAVE ${G.wave} CLEAR — ${ACTS[(G.act || 1) - 1].name}`, "Cửa sổ được vá lại +40px");
 }
 
 function update(dt) {
@@ -1413,7 +1567,12 @@ function update(dt) {
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
   updateCracks(dt);
-  G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
+  G.comboT -= dt;
+  if (G.comboT <= 0) {
+    // WOW: combo đứt → Cinema.comboLost (chỉ khi combo đáng kể)
+    if (G.combo >= 3 && window.Cinema) { try { Cinema.comboLost(); } catch (e) {} }
+    G.combo = 0;
+  }
   s.iframes = Math.max(0, s.iframes - dt);
   s.shieldT = Math.max(0, s.shieldT - dt);
   s.magnetT = Math.max(0, s.magnetT - dt);
@@ -1432,7 +1591,8 @@ function update(dt) {
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml);
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
-  }
+    s.moveSpeed = sp; // WOW: Cinema.playerFx tự vẽ trail khi speed > 180
+  } else s.moveSpeed = 0;
   s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);
   s.y = clamp(s.y, b.y + s.r, b.y + b.h - s.r);
   const ta = touchAim();
@@ -1450,7 +1610,7 @@ function update(dt) {
       G.spawnT = Math.max(0.22, 0.85 * DIFF.spawnMul - G.wave * 0.05);
       spawnEnemy(G.spawnQueue.pop());
     }
-  } else if (!G.enemies.length && !G.boss && G.phase === "play") {
+  } else if (!G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
     G.waveBreak -= dt;
     if (G.waveBreak <= 0) {
       G.waveBreak = 2.6;
@@ -1542,17 +1702,58 @@ function update(dt) {
   }
   G.enemies = G.enemies.filter(e => !e.dead);
   // wave-clear banner kèm tên Act (hiện 1 lần khi sạch quái)
-  if (!G.enemies.length && !G.boss && !G.spawnQueue.length && G.phase === "play" && !G.waveClearShown && G.wave > 0) {
+  // WOW: đợi cả quái đang warning-spawn (pendingSpawns) rồi mới clear
+  if (!G.enemies.length && !G.boss && !G.spawnQueue.length && !(G.pendingSpawns > 0) && G.phase === "play" && !G.waveClearShown && G.wave > 0) {
     G.waveClearShown = true;
     const cfg = ACTS[(G.act || 1) - 1];
-    setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? "Boss hạ! Chuẩn bị wave tiếp theo…" : "Chuẩn bị wave tiếp theo…");
-    AudioEngine.sfx.wave();
+    // WOW: wave clear cinematic — slow-mo + confetti + fanfare + VICTORY + vá cửa sổ từng vết
+    if (window.Cinema) {
+      try {
+        const b = bounds(), patches = [];
+        for (let i = 0; i < 4; i++) {
+          const side = (Math.random() * 4) | 0;
+          patches.push(side === 0 ? { x: rand(b.x, b.x + b.w), y: b.y }
+            : side === 1 ? { x: rand(b.x, b.x + b.w), y: b.y + b.h }
+            : side === 2 ? { x: b.x, y: rand(b.y, b.y + b.h) }
+            : { x: b.x + b.w, y: rand(b.y, b.y + b.h) });
+        }
+        Cinema.waveClear(G.wave, G.waveKills || 0, patches);
+      } catch (err) {
+        setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? "Boss hạ! Chuẩn bị wave tiếp theo…" : "Chuẩn bị wave tiếp theo…");
+        AudioEngine.sfx.wave();
+      }
+    } else {
+      setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? "Boss hạ! Chuẩn bị wave tiếp theo…" : "Chuẩn bị wave tiếp theo…");
+      AudioEngine.sfx.wave();
+    }
+    try { AudioEngine.setMusicState("VICTORY"); } catch (err) {}
   }
 
   /* boss */
   const bs = G.boss;
   if (bs && !bs.dead) {
     bs.t += dt; bs.flash = Math.max(0, bs.flash - dt);
+    // WOW: boss phase mỗi 25% HP — flash + slow-mo + banner + palette shift
+    const frac = bs.hp / bs.maxHp;
+    const ph = frac > 0.75 ? 1 : frac > 0.5 ? 2 : frac > 0.25 ? 3 : 4;
+    if (ph !== bs.phase) {
+      bs.phase = ph;
+      if (window.Cinema) {
+        try {
+          Cinema.bossPhase(ph, {
+            x: bs.x, y: bs.y, r: bs.r,
+            clearBullets: () => {
+              G.ebullets.forEach(eb => burst(eb.x, eb.y, 3, ["#c084fc", "#fff"], 160));
+              G.ebullets = [];
+            },
+            onPalette: (n) => {
+              const pal = ["#8b2fc9", "#a855f7", "#d946ef", "#f43f5e"];
+              bs.color = pal[(n - 1) % pal.length] || bs.color;
+            }
+          });
+        } catch (err) {}
+      }
+    }
     const dx = s.x - bs.x, dy = s.y - bs.y, d = Math.hypot(dx, dy) || 1;
     bs.x += dx / d * 34 * dt; bs.y += dy / d * 34 * dt;
     bs.atkT -= dt; bs.spawnT -= dt; bs.slamT -= dt;
@@ -1577,11 +1778,14 @@ function update(dt) {
           G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 185, vy: Math.sin(a) * 185, r: 6, life: 4 });
         }
       }
-      AudioEngine.sfx.shoot(); G.shake = Math.max(G.shake, 4);
+      AudioEngine.sfx.shoot(); jxShake(2, 120, 1); // WOW tier: hit
     }
     if (bs.spawnT <= 0) { bs.spawnT = 6; bs.adds.forEach(t => spawnEnemy(t)); }
     if (bs.slamT <= 0) {
       bs.slamT = bs.shot === "spiral" ? 9 : 12;
+      addFloat(bs.x, bs.y - 70, "RẦM!!", "#ff5470", true);
+      shrinkWindow(bs.slam, Math.round(bs.slam * 0.75));
+      if (G.phase !== "play") return;
       // M4: 50% đòn nện → mưa mảnh vỡ (chỉ khi multi-window bật)
       const useDebris = typeof spawnDebris === "function" && typeof SAT_MODE !== "undefined" && SAT_MODE !== "off" && !SatManager.anyRole("debris") && Math.random() < 0.5;
       if (useDebris) spawnDebris();
@@ -1589,7 +1793,7 @@ function update(dt) {
         addFloat(bs.x, bs.y - 70, "RẦM!!", "#ff5470", true);
         shrinkWindow(bs.slam, Math.round(bs.slam * 0.75));
         if (G.phase !== "play") return;
-        AudioEngine.sfx.bigboom(); G.shake = 14; windowJitter(26);
+        AudioEngine.sfx.bigboom(); jxShake(8, 400, 8); windowJitter(26); // WOW tier: boss slam
         burst(bs.x, bs.y, 30, ["#c084fc", "#ff5470"], 380);
       }
     }
@@ -1643,6 +1847,13 @@ function damageEnemy(e, dmg, bl) {
   if (G.ship.slow) e.slowT = G.ship.slow;
   if (bl) { e.kbx += bl.vx * 0.12; e.kby += bl.vy * 0.12; }
   AudioEngine.sfx.hit();
+  // WOW: damage number (tự gộp theo target trong 120ms) + hit flash
+  if (window.Juice) {
+    try {
+      Juice.damageNumber(bl ? bl.x : e.x, (bl ? bl.y : e.y) - 8, dmg, "normal", e);
+      Juice.hitFlash(e);
+    } catch (err) {}
+  }
   burst(bl ? bl.x : e.x, bl ? bl.y : e.y, 5, ["#ffd166", "#fff"], 180);
   if (e.hp <= 0) killEnemy(e);
 }
@@ -1654,7 +1865,9 @@ function damageEnemy(e, dmg, bl) {
 function render(now) {
   const W = canvas.width, H = canvas.height, b = bounds(), s = G.ship;
   ctx.save();
-  if (G.shake > 0.3) ctx.translate(rand(-1, 1) * G.shake, rand(-1, 1) * G.shake);
+  // WOW: Juice camera shake (fallback: G.shake cũ)
+  if (window.Juice) { try { Juice.applyShake(ctx); } catch (e) {} }
+  else if (G.shake > 0.3) ctx.translate(rand(-1, 1) * G.shake, rand(-1, 1) * G.shake);
 
   // L0..L5: background theo art-direction (thay block "nền sao" cũ)
   if (typeof BG !== "undefined") BG.draw(ctx, now);
@@ -1672,6 +1885,8 @@ function render(now) {
   ctx.lineWidth = winPct < 0.35 ? 6 : 3;
   ctx.strokeRect(b.x + 3, b.y + 3, b.w - 6, b.h - 6);
 
+  // WOW: Cinema background layers (desat low-HP / boss arena ring / breather) — sau nền, trước entities
+  if (window.Cinema) { try { Cinema.drawBack(ctx, W, H); } catch (e) {} }
   // cửa sổ vệ tinh mô phỏng (fallback multi-window)
   SatManager.drawSims();
   if (typeof drawCracks === "function") drawCracks(); // M4: vết nứt viền arena
@@ -1719,10 +1934,25 @@ function render(now) {
   });
 
   // quái
-  G.enemies.forEach(e => {
-    if (e.dead) return;
+  // WOW: vẽ thêm entity đang chạy death-anim (~150ms sau khi chết)
+  const drawList = (G.dying && G.dying.length) ? G.enemies.concat(G.dying) : G.enemies;
+  drawList.forEach(e => {
+    if (e.dead && !e.jfDeath) return;
     ctx.save(); ctx.translate(e.x, e.y);
     if (e.flash > 0) ctx.globalAlpha = 0.45;
+    // WOW: spawn materialize (scale pop) + death-anim transform
+    if (window.Juice) {
+      try {
+        if (e.jfMat) { const msc = Juice.materializeScale(e); if (msc !== 1) ctx.scale(msc, msc); }
+        if (e.jfDeath) {
+          const dtr = Juice.deathTransform(e);
+          if (dtr) {
+            if (dtr.sx !== 1 || dtr.sy !== 1) ctx.scale(dtr.sx || 1, dtr.sy || 1);
+            if (dtr.alpha < 1) ctx.globalAlpha *= dtr.alpha;
+          }
+        }
+      } catch (err) {}
+    }
     const slow = e.slowT > 0;
     if (e.type === "chaser" || e.type === "mini") {
       ctx.rotate(Math.atan2(s.y - e.y, s.x - e.x));
@@ -1800,7 +2030,8 @@ function render(now) {
 
   // boss
   const bs = G.boss;
-  if (bs && !bs.dead) {
+  // WOW: intro cinematic tự vẽ boss qua drawBoss callback → game không vẽ đè
+  if (bs && !bs.dead && !G.bossCine) {
     ctx.save(); ctx.translate(bs.x, bs.y);
     if (bs.flash > 0) ctx.globalAlpha = 0.5;
     ctx.rotate(bs.t * 0.5);
@@ -1846,6 +2077,19 @@ function render(now) {
     ctx.fillText(f.text, f.x, f.y - f.t * 46);
   });
   ctx.globalAlpha = 1;
+  // WOW: Juice FX layers (particles / rings / ghosts / floats / damage numbers / warnings)
+  if (window.Juice) {
+    try {
+      Juice.drawParticles(ctx);
+      Juice.drawRings(ctx);
+      Juice.drawGhosts(ctx, drawShipGhost);
+      Juice.drawFloats(ctx);
+      Juice.drawDamageNumbers(ctx);
+      Juice.drawWarnings(ctx);
+    } catch (e) {}
+  }
+  // WOW: Cinema front — banner / combo / danger vignette / boss cinematic / draft dim
+  if (window.Cinema) { try { Cinema.drawFront(ctx, W, H, cineInfo().player); } catch (e) {} }
   ctx.restore();
 
   /* ---------- HUD ---------- */
@@ -1908,9 +2152,9 @@ function render(now) {
     }
     ctx.globalAlpha = 1; ctx.textAlign = "left";
   }
-  // vignette nguy hiểm
+  // vignette nguy hiểm (WOW: Cinema tự vẽ danger vignette + heartbeat khi có mặt)
   const danger = (s.hp === 1) || winPct < 0.25;
-  if (danger && G.phase === "play") {
+  if (!window.Cinema && danger && G.phase === "play") {
     const p = (Math.sin(now / 220) + 1) / 2;
     const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
     vg.addColorStop(0, "rgba(255,40,70,0)"); vg.addColorStop(1, `rgba(255,40,70,${0.18 + 0.22 * p})`);
@@ -1935,10 +2179,66 @@ function render(now) {
 
 /* ---------------- loop & boot ---------------- */
 function loop(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  if (G.phase === "play") update(dt);
+  const rawDt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  // WOW: Juice timescale (hit-stop / slow-mo) điều khiển dt gameplay
+  let dt = rawDt;
+  if (window.Juice) { try { dt = Juice.update(rawDt); } catch (e) { dt = rawDt; } }
+  // WOW: cinematic (boss intro/death) hoặc draft mở → pause gameplay
+  let cineLocked = false;
+  if (window.Cinema) { try { cineLocked = !!Cinema.locked; } catch (e) {} }
+  if (window.Juice && Juice.draftOpen) cineLocked = true;
+  if (G.phase === "play" && !cineLocked) update(dt);
+  // WOW: FX clock — warning/materialize/death-anim/particles chạy kể cả khi pause
+  if (window.Juice) { try { Juice.updateFx(rawDt); } catch (e) {} }
+  // WOW: Cinema clock — banner/combo/boss cine/heartbeat/trail (tự đọc info.player)
+  if (window.Cinema) { try { Cinema.update(rawDt, cineInfo()); } catch (e) {} }
+  // WOW: dọn entity khi death-anim chạy xong
+  if (G.dying && G.dying.length) { try { G.dying = G.dying.filter(e => e.jfDeath); } catch (e) {} }
+  // WOW: music state + background state mỗi 500ms
+  musicT += rawDt;
+  if (musicT >= 0.5) { musicT = 0; wowMusicTick(); }
   render(now);
   requestAnimationFrame(loop);
+}
+
+// WOW: info cho Cinema.update/drawFront — heartbeat + trail tự chạy bên trong
+function cineInfo() {
+  const s = G.ship;
+  return {
+    W: window.innerWidth, H: window.innerHeight,
+    player: s ? {
+      x: s.x, y: s.y, vx: 0, vy: 0, speed: s.moveSpeed || 0, rot: s.ang || 0, r: 13,
+      hp: s.hp, maxHp: s.maxHp, shieldT: s.shieldT || 0
+    } : null
+  };
+}
+
+// WOW: đồng bộ music state + background state (danger/lowhp/boss/breather)
+function wowMusicTick() {
+  const s = G.ship; if (!s) return;
+  const b = bounds();
+  const winPct = winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
+                            : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+  try {
+    if (window.Cinema) {
+      let st = "normal";
+      if (G.boss && !G.boss.dead) st = "boss";
+      else if (winPct < 0.3) st = "danger";
+      else if (s.hp === 1 || s.hp / s.maxHp < 0.3) st = "lowhp";
+      else if (G.waveClearShown && !G.enemies.length && !G.spawnQueue.length) st = "breather";
+      try { Cinema.bgState(st); } catch (e) {}
+    }
+  } catch (e) {}
+  try {
+    if (!window.AudioEngine || typeof AudioEngine.setMusicState !== "function") return;
+    if (G.phase !== "play") return;
+    const hp01 = clamp(s.hp / s.maxHp, 0, 1);
+    if (G.boss && !G.boss.dead) AudioEngine.setMusicState("BOSS");
+    else if (winPct < 0.3 || s.hp === 1) AudioEngine.setMusicState("DANGER", undefined, hp01);
+    else if (G.enemies.length >= 12) AudioEngine.setMusicState("COMBAT");
+    else if (G.enemies.length < 6) AudioEngine.setMusicState("CALM");
+    // 6–11 quái: giữ nguyên state hiện tại (tránh giật)
+  } catch (e) {}
 }
 if (bus) bus.postMessage({ type: "arena-open" });
 resetGame();

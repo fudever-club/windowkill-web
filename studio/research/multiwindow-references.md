@@ -1,1 +1,97 @@
-IyBOZ2hpw6puIGPhu6l1IG11bHRpLXdpbmRvdzogMiByZXBvIHRoYW0ga2jhuqNvCgpOZ8OgeTogMjAyNi0xMC0wMSDCtyBOZ8aw4budaSBn4butaTogQ0VPICjEkOG6t25nIFF1YW5nIE5o4bqtdCkKTeG7pWMgdGnDqnU6IHLDunQgYsOgaSBo4buNYyBj4bqjaSB0aGnhu4duIHNhdGVsbGl0ZSBsaWZlY3ljbGUgdsOgIMSR4buZIOG7lW4gxJHhu4tuaCBj4bunYSBXSU5ET1dLSUxMLgoKLS0tCgojIyAxLiBjaHVucWl1eWl5dS9tdWx0aS13aW5kb3ctcG9uZy1nYW1lIChQb25nIHh1ecOqbiBj4butYSBz4buVKQoKKirDnSB0xrDhu59uZzoqKiBN4bufIGPDuW5nIDEgcGFnZSB0csOqbiBuaGnhu4F1IGPhu61hIHPhu5UvdGFiLCBxdeG6oyBiw7NuZyBQb25nICJiYXkgeHV5w6puIiBxdWEgY8OhYyBj4butYSBz4buVIG5o4budIHThu41hIMSR4buZIG3DoG4gaMOsbmggY2h1bmcuCgoqKkPGoSBjaOG6vyDEkeG7k25nIGLhu5kgKHThuqV0IGPhuqMgcXVhIGBsb2NhbFN0b3JhZ2VgLCBLSMOUTkcgZMO5bmcgQnJvYWRjYXN0Q2hhbm5lbCk6KioKLSBgV2luZG93TWFuYWdlci5qc2AgZ2nhu68gcmVnaXN0cnkgdHJ1bmcgdMOibToga2V5IGB3aW5kb3dzYCA9IEpTT04gYXJyYXkgYFt7aWQsIHNoYXBlOnt4LHksdyxofSwgbWV0YURhdGF9XWAsIGtleSBgY291bnRgID0gYuG7mSDEkeG6v20gSUQgdMSDbmcgxJHGoW4gxJFp4buHdS4KLSBN4buXaSBj4butYSBz4buVIGBpbml0KClgOiBs4bqleSBgY291bnRgLCArMSBsw6BtIElEIGPhu6dhIG3DrG5oLCBwdXNoIGVudHJ5IGB7aWQsIHNoYXBlLCBtZXRhRGF0YX1gIHbDoG8gcmVnaXN0cnkuCi0gTeG7l2kgZnJhbWUgYHVwZGF0ZSgpYDogxJHhu41jIGB3aW5kb3cuc2NyZWVuTGVmdC9zY3JlZW5Ub3AvaW5uZXJXaWR0aC9pbm5lckhlaWdodGAsIG7hur91IGtow6FjIGNhY2hlIHRow6wgZ2hpIMSRw6ggcmVnaXN0cnkg4oaSIGPDoWMgY+G7rWEgc+G7lSBraMOhYyBuaOG6rW4gcXVhIHPhu7Ega2nhu4duIGBzdG9yYWdlYC4KLSAyIGNhbGxiYWNrOiBgd2luQ2hhbmdlQ2FsbGJhY2tgICh0aMOgbmggdmnDqm4gxJHhu5VpOiBz4buRIGzGsOG7o25nL0lEKSB2w6AgYHdpblNoYXBlQ2hhbmdlQ2FsbGJhY2tgIChkaSBjaHV54buDbi9yZXNpemUpLgotIGBiZWZvcmV1bmxvYWRgOiB04buxIHjDs2EgbcOsbmgga2jhu49pIHJlZ2lzdHJ5LgotIEdhbWUgc3RhdGU6ICoqa2jDtG5nIGPDsyBtYXN0ZXIgZWxlY3Rpb24uKiogQ+G7rWEgc+G7lSBuw6BvIGNsaWNrIHN0YXJ0IHRow6wgc2V0IGBtZXRhRGF0YS5zdGFydD10cnVlYCB2w6AgKipnaGkgYGJhbGxYL2JhbGxZYCB2w6BvIG1ldGFkYXRhIGPhu6dhIGNow61uaCBuw7MgbeG7l2kgZnJhbWUqKiAodmnhur90IG5nYXkgdHJvbmcgaMOgbSBgZHJhd1JlY3RgISk7IG3hu41pIGPhu61hIHPhu5UgxJHhu41jIHJlZ2lzdHJ5LCB0aOG6pXkgYGJhbGxYYCB0aMOsIMSRw6ggbMOqbiBiw7NuZyBsb2NhbCAobGFzdC13cml0ZXItd2lucykuIFBhZGRsZTogYG1vdXNlbW92ZWAg4oaSIGdoaSBgcGxheWVyWWAgdsOgbyBtZXRhZGF0YS4KLSDEkOG7k25nIGjhu5MgY2h1bmc6IGBnZXRUaW1lKClgID0gc+G7kSBnacOieSB04burIDBoIGjDtG0gbmF5IOKAlCBt4buNaSBj4butYSBz4buVIGTDuW5nIGNodW5nIHdhbGwtY2xvY2sgxJHhu4MgYW5pbWF0aW9uIGRldGVybWluaXN0aWMsIGtow7RuZyBj4bqnbiBtYXN0ZXIgY2xvY2suCi0gRXNjYXBlIGhhdGNoOiBgP2NsZWFyYCDihpIgYGxvY2FsU3RvcmFnZS5jbGVhcigpYC4KLSBHdWFyZDoga2jDtG5nIGBpbml0KClgIGtoaSB0YWIgxJFhbmcgaGlkZGVuIChjaOG7kW5nIGJyb3dzZXIgcHJlcmVuZGVyIMSRxINuZyBrw70gMiBs4bqnbikuCgoqKsSQaeG7g20geeG6v3UgKMSR4burbmcgY29weSk6KioKLSBgaW5pdCgpYCBn4buNaSBgbG9jYWxTdG9yYWdlLmNsZWFyKClgIOKAlCBt4bufIGPhu61hIHPhu5UgdGjhu6kgMiBsw6AgKip4w7NhIGx1w7RuIMSRxINuZyBrw70gY+G7p2EgY+G7rWEgc+G7lSAxKiogKGJ1ZyBkZW1vKS4KLSBHaGkgc3RhdGUgdHJvbmcgaMOgbSB24bq9IChgZHJhd1JlY3RgIGdoaSBgYmFsbFhgKSDigJQgbOG6q24gc2ltL3JlbmRlci4KLSBN4buNaSBj4butYSBz4buVIHbhu6thIHThu7Egc2ltdWxhdGUgYsOzbmcgduG7q2EgYuG7iyDEkcOoIGdpw6EgdHLhu4sgdOG7qyByZWdpc3RyeSDihpIgaml0dGVyLgotIERlcmVnaXN0ZXIgY2jhu4kgZOG7sWEgdsOgbyBgYmVmb3JldW5sb2FkYCDigJQgY3Jhc2gvdGFza2tpbGwgbMOgIHJlZ2lzdHJ5IHRo4buRaSwga2jDtG5nIGPDsyBoZWFydGJlYXQuCi0gYGxvY2FsU3RvcmFnZWAgd3JpdGUgbeG7l2kgZnJhbWUgKyBgc3RvcmFnZWAgZXZlbnQgYXN5bmMgKyBraMO0bmcgZmlyZSDhu58gdGFiIGdoaSDihpIga2jDtG5nIGjhu6NwIGNobyByZWFsdGltZSB04bqnbiBzdeG6pXQgY2FvLgoKIyMgMi4gYmdzdGFhbC9tdWx0aXBsZVdpbmRvdzNkU2NlbmUgKGJvaWxlcnBsYXRlIFRocmVlLmpzKQoKKirDnSB0xrDhu59uZzoqKiBN4buZdCBzY2VuZSAzRCBkdXkgbmjhuqV0ICJ0cuG6o2kgZMOgaSIgcXVhIG5oaeG7gXUgY+G7rWEgc+G7lSDigJQgbeG7l2kgY+G7rWEgc+G7lSByZW5kZXIgxJHDum5nIHBo4bqnbiBzY2VuZSB0xrDGoW5nIOG7qW5nIHbhu4sgdHLDrSBtw6BuIGjDrG5oIGPhu6dhIG7Dsy4KCioqQ8ahIGNo4bq/OioqIGBXaW5kb3dNYW5hZ2VyLmpzYCBn4bqnbiBuaMawIGNvcHkgY+G7p2EgYuG6o24gUG9uZyAoxJHDoyAqKmLhu48qKiBidWcgYGxvY2FsU3RvcmFnZS5jbGVhcigpYCB0cm9uZyBgaW5pdGAsIGNo4buJIGNsZWFyIGtoaSBgP2NsZWFyYCDigJQgxJHDonkgbeG7m2kgbMOgIGLhuqNuIG7Dqm4gdGhhbSBraOG6o28pLgotIFbhuqtuOiByZWdpc3RyeSBgd2luZG93c2AgKyBgY291bnRgLCBgc3RvcmFnZWAgZXZlbnQsIDIgY2FsbGJhY2ssIGBiZWZvcmV1bmxvYWRgIGRlcmVnaXN0ZXIuCi0gKipTY2VuZSBvZmZzZXQgdHJpY2s6KiogYHdvcmxkLnBvc2l0aW9uID0gKC13aW5kb3cuc2NyZWVuWCwgLXdpbmRvdy5zY3JlZW5ZKWAgduG7m2kgZWFzaW5nIGBmYWxsb2ZmIDAuMDVgIOKGkiDhuqNvIGdpw6FjIDEgc2NlbmUgbGnDqm4gdOG7pWMuCi0gKipW4buLIHRyw60gdMawxqFuZyDEkeG7kWkgZ2nhu69hIGPDoWMgY+G7rWEgc+G7lToqKiBt4buXaSBj4butYSBz4buVIMSR4buNYyByZWdpc3RyeSwgduG6vSAxIGN1YmUgdOG6oWkgdMOibSBt4buXaSBlbnRyeSAoYHggKyB3LzIsIHkgKyBoLzJgKSwgZWFzaW5nIHRoZW8ga2hpIGPhu61hIHPhu5Uga2jDoWMgZGkgY2h1eeG7g24uIFThu6sgcmVnaXN0cnksIHZlY3RvciBraG/huqNuZyBjw6FjaCBnaeG7r2EgMiBtw6lwIGPhu61hIHPhu5UgYuG6pXQga+G7syB0w61uaCDEkcaw4bujYyBi4bqxbmcgcGjDqXAgdHLhu6sgxJHGoW4gZ2nhuqNuIOKAlCBraMO0bmcgY+G6p24gQVBJIMSR4bq3YyBiaeG7h3QuCi0gRGVsYXkgYGluaXRgIDUwMG1zIHbDrCBgc2NyZWVuWGAgYsOhbyBzYWkgbMO6YyBwYWdlIG3hu5tpIGxvYWQgKGdoaSBjaMO6IHRyb25nIGNvZGUpLgoKKirEkGnhu4NtIHnhur91OioqIGdp4buRbmcgYuG6o24gUG9uZyDigJQga2jDtG5nIG1hc3RlciBlbGVjdGlvbiwga2jDtG5nIGhlYXJ0YmVhdCwgcmVnaXN0cnkgdGjhu5FpIGtoaSBjcmFzaC4KCiMjIDMuIMSQw61uaCBjaMOtbmg6IGtow7RuZyByZXBvIG7DoG8gY8OzICJtYXN0ZXIgZWxlY3Rpb24iCgpD4bqjIDIgcmVwbyDEkeG7gXUgKipraMO0bmcqKiBi4bqndSBtYXN0ZXIuICJNYXN0ZXIiIGNo4buJIGzDoCBpbXBsaWNpdDogYWkgZ2hpIGN14buRaSBjw7luZyB0aOG6r25nIChwb25nKSAvIG3hu5dpIGPhu61hIHPhu5UgdOG7sSByZW5kZXIgcGjhuqduIG3DrG5oICgzRCkuIEtp4bq/biB0csO6YyAqKm1haW4tYXV0aG9yaXR5KiogY+G7p2EgV0lORE9XS0lMTCAoZ2FtZS5odG1sIGdp4buvIHNpbSwgc2F0ZWxsaXRlIGNo4buJIHJlbmRlcikgdGjhu7FjIHJhIHPhuqFjaCBoxqFuIGPhuqMgMiDigJQgZ2nhu68gbmd1ecOqbiwga2jDtG5nIGPhuqduIGjhu41jIGVsZWN0aW9uLgoKIyMgNC4gV0lORE9XS0lMTCBoaeG7h24gdOG6oWkgKMSR4buDIHNvIHPDoW5oKQoKLSBNYWluID0gYXV0aG9yaXR5IGR1eSBuaOG6pXQ7IGBzYXRzOiBNYXBgIGluLW1lbW9yeSAqKmNo4buJIOG7nyBtYWluKio7IHNhdGVsbGl0ZSBsw6AgZHVtYiByZW5kZXJlci4KLSBHaWFvIHRp4bq/cCByZWFsdGltZSBxdWEgYEJyb2FkY2FzdENoYW5uZWwoIndpbmRvd2tpbGxfYnVzIilgIOKAlCDEkcO6bmcgxJHhuq9uLCBuaGFuaCBoxqFuIGBzdG9yYWdlYCBldmVudCBjaG8gcGVyLWZyYW1lLgotIEluaXQgcXVhIHF1ZXJ5IHBhcmFtcyAoYHJvbGUvaHAvY29sb3IvbGFiZWwvZW5yYCk7IGxpZmVjeWNsZSBgc2F0LXJlYWR5YCAobG9hZCkg4oaSIGBzYXQtYnllYCAoYGJlZm9yZXVubG9hZGAsID0gdXNlciDEkcOzbmcgdGF5IOKGkiBwaOG6oXQpLgotIFByb2JlIGBjYW5Nb3ZlYCBi4bqxbmcgYG1vdmVCeWAgdGVzdDsgY8OzIHNpbXVsYXRpb24gZmFsbGJhY2suCi0gKipM4buXIGjhu5VuZyBsaWZlY3ljbGUgaGnhu4duIHThuqFpOioqCiAgMS4gS2jDtG5nIGhlYXJ0YmVhdCDigJQgYGJlZm9yZXVubG9hZGAga2jDtG5nIHBo4bqjaSBsw7pjIG7DoG8gY8WpbmcgY2jhuqF5IChjcmFzaCwgdGFza2tpbGwsIG1vYmlsZSkg4oaSIGVudHJ5IHRo4buRaSB0cm9uZyBgc2F0c2AuCiAgMi4gTWFpbiBraMO0bmcgYmnhur90IHBvcHVwICoqdGjhu7FjIHPhu7EqKiDhu58gxJHDonUg4oCUIGNo4buJIGfhu61pIGBzYXQtc3RlZXJgICh2eCx2eSkgcuG7k2kgInRpbiIgbMOgIG7DsyDEkWkgxJHDum5nOyBraMO0bmcgdmVyaWZ5IHbhu4sgdHLDrSB0aOG6rXQsIGtow7RuZyBwaMOhdCBoaeG7h24gdXNlciBrw6lvIHBvcHVwIGLhurFuZyB0YXkuCiAgMy4gU2F0ZWxsaXRlIG3hu5MgY8O0aTogbWFpbiDEkcOzbmcvY3Jhc2gg4oaSIHBvcHVwIHNhdGVsbGl0ZSBz4buRbmcgdsahIHbhuqluLCBraMO0bmcgdOG7sSDEkcOzbmcgKGNo4buJIHThu7EgxJHDs25nIGtoaSDEkWFuZyBgZHlpbmdgKS4KICA0LiBgc2F0LXJlYWR5YCBwb3N0IG5nYXkga2hpIHNjcmlwdCBwYXJzZSDigJQgYHNjcmVlblhgIGPDsyB0aOG7gyBzYWkgbMO6YyDEkeG6p3UgKMSRw7puZyBuaMawIGdoaSBjaMO6IGPhu6dhIGJnc3RhYWwpLCB2w6AgcHJlcmVuZGVyIGPDsyB0aOG7gyDEkcSDbmcga8O9IHRyw7luZy4KCi0tLQoKIyMgNS4gS0hVWeG6vk4gTkdI4buKIEPhu6QgVEjhu4IgY2hvIFdJTkRPV0tJTEwKCiMjIyBOw6puIGzDoG0gKMawdSB0acOqbikKCioqUDAg4oCUIEhlYXJ0YmVhdCArIHN0YWxlIHN3ZWVwIChj4bqjIDIgcmVwbyDEkeG7gXUgdGhp4bq/dSwgbcOsbmggbMOgbSB04buRdCBoxqFuIGjhu40pOioqCi0gc2F0ZWxsaXRlOiBt4buXaSAzcyBwb3N0IGB7dHlwZToic2F0LXBpbmciLCBpZCwgc2hhcGU6e3g6c2NyZWVuWCwgeTpzY3JlZW5ZLCB3OmlubmVyV2lkdGgsIGg6aW5uZXJIZWlnaHR9fWAgcXVhIGJ1cyBjw7Mgc+G6tW4uCi0gbWFpbjogbMawdSBgc2F0Lmxhc3RTZWVuYDsgc3dlZXAgbeG7l2kgNXMsIHjDs2EgZW50cnkgcXXDoSAxMHMga2jDtG5nIHBpbmcgKGNvaSBuaMawIGNo4bq/dCwgKipraMO0bmcqKiB0w61uaCBwaOG6oXQgbWFudWFsIG5oxrAgYHNhdC1ieWVgKS4KLSBGaXggxJHDum5nIGzhu5cgaOG7lW5nICMxLCBjaGkgcGjDrSB+MTUgZMOybmcuCgoqKlAwIOKAlCBTZWxmLXJlcG9ydGVkIHNoYXBlIChwYXR0ZXJuIFdpbmRvd01hbmFnZXIsIG5oxrBuZyBxdWEgQnJvYWRjYXN0Q2hhbm5lbCB0aGF5IHbDrCBsb2NhbFN0b3JhZ2UpOioqCi0gRMO5bmcgbHXDtG4gYHNoYXBlYCB0cm9uZyBgc2F0LXBpbmdgIOKGkiBtYWluIGJp4bq/dCB24buLIHRyw60gdGjhuq10IGPhu6dhIHBvcHVwLgotIE3hu58ga2jDs2EgZ2FtZXBsYXkgbeG7m2k6IE03IGxvdmVyLW1lcmdlIGtoaSAyIHBvcHVwICoqZ+G6p24gbmhhdSoqICh0w61uaCBraG/huqNuZyBjw6FjaCBtw6lwID0gdHLhu6sgdOG7jWEgxJHhu5ksIG5oxrAgY8OhY2ggYuG6o24gM0QgxJHhurd0IGN1YmUpLCBNNCBkZWJyaXMgdGVsZWdyYXBoIGNow61uaCB4w6FjLCBwaMOhdCBoaeG7h24gdXNlciBrw6lvIHBvcHVwIGLhurFuZyB0YXkgKHNoYXBlIMSR4buVaSBtw6Aga2jDtG5nIGRvIGBzYXQtc3RlZXJgKS4KLSBHaeG7ryBCQyBjaG8gcmVhbHRpbWUgKMSRYW5nIMSRw7puZyk7ICoqxJHhu6tuZyoqIGNodXnhu4NuIHNhbmcgbG9jYWxTdG9yYWdlIGNobyBwZXItZnJhbWUg4oCUIGBzdG9yYWdlYCBldmVudCBhc3luYyArIHNlcmlhbGl6ZSBKU09OIG3hu5dpIGZyYW1lID0gY2jhuq1tIHbDoCBnaeG6rXQuCgoqKlAxIOKAlCBTYXRlbGxpdGUgdOG7sSBzw6F0IGtoaSBtYWluIG3huqV0IHTDrWNoIChs4buXIGjhu5VuZyAjMyk6KioKLSBzYXRlbGxpdGU6IG3hu5dpIGBzYXQtcGluZ2AgY2jhu50gbWFpbiB0cuG6oyBgc2F0LWFja2AgKGhv4bq3YyBuZ2hlIGBzYXQtcm9zdGVyYCDEkeG7i25oIGvhu7MgdOG7qyBtYWluKTsgcXXDoSAyIGvhu7Mga2jDtG5nIHRo4bqleSDihpIgYHdpbmRvdy5jbG9zZSgpYC4KLSDEkMahbiBnaeG6o24gaMahbjogbWFpbiBicm9hZGNhc3QgYHt0eXBlOiJzYXQtcm9zdGVyIiwgaWRzOlsuLi5dfWAgbeG7l2kgNXM7IHNhdGVsbGl0ZSBuw6BvIGtow7RuZyB0aOG6pXkgSUQgbcOsbmggdHJvbmcgMiBr4buzIGxpw6puIHRp4bq/cCDihpIgdOG7sSDEkcOzbmcuCgoqKlAxIOKAlCBEZWxheWVkICsgZ3VhcmRlZCBpbml0ICho4buNYyBiZ3N0YWFsKToqKgotIHNhdGVsbGl0ZTogxJHhu6tuZyBgcG9zdCBzYXQtcmVhZHlgIG5nYXkga2hpIHBhcnNlLiBDaOG7nSBgd2luZG93Lm9ubG9hZGAgKyB+NDAwbXMgKHNjcmVlblgg4buVbiDEkeG7i25oKSwgdsOgIHNraXAgbuG6v3UgYGRvY3VtZW50LmhpZGRlbmAgKGNo4buRbmcgcHJlcmVuZGVyIMSRxINuZyBrw70gdHLDuW5nKS4gTWFpbiDEkcOjIHThuqFvIGVudHJ5IGzDumMgYHdpbmRvdy5vcGVuYCBuw6puIGtow7RuZyBz4bujIG3huqV0IGzGsOG7o3QuCgojIyMgQ8OzIHRo4buDIGzDoG0gc2F1IChvcHRpb25hbCkKCi0gKipTaGFyZWQgd2FsbC1jbG9jayoqIChnacOieSB04burIDBoIG5oxrAgYuG6o24gUG9uZyk6IG7hur91IG114buRbiBhbmltYXRpb24gxJHhu5NuZyBi4buZIGdp4buvYSBjw6FjIHBvcHVwICh0ZWxlZ3JhcGggYmxpbmssIGJvb3Qgb3ZlcmxheSkgdGjDrCBt4buNaSBzYXRlbGxpdGUgZMO5bmcgY2h1bmcgbeG7kWMgdGjhu51pIGdpYW4gdGhheSB2w6wgYHBlcmZvcm1hbmNlLm5vdygpYCByacOqbmcgbOG6uy4gSGnhu4duIHThuqFpIGNoxrBhIGFpIHBow6BuIG7DoG4g4oaSIMSR4buDIGJhY2tsb2cuCi0gKipLZXkgcHJlZml4ICsgdmVyc2lvbioqIChgd2tfLi4uYCk6IGNo4buJIGtoaSBuw6BvIGTDuW5nIGxvY2FsU3RvcmFnZSBjaG8gY3Jvc3Mtd2luZG93IHN0YXRlOyBoaeG7h24gdOG6oWkgY2jGsGEgY+G6p24uCgojIyMgTsOqbiB0csOhbmggKGLDoGkgaOG7jWMgdOG7qyBidWcgY+G7p2EgaOG7jSkKCjEuICoqxJDhu6tuZyBgbG9jYWxTdG9yYWdlLmNsZWFyKClgIHRyb25nIGluaXQqKiAoYnVnIGLhuqNuIFBvbmcgeMOzYSByZWdpc3RyeSBj4butYSBz4buVIGtow6FjKS4KMi4gKirEkOG7q25nIGdoaSBzdGF0ZSB0cm9uZyBow6BtIHbhur0qKiAoUG9uZyBnaGkgYGJhbGxYYCB0cm9uZyBgZHJhd1JlY3RgKSDigJQgZ2nhu68gc2ltL3JlbmRlciB0w6FjaCBi4bqhY2ggbmjGsCBoaeG7h24gdOG6oWkuCjMuICoqxJDhu6tuZyBjaG8gbeG7jWkgY+G7rWEgc+G7lSBjw7luZyBzaW11bGF0ZSoqIChQb25nIHbhu6thIHNpbSBsb2NhbCB24burYSBi4buLIMSRw6gg4oaSIGppdHRlcikg4oCUIGdp4buvIG1haW4tYXV0aG9yaXR5Lgo0LiAqKsSQ4burbmcgZMO5bmcgbG9jYWxTdG9yYWdlIGzDoG0gYnVzIHJlYWx0aW1lKiog4oCUIEJDIGhp4buHbiB04bqhaSBuaGFuaCBoxqFuLCBnaeG7ryBuZ3V5w6puLgo1LiAqKsSQ4burbmcgaW1wbGVtZW50IG1hc3RlciBlbGVjdGlvbioqIOKAlCBraMO0bmcgY+G6p247IG1haW4gd2luZG93IGzDoCBtYXN0ZXIgdOG7sSBuaGnDqm4uCgojIyMgUGF0dGVybiBjw7MgdGjhu4MgY29weS9hZGFwdCBuZ3V5w6puIG3huqt1CgotIGBXaW5kb3dNYW5hZ2VyYCAofjkwIGTDsm5nLCBi4bqjbiAzRCkg4oaSIGFkYXB0IHRow6BuaCBganMvc2F0LXJlZ2lzdHJ5LmpzYCBwaMOtYSBtYWluOiBjw7luZyBBUEkgYGdldFdpbmRvd3MoKS9nZXRXaW5kb3dJbmRleEZyb21JZCgpL3NldFdpblNoYXBlQ2hhbmdlQ2FsbGJhY2soKWAgbmjGsG5nIG5ndeG7k24gc2hhcGUgbMOgIGBzYXQtcGluZ2AgcXVhIEJDIHRoYXkgdsOsIGBzdG9yYWdlYCBldmVudC4gQ2hvIHBow6lwIHNhdSBuw6B5IG3hu58gcuG7mW5nICJzYXRlbGxpdGUgYmnhur90IG5oYXUiIG3DoCBraMO0bmcgc+G7rWEgbmhp4buBdS4KLSBDw7RuZyB0aOG7qWMgZWRnZS1kaXN0YW5jZTogYGRpc3QgPSBtYXgoMCwgKGIueCAtIChhLnggKyBhLncpKSlgIHRoZW8gdOG7q25nIHRy4bulYyDigJQgZMO5bmcgY2hvIHRyaWdnZXIgTTcgbWVyZ2UgcHJveGltaXR5Lgo=
+# Nghiên cứu multi-window: 2 repo tham khảo
+
+Ngày: 2026-10-01 · Người gửi: CEO (Đặng Quang Nhật)
+Mục tiêu: rút bài học cải thiện satellite lifecycle và độ ổn định của WINDOWKILL.
+
+---
+
+## 1. chunqiuyiyu/multi-window-pong-game (Pong xuyên cửa sổ)
+
+**Ý tưởng:** Mở cùng 1 page trên nhiều cửa sổ/tab, quả bóng Pong "bay xuyên" qua các cửa sổ nhờ tọa độ màn hình chung.
+
+**Cơ chế đồng bộ (tất cả qua `localStorage`, KHÔNG dùng BroadcastChannel):**
+- `WindowManager.js` giữ registry trung tâm: key `windows` = JSON array `[{id, shape:{x,y,w,h}, metaData}]`, key `count` = bộ đếm ID tăng đơn điệu.
+- Mỗi cửa sổ `init()`: lấy `count`, +1 làm ID của mình, push entry `{id, shape, metaData}` vào registry.
+- Mỗi frame `update()`: đọc `window.screenLeft/screenTop/innerWidth/innerHeight`, nếu khác cache thì ghi đè registry → các cửa sổ khác nhận qua sự kiện `storage`.
+- 2 callback: `winChangeCallback` (thành viên đổi: số lượng/ID) và `winShapeChangeCallback` (di chuyển/resize).
+- `beforeunload`: tự xóa mình khỏi registry.
+- Game state: **không có master election.** Cửa sổ nào click start thì set `metaData.start=true` và **ghi `ballX/ballY` vào metadata của chính nó mỗi frame** (viết ngay trong hàm `drawRect`!); mọi cửa sổ đọc registry, thấy `ballX` thì đè lên bóng local (last-writer-wins). Paddle: `mousemove` → ghi `playerY` vào metadata.
+- Đồng hồ chung: `getTime()` = số giây từ 0h hôm nay — mọi cửa sổ dùng chung wall-clock để animation deterministic, không cần master clock.
+- Escape hatch: `?clear` → `localStorage.clear()`.
+- Guard: không `init()` khi tab đang hidden (chống browser prerender đăng ký 2 lần).
+
+**Điểm yếu (đừng copy):**
+- `init()` gọi `localStorage.clear()` — mở cửa sổ thứ 2 là **xóa luôn đăng ký của cửa sổ 1** (bug demo).
+- Ghi state trong hàm vẽ (`drawRect` ghi `ballX`) — lẫn sim/render.
+- Mọi cửa sổ vừa tự simulate bóng vừa bị đè giá trị từ registry → jitter.
+- Deregister chỉ dựa vào `beforeunload` — crash/taskkill là registry thối, không có heartbeat.
+- `localStorage` write mỗi frame + `storage` event async + không fire ở tab ghi → không hợp cho realtime tần suất cao.
+
+## 2. bgstaal/multipleWindow3dScene (boilerplate Three.js)
+
+**Ý tưởng:** Một scene 3D duy nhất "trải dài" qua nhiều cửa sổ — mỗi cửa sổ render đúng phần scene tương ứng vị trí màn hình của nó.
+
+**Cơ chế:** `WindowManager.js` gần như copy của bản Pong (đã **bỏ** bug `localStorage.clear()` trong `init`, chỉ clear khi `?clear` — đây mới là bản nên tham khảo).
+- Vẫn: registry `windows` + `count`, `storage` event, 2 callback, `beforeunload` deregister.
+- **Scene offset trick:** `world.position = (-window.screenX, -window.screenY)` với easing `falloff 0.05` → ảo giác 1 scene liên tục.
+- **Vị trí tương đối giữa các cửa sổ:** mỗi cửa sổ đọc registry, vẽ 1 cube tại tâm mỗi entry (`x + w/2, y + h/2`), easing theo khi cửa sổ khác di chuyển. Từ registry, vector khoảng cách giữa 2 mép cửa sổ bất kỳ tính được bằng phép trừ đơn giản — không cần API đặc biệt.
+- Delay `init` 500ms vì `screenX` báo sai lúc page mới load (ghi chú trong code).
+
+**Điểm yếu:** giống bản Pong — không master election, không heartbeat, registry thối khi crash.
+
+## 3. Đính chính: không repo nào có "master election"
+
+Cả 2 repo đều **không** bầu master. "Master" chỉ là implicit: ai ghi cuối cùng thắng (pong) / mỗi cửa sổ tự render phần mình (3D). Kiến trúc **main-authority** của WINDOWKILL (game.html giữ sim, satellite chỉ render) thực ra sạch hơn cả 2 — giữ nguyên, không cần học election.
+
+## 4. WINDOWKILL hiện tại (để so sánh)
+
+- Main = authority duy nhất; `sats: Map` in-memory **chỉ ở main**; satellite là dumb renderer.
+- Giao tiếp realtime qua `BroadcastChannel("windowkill_bus")` — đúng đắn, nhanh hơn `storage` event cho per-frame.
+- Init qua query params (`role/hp/color/label/enr`); lifecycle `sat-ready` (load) → `sat-bye` (`beforeunload`, = user đóng tay → phạt).
+- Probe `canMove` bằng `moveBy` test; có simulation fallback.
+- **Lỗ hổng lifecycle hiện tại:**
+  1. Không heartbeat — `beforeunload` không phải lúc nào cũng chạy (crash, taskkill, mobile) → entry thối trong `sats`.
+  2. Main không biết popup **thực sự** ở đâu — chỉ gửi `sat-steer` (vx,vy) rồi "tin" là nó đi đúng; không verify vị trí thật, không phát hiện user kéo popup bằng tay.
+  3. Satellite mồ côi: main đóng/crash → popup satellite sống vơ vẩn, không tự đóng (chỉ tự đóng khi đang `dying`).
+  4. `sat-ready` post ngay khi script parse — `screenX` có thể sai lúc đầu (đúng như ghi chú của bgstaal), và prerender có thể đăng ký trùng.
+
+---
+
+## 5. KHUYẾN NGHỊ CỤ THỂ cho WINDOWKILL
+
+### Nên làm (ưu tiên)
+
+**P0 — Heartbeat + stale sweep (cả 2 repo đều thiếu, mình làm tốt hơn họ):**
+- satellite: mỗi 3s post `{type:"sat-ping", id, shape:{x:screenX, y:screenY, w:innerWidth, h:innerHeight}}` qua bus có sẵn.
+- main: lưu `sat.lastSeen`; sweep mỗi 5s, xóa entry quá 10s không ping (coi như chết, **không** tính phạt manual như `sat-bye`).
+- Fix đúng lỗ hổng #1, chi phí ~15 dòng.
+
+**P0 — Self-reported shape (pattern WindowManager, nhưng qua BroadcastChannel thay vì localStorage):**
+- Dùng luôn `shape` trong `sat-ping` → main biết vị trí thật của popup.
+- Mở khóa gameplay mới: M7 lover-merge khi 2 popup **gần nhau** (tính khoảng cách mép = trừ tọa độ, như cách bản 3D đặt cube), M4 debris telegraph chính xác, phát hiện user kéo popup bằng tay (shape đổi mà không do `sat-steer`).
+- Giữ BC cho realtime (đang đúng); **đừng** chuyển sang localStorage cho per-frame — `storage` event async + serialize JSON mỗi frame = chậm và giật.
+
+**P1 — Satellite tự sát khi main mất tích (lỗ hổng #3):**
+- satellite: mỗi `sat-ping` chờ main trả `sat-ack` (hoặc nghe `sat-roster` định kỳ từ main); quá 2 kỳ không thấy → `window.close()`.
+- Đơn giản hơn: main broadcast `{type:"sat-roster", ids:[...]}` mỗi 5s; satellite nào không thấy ID mình trong 2 kỳ liên tiếp → tự đóng.
+
+**P1 — Delayed + guarded init (học bgstaal):**
+- satellite: đừng `post sat-ready` ngay khi parse. Chờ `window.onload` + ~400ms (screenX ổn định), và skip nếu `document.hidden` (chống prerender đăng ký trùng). Main đã tạo entry lúc `window.open` nên không sợ mất lượt.
+
+### Có thể làm sau (optional)
+
+- **Shared wall-clock** (giây từ 0h như bản Pong): nếu muốn animation đồng bộ giữa các popup (telegraph blink, boot overlay) thì mọi satellite dùng chung mốc thời gian thay vì `performance.now()` riêng lẻ. Hiện tại chưa ai phàn nàn → để backlog.
+- **Key prefix + version** (`wk_...`): chỉ khi nào dùng localStorage cho cross-window state; hiện tại chưa cần.
+
+### Nên tránh (bài học từ bug của họ)
+
+1. **Đừng `localStorage.clear()` trong init** (bug bản Pong xóa registry cửa sổ khác).
+2. **Đừng ghi state trong hàm vẽ** (Pong ghi `ballX` trong `drawRect`) — giữ sim/render tách bạch như hiện tại.
+3. **Đừng cho mọi cửa sổ cùng simulate** (Pong vừa sim local vừa bị đè → jitter) — giữ main-authority.
+4. **Đừng dùng localStorage làm bus realtime** — BC hiện tại nhanh hơn, giữ nguyên.
+5. **Đừng implement master election** — không cần; main window là master tự nhiên.
+
+### Pattern có thể copy/adapt nguyên mẫu
+
+- `WindowManager` (~90 dòng, bản 3D) → adapt thành `js/sat-registry.js` phía main: cùng API `getWindows()/getWindowIndexFromId()/setWinShapeChangeCallback()` nhưng nguồn shape là `sat-ping` qua BC thay vì `storage` event. Cho phép sau này mở rộng "satellite biết nhau" mà không sửa nhiều.
+- Công thức edge-distance: `dist = max(0, (b.x - (a.x + a.w)))` theo từng trục — dùng cho trigger M7 merge proximity.

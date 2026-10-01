@@ -348,6 +348,32 @@ const AudioEngine = (() => {
     click() { sfx.ui_click(); },
     crack() { sfx.gnaw(); }, // game.js (team/engineering) gọi khi chewer gặm viền
 
+    /* ---- SFX chain-popup sprint 2 (M7/M10/M9) — tông cartoon tinh nghịch ---- */
+    zap() { // M7: TÌNH YÊU SÉT ĐÁNH — sét đánh "chíu chíu" leo thang + tách
+      oneShot({ type: "pickup", cat: "pickup",
+        build(a, t, out, v) {
+          [880, 1174, 1568, 2093].forEach((f, i) =>
+            blip(a, t + i * 0.05, out, v, { f, dur: 0.09, type: "square", vol: 0.07 }));
+          noiseHit(a, t, out, v, { dur: 0.15, type: "highpass", f: 3000, vol: 0.06 });
+          return 0.4;
+        }});
+    },
+    boing() { // M10: gương phản đạn — nảy tưng tưng
+      oneShot({ type: "pickup", cat: "pickup",
+        build(a, t, out, v) {
+          blip(a, t, out, v, { f: 400, f1: 900, dur: 0.12, type: "sine", vol: 0.10 });
+          blip(a, t + 0.1, out, v, { f: 900, f1: 300, dur: 0.14, type: "sine", vol: 0.08 });
+          return 0.3;
+        }});
+    },
+    slurp() { // M9: hố đen nuốt quái — "rột!" hút xuống
+      oneShot({ type: "pickup", cat: "pickup",
+        build(a, t, out, v) {
+          blip(a, t, out, v, { f: 600, f1: 120, dur: 0.22, type: "sawtooth", vol: 0.07 });
+          return 0.28;
+        }});
+    },
+
     /* ---- 6 "giọng" quái chết — phân biệt bằng tai ---- */
     death(kind) {
       switch (kind) {

@@ -46,7 +46,7 @@
   .sub { color: #9db8d9; font-size: 16px; line-height: 1.7; max-width: 640px; margin: 0 auto; }
   .sub b { color: #cfe6ff; }
   .howto li { margin-bottom: 8px; font-size: 14.5px; color: #c8dcf5; line-height: 1.6; }
-  .diff-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
+  .diff-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
   .setrow { display: flex; align-items: center; justify-content: space-between; padding: 9px 2px; font-size: 15px; }
   .tgl { width: 52px; height: 28px; border-radius: 999px; border: none; cursor: pointer; background: #33415c; position: relative; transition: background .15s; }
   .tgl::after { content:''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
@@ -266,13 +266,13 @@
       </div>
     </div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Hiệu ứng hình ảnh</span>
-      <div class="row diff-btns" style="gap:8px">
+      <div class="row opt-btns" style="gap:8px">
         <button class="btn-ghost" data-fx="full">Đầy đủ</button>
         <button class="btn-ghost" data-fx="reduced">Giảm</button>
       </div>
     </div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-window"/></svg> Cửa sổ vệ tinh</span>
-      <div class="row diff-btns" style="gap:8px">
+      <div class="row opt-btns" style="gap:8px">
         <button class="btn-ghost" data-sat="auto">Tự động</button>
         <button class="btn-ghost" data-sat="sim">Luôn mô phỏng</button>
         <button class="btn-ghost" data-sat="off">Tắt</button>

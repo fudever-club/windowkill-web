@@ -83,8 +83,8 @@ const AudioEngine = (() => {
   return { setSettings, resume, tone, sfx, startMusic, stopMusic };
 })();
 
-/* Compat (team/engineering): menu.js gọi WKAudio.setMusic/setSfx/ensure —
-   alias sang AudioEngine để launcher boot được. */
+/* Compat (hotfix 2026-10-01): menu.js goi WKAudio.setMusic/setSfx/ensure —
+   alias sang AudioEngine de launcher boot duoc. */
 window.WKAudio = {
   setMusic: (v) => AudioEngine.setSettings({ music: !!v }),
   setSfx: (v) => AudioEngine.setSettings({ sfx: !!v }),

@@ -80,7 +80,8 @@
       const chip = document.createElement("button");
       chip.className = "pchip" + (p.id === activeId ? " on" : "");
       chip.innerHTML = `<svg class="av" aria-hidden="true"><use href="#${avatarOf(p, i)}"/></svg><span></span>`;
-      chip.querySelectorAll("span")[0].textContent = p.name;
+      const nameSpan = chip.querySelector("span");
+      if (nameSpan) nameSpan.textContent = p.name; // guard: markup đổi vẫn không crash
       chip.title = "Chơi với tài khoản này";
       chip.onclick = () => { activeId = p.id; saveProfiles(); Analytics.setProfile(p.id); renderAll(); };
       const del = document.createElement("span");
@@ -117,7 +118,7 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, diff: "normal", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, shake: true, diff: "normal", fx: "full", sat: "auto", analytics: true }, store.get("wk_settings", {}));
   const saveSettings = () => store.set("wk_settings", settings);
   function paintToggles() {
     $("tgl-music").classList.toggle("on", settings.music);
@@ -126,7 +127,16 @@
     const ta = $("tgl-analytics");
     if (ta) ta.classList.toggle("on", settings.analytics);
     document.querySelectorAll(".diff-btns .btn-ghost").forEach(b => b.classList.toggle("sel", b.dataset.diff === settings.diff));
+    document.querySelectorAll("[data-fx]").forEach(b => b.classList.toggle("sel", b.dataset.fx === settings.fx));
   }
+  document.querySelectorAll("[data-fx]").forEach(b => b.onclick = () => {
+    settings.fx = b.dataset.fx; saveSettings(); paintToggles();
+  });
+  document.querySelectorAll("[data-sat]").forEach(b => b.classList.toggle("sel", b.dataset.sat === settings.sat));
+  document.querySelectorAll("[data-sat]").forEach(b => b.onclick = () => {
+    settings.sat = b.dataset.sat; saveSettings();
+    document.querySelectorAll("[data-sat]").forEach(x => x.classList.toggle("sel", x === b));
+  });
   /* Analytics opt-out toggle — injected via DOM because index.html is frozen.
      Reuses the existing .setrow/.tgl styles. */
   function injectAnalyticsToggle() {
@@ -240,7 +250,8 @@
     if (p) { Analytics.setProfile(p.id); Analytics.track("game_start", { difficulty: settings.diff }); }
     const q = new URLSearchParams({
       diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
-      shake: settings.shake ? 1 : 0, profile: activeId,
+      shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
+      sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "auto", profile: activeId,
     }).toString();
     const w = window.open("game.html?" + q, "windowkill_arena", "width=980,height=700,left=120,top=60,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
     if (!w) $("popup-warn").style.display = "block";

@@ -1,1 +1,112 @@
-LyogV0lORE9XS0lMTCBXZWIgRWRpdGlvbiDigJQgU2VydmljZSBXb3JrZXIKICogQ2hp4bq/biBsxrDhu6NjOgogKiAgLSBzdGFsZS13aGlsZS1yZXZhbGlkYXRlIGNobyBzdGF0aWMgYXNzZXRzIChDU1MvSlMv4bqjbmgvaWNvbi9tYW5pZmVzdCkg4oCUIGNhY2hlIGPDsyB2ZXJzaW9uCiAqICAtIG5ldHdvcmstZmlyc3QgY2hvIHRyYW5nIEhUTUwgKG5hdmlnYXRpb24pIOKAlCBsdcO0biBs4bqleSBi4bqjbiBt4bubaSBraGkgb25saW5lCiAqICAtIG9mZmxpbmUgZmFsbGJhY2sgduG7gSBvZmZsaW5lLmh0bWwKICogS2jDtG5nIGNo4bqhbSB0w6BpIG5ndXnDqm4gY3Jvc3Mtb3JpZ2luLgogKi8KInVzZSBzdHJpY3QiOwoKY29uc3QgVkVSU0lPTiA9ICJ3aW5kb3draWxsLXYzIjsgLy8gYnVtcCAyMDI2LTEwLTAxOiB4w7NhIGNhY2hlIHYyIChQUiAjMjQ6IGJnbSBzdXNwZW5kL3Jlc3VtZSwgZnVsbHNjcmVlbiwgaGFuZG9mZiksIMOpcCB04bqjaSBt4bubaQpjb25zdCBTVEFUSUNfQ0FDSEUgPSBWRVJTSU9OICsgIi1zdGF0aWMiOwpjb25zdCBIVE1MX0NBQ0hFID0gVkVSU0lPTiArICItaHRtbCI7CmNvbnN0IE9GRkxJTkVfVVJMID0gIm9mZmxpbmUuaHRtbCI7Cgpjb25zdCBTVEFUSUNfQVNTRVRTID0gWwogICJjc3Mvc3R5bGUuY3NzIiwKICAianMvYXVkaW8uanMiLAogICJqcy9hcGkuanMiLAogICJqcy9tZW51LmpzIiwKICAianMvZ2FtZS5qcyIsCiAgImpzL3B3YS5qcyIsCiAgImpzL2FuYWx5dGljcy5qcyIsCiAgImpzL2JnbS5qcyIsCiAgImpzL2JnLmpzIiwKICAianMvanVpY2UuanMiLAogICJqcy9jaW5lbWEuanMiLAogICJtYW5pZmVzdC53ZWJtYW5pZmVzdCIsCiAgT0ZGTElORV9VUkwsCiAgImFzc2V0cy9mYXZpY29uLnBuZyIsCiAgImFzc2V0cy9oZXJvLmpwZyIsCiAgImFzc2V0cy9sb2dvLWxvY2t1cC53ZWJwIiwKICAiYXNzZXRzL29nLWJhbm5lci5qcGciLAogICJhc3NldHMvYnJhbmQvZGV2ZXItbG9nby5wbmciLAogICJhc3NldHMvaWNvbnMvaWNvbi0xOTIucG5nIiwKICAiYXNzZXRzL2ljb25zL2ljb24tNTEyLnBuZyIsCl07CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoImluc3RhbGwiLCAoZXZlbnQpID0+IHsKICBldmVudC53YWl0VW50aWwoCiAgICBjYWNoZXMKICAgICAgLm9wZW4oU1RBVElDX0NBQ0hFKQogICAgICAudGhlbigoY2FjaGUpID0+CiAgICAgICAgY2FjaGUuYWRkQWxsKAogICAgICAgICAgU1RBVElDX0FTU0VUUy5tYXAoKHUpID0+IG5ldyBSZXF1ZXN0KHUsIHsgY2FjaGU6ICJyZWxvYWQiIH0pKQogICAgICAgICkKICAgICAgKQogICAgICAudGhlbigoKSA9PiBzZWxmLnNraXBXYWl0aW5nKCkpCiAgKTsKfSk7CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoImFjdGl2YXRlIiwgKGV2ZW50KSA9PiB7CiAgZXZlbnQud2FpdFVudGlsKAogICAgY2FjaGVzCiAgICAgIC5rZXlzKCkKICAgICAgLnRoZW4oKGtleXMpID0+CiAgICAgICAgUHJvbWlzZS5hbGwoCiAgICAgICAgICBrZXlzCiAgICAgICAgICAgIC5maWx0ZXIoKGspID0+IGsuaW5kZXhPZigid2luZG93a2lsbC0iKSA9PT0gMCAmJiBrICE9PSBTVEFUSUNfQ0FDSEUgJiYgayAhPT0gSFRNTF9DQUNIRSkKICAgICAgICAgICAgLm1hcCgoaykgPT4gY2FjaGVzLmRlbGV0ZShrKSkKICAgICAgICApCiAgICAgICkKICAgICAgLnRoZW4oKCkgPT4gc2VsZi5jbGllbnRzLmNsYWltKCkpCiAgKTsKfSk7CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoIm1lc3NhZ2UiLCAoZXZlbnQpID0+IHsKICBpZiAoZXZlbnQuZGF0YSA9PT0gIlNLSVBfV0FJVElORyIpIHNlbGYuc2tpcFdhaXRpbmcoKTsKfSk7CgpmdW5jdGlvbiBwdXRJZk9rKGNhY2hlLCByZXEsIHJlcykgewogIGlmIChyZXMgJiYgcmVzLm9rICYmIHJlcS51cmwuaW5kZXhPZihzZWxmLmxvY2F0aW9uLm9yaWdpbikgPT09IDApIHsKICAgIGNhY2hlLnB1dChyZXEsIHJlcy5jbG9uZSgpKTsKICB9CiAgcmV0dXJuIHJlczsKfQoKLy8gTmF2aWdhdGlvbjogbmV0d29yay1maXJzdCwgZmFsbGJhY2sgY2FjaGUsIGN14buRaSBjw7luZyBvZmZsaW5lLmh0bWwKZnVuY3Rpb24gbmV0d29ya0ZpcnN0UGFnZShyZXEpIHsKICByZXR1cm4gY2FjaGVzLm9wZW4oSFRNTF9DQUNIRSkudGhlbigoY2FjaGUpID0+CiAgICBmZXRjaChyZXEpCiAgICAgIC50aGVuKChyZXMpID0+IHB1dElmT2soY2FjaGUsIHJlcSwgcmVzKSkKICAgICAgLmNhdGNoKCgpID0+CiAgICAgICAgY2FjaGUubWF0Y2gocmVxKS50aGVuKChoaXQpID0+IGhpdCB8fCBjYWNoZS5tYXRjaChPRkZMSU5FX1VSTCkpCiAgICAgICkKICApOwp9CgovLyBTdGF0aWM6IHN0YWxlLXdoaWxlLXJldmFsaWRhdGUg4oCUIHRy4bqjIGNhY2hlIG5nYXkgKG5oYW5oKSwgxJHhu5NuZyB0aOG7nWkgZmV0Y2ggYuG6o24gbeG7m2kKLy8gbmfhuqdtIMSR4buDIGzhuqduIHNhdSBkw7luZyBi4bqjbiBt4bubaSBuaOG6pXQuIEtow7RuZyBjw7JuIGvhurl0IEpTIGPFqSB2xKluaCB2aeG7hW4gc2F1IGRlcGxveS4KZnVuY3Rpb24gc3RhbGVXaGlsZVJldmFsaWRhdGUocmVxKSB7CiAgcmV0dXJuIGNhY2hlcy5vcGVuKFNUQVRJQ19DQUNIRSkudGhlbigoY2FjaGUpID0+CiAgICBjYWNoZS5tYXRjaChyZXEpLnRoZW4oKGhpdCkgPT4gewogICAgICBjb25zdCBuZXR3b3JrID0gZmV0Y2gocmVxKQogICAgICAgIC50aGVuKChyZXMpID0+IHB1dElmT2soY2FjaGUsIHJlcSwgcmVzKSkKICAgICAgICAuY2F0Y2goKCkgPT4gaGl0IHx8IGNhY2hlLm1hdGNoKE9GRkxJTkVfVVJMKSk7CiAgICAgIHJldHVybiBoaXQgfHwgbmV0d29yazsKICAgIH0pCiAgKTsKfQoKc2VsZi5hZGRFdmVudExpc3RlbmVyKCJmZXRjaCIsIChldmVudCkgPT4gewogIGNvbnN0IHJlcSA9IGV2ZW50LnJlcXVlc3Q7CiAgaWYgKHJlcS5tZXRob2QgIT09ICJHRVQiKSByZXR1cm47CiAgaWYgKHJlcS5oZWFkZXJzLmhhcygicmFuZ2UiKSkgcmV0dXJuOyAvLyBhdWRpbyBzZWVrOiDEkeG7gyBicm93c2VyIHThu7EgeOG7rSwga2jDtG5nIGNhY2hlIDIwNgogIGNvbnN0IHVybCA9IG5ldyBVUkwocmVxLnVybCk7CiAgaWYgKHVybC5vcmlnaW4gIT09IHNlbGYubG9jYXRpb24ub3JpZ2luKSByZXR1cm47IC8vIGNyb3NzLW9yaWdpbjoga2jDtG5nIGNo4bqhbQogIGlmIChyZXEubW9kZSA9PT0gIm5hdmlnYXRlIikgewogICAgZXZlbnQucmVzcG9uZFdpdGgobmV0d29ya0ZpcnN0UGFnZShyZXEpKTsKICAgIHJldHVybjsKICB9CiAgZXZlbnQucmVzcG9uZFdpdGgoc3RhbGVXaGlsZVJldmFsaWRhdGUocmVxKSk7Cn0pOwo=
+/* WINDOWKILL Web Edition — Service Worker
+ * Chiến lược:
+ *  - stale-while-revalidate cho static assets (CSS/JS/ảnh/icon/manifest) — cache có version
+ *  - network-first cho trang HTML (navigation) — luôn lấy bản mới khi online
+ *  - offline fallback về offline.html
+ * Không chạm tài nguyên cross-origin.
+ */
+"use strict";
+
+const VERSION = "windowkill-v3"; // bump 2026-10-01: xóa cache v2 (PR #24: bgm suspend/resume, fullscreen, handoff), ép tải mới
+const STATIC_CACHE = VERSION + "-static";
+const HTML_CACHE = VERSION + "-html";
+const OFFLINE_URL = "offline.html";
+
+const STATIC_ASSETS = [
+  "css/style.css",
+  "js/audio.js",
+  "js/api.js",
+  "js/menu.js",
+  "js/game.js",
+  "js/pwa.js",
+  "js/analytics.js",
+  "js/bgm.js",
+  "js/bg.js",
+  "js/juice.js",
+  "js/cinema.js",
+  "manifest.webmanifest",
+  OFFLINE_URL,
+  "assets/favicon.png",
+  "assets/hero.jpg",
+  "assets/logo-lockup.webp",
+  "assets/og-banner.jpg",
+  "assets/brand/dever-logo.png",
+  "assets/icons/icon-192.png",
+  "assets/icons/icon-512.png",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) =>
+        cache.addAll(
+          STATIC_ASSETS.map((u) => new Request(u, { cache: "reload" }))
+        )
+      )
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.indexOf("windowkill-") === 0 && k !== STATIC_CACHE && k !== HTML_CACHE)
+            .map((k) => caches.delete(k))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+function putIfOk(cache, req, res) {
+  if (res && res.ok && req.url.indexOf(self.location.origin) === 0) {
+    cache.put(req, res.clone());
+  }
+  return res;
+}
+
+// Navigation: network-first, fallback cache, cuối cùng offline.html
+function networkFirstPage(req) {
+  return caches.open(HTML_CACHE).then((cache) =>
+    fetch(req)
+      .then((res) => putIfOk(cache, req, res))
+      .catch(() =>
+        cache.match(req).then((hit) => hit || cache.match(OFFLINE_URL))
+      )
+  );
+}
+
+// Static: stale-while-revalidate — trả cache ngay (nhanh), đồng thời fetch bản mới
+// ngầm để lần sau dùng bản mới nhất. Không còn kẹt JS cũ vĩnh viễn sau deploy.
+function staleWhileRevalidate(req) {
+  return caches.open(STATIC_CACHE).then((cache) =>
+    cache.match(req).then((hit) => {
+      const network = fetch(req)
+        .then((res) => putIfOk(cache, req, res))
+        .catch(() => hit || cache.match(OFFLINE_URL));
+      return hit || network;
+    })
+  );
+}
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+  if (req.headers.has("range")) return; // audio seek: để browser tự xử, không cache 206
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // cross-origin: không chạm
+  if (req.mode === "navigate") {
+    event.respondWith(networkFirstPage(req));
+    return;
+  }
+  event.respondWith(staleWhileRevalidate(req));
+});

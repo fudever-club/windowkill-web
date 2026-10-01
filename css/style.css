@@ -139,3 +139,27 @@ button { font-family: inherit; }
   .cin-card:hover { transform: none; }
   .cin-card:hover .cin-card-ico { transform: none; }
 }
+
+/* ---------- Mobile HUD (feat/mobile-round2) ---------- */
+.hud-btn {
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px));
+  width: 44px; height: 44px; z-index: 15;
+  display: flex; align-items: center; justify-content: center;
+  background: #0d1626cc; border: 1px solid #2e6db488; border-radius: 12px;
+  color: #dbeafe; cursor: pointer; touch-action: manipulation;
+}
+.hud-btn .ic { width: 22px; height: 22px; }
+.hud-btn:active { background: #1a3a6e; transform: scale(0.94); }
+/* nút bấm: bỏ delay/zoom khi double-tap */
+button { touch-action: manipulation; }
+/* draft/overlay vừa màn hình nhỏ */
+@media (max-width: 480px) {
+  .overlay { padding: 12px; overflow-y: auto; justify-content: flex-start; padding-top: 7vh; }
+  .overlay h2 { font-size: 24px; }
+  .cards { gap: 10px; }
+  .card { width: 158px; padding: 14px 10px; }
+  .card .ico { font-size: 30px; }
+  .cin-draft-panel { padding: 18px 14px; }
+  .cin-card { width: 158px; padding: 14px 10px 12px; }
+  .cin-draft-title { font-size: 22px; letter-spacing: 3px; }
+}

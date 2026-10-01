@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WINDOWKILL — Vệ tinh</title>
+<link rel="stylesheet" href="css/roles.css">
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0a0618;
     font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;cursor:crosshair}
@@ -39,6 +40,7 @@
 const qp = new URLSearchParams(location.search);
 const ID = qp.get("id") || ("sat" + Math.random().toString(36).slice(2));
 const ROLE = qp.get("role") || "nest";
+document.body.dataset.role = ROLE; // DESIGN-SYSTEM v1.1: theme vệ tinh theo role
 let HP = Math.max(1, parseInt(qp.get("hp") || "6", 10) || 6);
 const MAXHP = HP;
 const COLOR = /^#[0-9a-fA-F]{6}$/.test(qp.get("color") || "") ? qp.get("color") : "#8b2fc9";

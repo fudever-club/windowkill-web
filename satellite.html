@@ -5,20 +5,26 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WINDOWKILL — Vệ tinh</title>
 <style>
+  /* Design tokens: --role được set từ JS theo màu role (nest tím, bom cam...) */
+  :root{--role:#8b2fc9}
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0a0618;
     font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;cursor:crosshair}
   canvas{display:block;width:100%;height:100%}
   #hp{position:fixed;top:6px;left:8px;right:8px;height:6px;background:#ffffff18;border-radius:3px;overflow:hidden}
-  #hpfill{height:100%;width:100%;background:#c084fc;border-radius:3px;transition:width .15s}
-  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:11px;letter-spacing:2px}
-  #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
+  #hpfill{height:100%;width:100%;background:var(--role);border-radius:3px;transition:width .15s}
+  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;
+    color:color-mix(in srgb, var(--role) 55%, #ffffffcc);font-size:11px;letter-spacing:2px}
+  #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px var(--role)}
+  /* viền glow theo role — mỗi vệ tinh một cá tính */
+  #glow{position:fixed;inset:0;pointer-events:none;z-index:5;
+    box-shadow:inset 0 0 70px color-mix(in srgb, var(--role) 38%, transparent)}
 
-  /* boot overlay (cinematics polish): overlay tim #7c3aed alpha .25 fade-in 200ms + logo pulse */
-  #boot{position:fixed;inset:0;background:rgba(124,58,237,.25);display:flex;flex-direction:column;
+  /* boot overlay: tint theo màu role, fade-in 200ms + logo pulse */
+  #boot{position:fixed;inset:0;background:color-mix(in srgb, var(--role) 25%, transparent);display:flex;flex-direction:column;
     gap:10px;align-items:center;justify-content:center;z-index:50;opacity:0;pointer-events:none;
     transition:opacity .2s ease-out}
   #boot.show{opacity:1}
-  #boot-logo{font-size:46px;color:#c084fc;line-height:1;animation:bootPulse .6s ease-in-out 1}
+  #boot-logo{font-size:46px;color:var(--role);line-height:1;animation:bootPulse .6s ease-in-out 1}
   #boot-txt{color:#e9d5ff;font-size:12px;letter-spacing:4px;font-weight:700}
   @keyframes bootPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
   @media (prefers-reduced-motion:reduce){#boot-logo{animation:none}#boot{transition:none}}
@@ -26,6 +32,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="glow" aria-hidden="true"></div>
 <div id="hp"><div id="hpfill"></div></div>
 <div id="lbl"></div>
 <div id="boot" aria-hidden="true"><div id="boot-logo">◈</div><div id="boot-txt">VỆ TINH</div></div>
@@ -46,6 +53,7 @@ const LABEL = (qp.get("label") || "VỆ TINH").slice(0, 24);
 const ENR = qp.get("enr") === "1"; // M6: nhóc tinh nghịch nổi giận (vẽ mặt giận)
 document.title = "WINDOWKILL — " + LABEL;
 document.getElementById("lbl").textContent = LABEL;
+try { document.documentElement.style.setProperty("--role", COLOR); } catch (e) {} // theme theo role
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");

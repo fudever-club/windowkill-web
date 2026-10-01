@@ -19,10 +19,16 @@ Script idempotent, tự in số file + dung lượng, verify zip mở được.
 
 1. Đăng nhập itch.io → **Account settings** (menu tài khoản) → **API keys**
    → **Generate new API key** (hoặc dùng key có sẵn).
-2. Export (KHÔNG hardcode vào repo):
+2. Lưu key vào file (KHÔNG hardcode vào repo, KHÔNG commit):
    ```bash
-   export ITCHIO_API_KEY="...key của bạn..."
+   mkdir -p ~/.config/windowkill && chmod 700 ~/.config/windowkill
+   printf 'export BUTLER_API_KEY="%s"\n' "<key-cua-ban>" > ~/.config/windowkill/itchio.env
+   chmod 600 ~/.config/windowkill/itchio.env
    ```
+   `scripts/itchio-push.sh` **tự source file này** mỗi lần push → auto-push
+   không cần nhập key lại. Thứ tự ưu tiên key: file `itchio.env` →
+   biến môi trường `BUTLER_API_KEY` → `ITCHIO_API_KEY` (tên cũ).
+   Key không bao giờ in ra log/output.
 
 ## 3. itch.io — tạo game mới (làm 1 lần)
 

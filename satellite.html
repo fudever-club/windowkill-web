@@ -43,6 +43,7 @@ let HP = Math.max(1, parseInt(qp.get("hp") || "6", 10) || 6);
 const MAXHP = HP;
 const COLOR = /^#[0-9a-fA-F]{6}$/.test(qp.get("color") || "") ? qp.get("color") : "#8b2fc9";
 const LABEL = (qp.get("label") || "VỆ TINH").slice(0, 24);
+const ENR = qp.get("enr") === "1"; // M6: nhóc tinh nghịch nổi giận (vẽ mặt giận)
 document.title = "WINDOWKILL — " + LABEL;
 document.getElementById("lbl").textContent = LABEL;
 
@@ -77,7 +78,7 @@ function drift(dt) {
   } catch (e) { canMove = false; }
 }
 
-let flash = 0, dieT = 0, dying = false;
+let flash = 0, dieT = 0, dying = false, BOMB_T = null; // M8: giây còn lại của bom (từ sat-tick)
 const eggs = [];
 for (let i = 0; i < 7; i++) eggs.push({ a: Math.random() * Math.PI * 2, r: 18 + Math.random() * 46, s: 10 + Math.random() * 14, ph: Math.random() * 9 });
 
@@ -143,12 +144,61 @@ function drawDebris(t) {
   ctx.restore();
 }
 
+/* M8: bom cười — số đếm ngược to, nhấp nháy đỏ-cam, gấp gáp 3s cuối */
+function drawBomb(t) {
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const urgent = BOMB_T !== null && BOMB_T <= 3;
+  const blink = Math.floor(t / (urgent ? 120 : 300)) % 2 === 0;
+  ctx.fillStyle = blink ? "#3a0d02" : "#1c0701"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const r = Math.min(canvas.width, canvas.height) * 0.2;
+  ctx.fillStyle = "#2b2f36"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a5058"; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#c98a3a"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx + r * 0.6, cy - r * 0.7);
+  ctx.quadraticCurveTo(cx + r * 1.2, cy - r * 1.5, cx + r * 0.9, cy - r * 1.9); ctx.stroke();
+  const sp = (Math.sin(t / 70) + 1) / 2;
+  ctx.fillStyle = `rgba(255,${140 + Math.floor(80 * sp)},40,.95)`;
+  ctx.beginPath(); ctx.arc(cx + r * 0.9, cy - r * 1.9, 4 + 3 * sp, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = urgent ? "#ff3b30" : "#ffd166"; ctx.font = "700 64px system-ui";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(BOMB_T === null ? "?" : String(BOMB_T), cx, cy + r * 1.4);
+  ctx.fillStyle = "#ff8f8f"; ctx.font = "700 15px system-ui";
+  ctx.fillText("BẤM ĐỂ PHÁ!", cx, canvas.height - 26);
+}
+/* M5/M6: blob cartoon mắt to cho giant/minion/mother/chick (vui nhộn) */
+function drawBlob(t) {
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const r = Math.min(canvas.width, canvas.height) * 0.26;
+  ctx.fillStyle = "#0a0a14"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const wob = Math.sin(t / 500) * 0.06;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
+  ctx.fillStyle = COLOR;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  const ey = -r * 0.25, ex = r * 0.34;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(-ex, ey, r * 0.22, 0, Math.PI * 2); ctx.arc(ex, ey, r * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = ENR ? "#ff2020" : "#1a1a2e";
+  ctx.beginPath(); ctx.arc(-ex, ey, r * 0.1, 0, Math.PI * 2); ctx.arc(ex, ey, r * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = Math.max(3, r * 0.08); ctx.lineCap = "round";
+  ctx.beginPath();
+  if (ENR) ctx.arc(0, r * 0.75, r * 0.4, Math.PI * 1.15, Math.PI * 1.85);
+  else ctx.arc(0, r * 0.1, r * 0.5, Math.PI * 0.15, Math.PI * 0.85);
+  ctx.stroke();
+  ctx.restore();
+  if (ENR) {
+    ctx.fillStyle = "#ff8f8f"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+    ctx.fillText("NỔI GIẬN!", cx, canvas.height - 26);
+  }
+}
+
 function paint(t) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (ROLE === "nest") drawNest(t);
   else if (ROLE === "fragment") drawFragment(t);
   else if (ROLE === "shield") drawShield(t);
-  else drawDebris(t);
+  else if (ROLE === "bomb") drawBomb(t);
+  else if (ROLE === "debris") drawDebris(t);
+  else drawBlob(t); // giant / minion / mother / chick
   if (flash > 0) { // flash trắng khi trúng đòn
     ctx.fillStyle = `rgba(255,255,255,${flash * 0.55})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -214,6 +264,8 @@ if (bus) bus.onmessage = (ev) => {
     if (Number.isFinite(nvx) && Number.isFinite(nvy)) { vx = Math.max(-400, Math.min(400, nvx)); vy = Math.max(-400, Math.min(400, nvy)); }
   } else if (m.type === "sat-warn") {
     warnT = 0.5; // telegraph tím 0.5s (M2: mảnh sắp chạm cửa sổ chính)
+  } else if (m.type === "sat-tick") {
+    if (ROLE === "bomb") BOMB_T = Math.max(0, parseInt(m.t, 10) || 0); // M8: đếm ngược
   }
 };
 

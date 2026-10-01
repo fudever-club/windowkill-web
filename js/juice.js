@@ -246,6 +246,7 @@ var P_PART = makePool(400, function () {
     rot: 0, vr: 0, fade: 1, len: 0 };
 });
 var _aliveParts = 0, _shardAlive = 0;
+var _perfReduced = false; // OPT: adaptive quality — giảm particle khi FPS thấp
 
 function allocParticle() {
   var p = P_PART.next();
@@ -341,6 +342,7 @@ function burst(presetName, x, y, opts) {
   var n = pr.n;
   if (opts.elite) n = Math.ceil(n * 1.5);
   if (_aliveParts > 300) n = Math.ceil(n * 0.5);
+  if (_perfReduced) n = Math.max(1, Math.ceil(n * 0.5)); // OPT adaptive
   if (reducedMotion) n = Math.max(1, Math.ceil(n * 0.3));
   var velMul = opts.elite ? 1.2 : 1;
   var lifeBonus = opts.elite ? 100 : 0;
@@ -405,37 +407,41 @@ function _spawnWisp(x, y) {
  * @param {CanvasRenderingContext2D} ctx
  */
 function drawParticles(ctx) {
+  // OPT: batch state changes — chỉ set fillStyle/strokeStyle/globalAlpha khi đổi
+  var lastFill = null, lastStroke = null, lastAlpha = -1;
   for (var i = 0; i < P_PART.n; i++) {
     var p = P_PART.items[i];
     if (!p.active) continue;
     var t = clamp(p.age / p.life, 0, 1);
     var fadeK = p.fade === 2 ? 1 - Ease.easeOutCubic(t) : 1 - Ease.easeOutQuad(t);
-    ctx.globalAlpha = fadeK;
+    var a = fadeK >= 0.999 ? 1 : fadeK;
+    if (a !== lastAlpha) { ctx.globalAlpha = a; lastAlpha = a; }
     if (p.shape === SHAPE_DOT) {
-      ctx.fillStyle = p.color;
+      if (p.color !== lastFill) { ctx.fillStyle = p.color; lastFill = p.color; }
       var s = p.size * (1 - t * 0.5);
       ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     } else if (p.shape === SHAPE_SHARD) {
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
+      if (p.color !== lastFill) { ctx.fillStyle = p.color; lastFill = p.color; }
       var sh = p.size * 1.7;
       ctx.beginPath();
       ctx.moveTo(0, -sh); ctx.lineTo(sh * 0.8, sh * 0.7); ctx.lineTo(-sh * 0.8, sh * 0.7);
       ctx.closePath(); ctx.fill();
-      ctx.restore();
+      ctx.restore(); lastFill = null; lastStroke = null; // restore() hoàn tác style -> reset cache
     } else if (p.shape === SHAPE_STREAK) {
       var d = Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 1;
-      ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+      if (p.color !== lastStroke) { ctx.strokeStyle = p.color; lastStroke = p.color; }
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
       ctx.lineTo(p.x - p.vx / d * p.len, p.y - p.vy / d * p.len);
       ctx.stroke();
     } else if (p.shape === SHAPE_SMOKE) {
-      ctx.fillStyle = p.color;
+      if (p.color !== lastFill) { ctx.fillStyle = p.color; lastFill = p.color; }
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + t * 2), 0, Math.PI * 2); ctx.fill();
     } else { // SHAPE_WISP
       var k = Ease.easeOutCubic(clamp(p.age / 0.5, 0, 1));
-      ctx.fillStyle = "#ffffff";
+      if (lastFill !== "#ffffff") { ctx.fillStyle = "#ffffff"; lastFill = "#ffffff"; }
       ctx.beginPath(); ctx.arc(p.x, p.y - 60 * k, p.size, 0, Math.PI * 2); ctx.fill();
     }
   }
@@ -444,6 +450,9 @@ function drawParticles(ctx) {
 
 /** @returns {number} số particle đang sống (debug / kiểm tra adaptive). */
 function aliveParticles() { return _aliveParts; }
+/** OPT: adaptive quality — 'reduced' giảm một nửa particle spawn. Dùng chung với BG.setQuality. */
+function setPerfQuality(q) { _perfReduced = (q === "reduced"); }
+function perfReduced() { return _perfReduced; }
 
 /**
  * Thêm 1 shockwave ring (vẽ bằng stroke arc, không dùng ảnh — §0.3).
@@ -1087,6 +1096,8 @@ var Juice = {
   burst: burst,
   drawParticles: drawParticles,
   aliveParticles: aliveParticles,
+  setPerfQuality: setPerfQuality,
+  perfReduced: perfReduced,
   addRing: addRing,
   drawRings: drawRings,
   pushGhost: pushGhost,

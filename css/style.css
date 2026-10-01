@@ -86,3 +86,56 @@ button { font-family: inherit; }
 .rank.r1 { background: linear-gradient(135deg, #ffd34d, #b45309); color: #241a05; }
 .rank.r2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #0f172a; }
 .rank.r3 { background: linear-gradient(135deg, #f0a35e, #92400e); color: #fff; }
+
+/* ================= CINEMATICS (js/cinema.js) — draft overlay + micro-interactions === */
+/* Upgrade draft (§9): overlay dim KHÔNG blur, panel scale-in, card stagger.
+   DOM do Cinema.showDraft() tạo; CSS này chỉ lo aesthetics. */
+.cin-draft-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(2, 6, 18, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; padding: 20px;
+}
+.cin-draft-panel {
+  background: #0A1626; border: 1px solid rgba(0, 128, 255, 0.35);
+  border-radius: 18px; padding: 28px 30px; max-width: 780px; width: 100%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 44px rgba(0, 128, 255, 0.12);
+  text-align: center;
+}
+.cin-draft-title { font-size: 30px; font-weight: 900; letter-spacing: 6px; color: #F2F7FF; }
+.cin-draft-sub { margin-top: 6px; font-size: 14px; color: #9DB4D0; letter-spacing: 1px; }
+.cin-draft-cards { display: flex; gap: 14px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+.cin-card {
+  width: 200px; background: #0c1f3a; border: 2px solid rgba(0, 128, 255, 0.4);
+  border-radius: 16px; padding: 20px 16px 16px; cursor: pointer; color: #dbe9ff;
+  font-family: inherit; text-align: center; position: relative;
+  transition: transform 0.13s ease-out, border-color 0.13s ease-out, background 0.13s ease-out, box-shadow 0.13s ease-out;
+}
+.cin-card:hover { transform: translateY(-6px) scale(1.04); border-color: #0080ff; background: #12305c; box-shadow: 0 10px 30px rgba(0, 128, 255, 0.25); }
+.cin-card:focus-visible { outline: 2px solid #7DD3FC; outline-offset: 3px; }
+.cin-card-ico { font-size: 38px; margin-bottom: 8px; line-height: 1; transition: transform 0.13s ease-out; }
+.cin-card:hover .cin-card-ico { transform: scale(1.1); }
+.cin-card-name { font-weight: 800; font-size: 16px; margin-bottom: 6px; color: #cfe6ff; }
+.cin-card-desc { font-size: 13px; color: #9db8d9; line-height: 1.5; min-height: 40px; }
+.cin-card-key {
+  position: absolute; top: 8px; right: 10px; font-size: 11px; color: #5B7191;
+  border: 1px solid #ffffff22; border-radius: 6px; padding: 1px 7px;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.cin-card.cin-selected { border-color: #ffffff; background: #1a3a6e; }
+.cin-draft-hint { margin-top: 18px; font-size: 12px; color: #5B7191; letter-spacing: 1px; }
+/* ---------- UI micro-interactions (§10) — dùng cho menu.js / index.html ---------- */
+.cin-pressable { transition: transform 0.11s ease-out, filter 0.11s ease-out; }
+.cin-pressable:hover { transform: scale(1.05); filter: brightness(1.1); }
+.cin-pressable:active { transform: scale(0.95); }
+.cin-num { font-variant-numeric: tabular-nums; }
+@keyframes cinSlideIn { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.cin-slide-in { animation: cinSlideIn 0.22s cubic-bezier(0.215, 0.61, 0.355, 1); }
+/* ---------- reduced-motion: bỏ overshoot/slide, giữ đổi màu ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .cin-slide-in { animation: none; }
+  .cin-pressable:hover { transform: none; }
+  .cin-card { transition: border-color 0.12s ease-out, background 0.12s ease-out; }
+  .cin-card:hover { transform: none; }
+  .cin-card:hover .cin-card-ico { transform: none; }
+}

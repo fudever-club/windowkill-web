@@ -234,82 +234,82 @@
     </div>
     <img class="game-logo" src="assets/logo-lockup.webp" alt="WINDOWKILL" data-hide-onerror>
     <h1 class="title">WINDOWKILL</h1>
-    <p class="sub">Twin-stick shooter trong <b>một popup trình duyệt</b> &mdash; và <b>cửa sổ chính là thanh máu</b> của bạn. Quái tím gặm nhỏ cửa sổ, đạn bắn vào viền hất văng cả cửa sổ. Sống sót. Đừng để bị "đóng cửa sổ".</p>
+    <p class="sub" data-i18n-html="menu.hero_sub">Twin-stick shooter trong <b>một popup trình duyệt</b> &mdash; và <b>cửa sổ chính là thanh máu</b> của bạn. Quái tím gặm nhỏ cửa sổ, đạn bắn vào viền hất văng cả cửa sổ. Sống sót. Đừng để bị "đóng cửa sổ".</p>
   </header>
 
-  <div class="warn-box" id="popup-warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</div>
+  <div class="warn-box" id="popup-warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> <span data-i18n-html="error.popup_blocked">Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</span></div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Tài khoản người dùng</h3>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> <span data-i18n="menu.profile.title">Tài khoản người dùng</span></h3>
     <div class="row" id="profile-bar" style="margin-bottom:4px"></div>
     <div class="row" id="new-profile-box">
-      <input id="new-profile-name" maxlength="16" placeholder="Tên hiển thị, ví dụ: NhatPro...">
-      <button class="btn-ghost" id="btn-create-profile">Tạo</button>
+      <input id="new-profile-name" maxlength="16" data-i18n-ph="menu.profile.name_ph" placeholder="Tên hiển thị, ví dụ: NhatPro...">
+      <button class="btn-ghost" id="btn-create-profile" data-i18n="menu.profile.create">Tạo</button>
     </div>
-    <div style="font-size:12.5px;color:#5f7ba3;margin-top:8px">Mỗi tài khoản lưu riêng kỷ lục &amp; thống kê trên máy này. <span id="backend-badge" title="Backend online đồng bộ điểm số & bảng xếp hạng (không bắt buộc)"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> Offline</span></div>
+    <div style="font-size:12.5px;color:#5f7ba3;margin-top:8px"><span data-i18n-html="menu.profile.note">Mỗi tài khoản lưu riêng kỷ lục &amp; thống kê trên máy này.</span> <span id="backend-badge" title="Backend online đồng bộ điểm số & bảng xếp hạng (không bắt buộc)"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> Offline</span></div>
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> Cách chơi</h3>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> <span data-i18n="menu.howto.title">Cách chơi</span></h3>
     <ul class="howto" style="list-style:none">
-      <li><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg> <b>Chuột</b> để ngắm &amp; bắn &mdash; <b>WASD / phím mũi tên</b> để di chuyển (desktop).</li>
-      <li><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg> <b>Mobile:</b> joystick trái di chuyển, joystick phải ngắm bắn.</li>
-      <li><svg class="ic" aria-hidden="true"><use href="#i-ghost"/></svg> Quái tím bám vào <b>viền cửa sổ</b> sẽ gặm nhỏ dần cửa sổ = mất máu.</li>
-      <li><svg class="ic" aria-hidden="true"><use href="#i-bomb"/></svg> Bắn đạn vào viền để <b>hất văng quái</b> &amp; đẩy cửa sổ bay (window slam gây sát thương!).</li>
-      <li><svg class="ic" aria-hidden="true"><use href="#i-gem"/></svg> Nhặt XP lên cấp &rarr; chọn 1 trong 3 nâng cấp. Boss mỗi 5 wave.</li>
-      <li><svg class="ic" aria-hidden="true"><use href="#i-heart-plus"/></svg> Qua wave được vá lại một phần cửa sổ.</li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg> <span data-i18n-html="menu.howto.1"><b>Chuột</b> để ngắm &amp; bắn &mdash; <b>WASD / phím mũi tên</b> để di chuyển (desktop).</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg> <span data-i18n-html="menu.howto.2"><b>Mobile:</b> joystick trái di chuyển, joystick phải ngắm bắn.</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-ghost"/></svg> <span data-i18n-html="menu.howto.3">Quái tím bám vào <b>viền cửa sổ</b> sẽ gặm nhỏ dần cửa sổ = mất máu.</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-bomb"/></svg> <span data-i18n-html="menu.howto.4">Bắn đạn vào viền để <b>hất văng quái</b> &amp; đẩy cửa sổ bay (window slam gây sát thương!).</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-gem"/></svg> <span data-i18n-html="menu.howto.5">Nhặt XP lên cấp &rarr; chọn 1 trong 3 nâng cấp. Boss mỗi 5 wave.</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-heart-plus"/></svg> <span data-i18n-html="menu.howto.6">Qua wave được vá lại một phần cửa sổ.</span></li>
     </ul>
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg> Cài đặt</h3>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg> Nhạc nền</span><button class="tgl" id="tgl-music" aria-label="Bật/tắt nhạc nền"></button></div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg> Hiệu ứng âm thanh</span><button class="tgl" id="tgl-sfx" aria-label="Bật/tắt hiệu ứng âm thanh"></button></div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-vibrate"/></svg> Rung cửa sổ khi trúng đòn</span><button class="tgl" id="tgl-shake" aria-label="Bật/tắt rung cửa sổ"></button></div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg> Rung phản hồi (mobile)</span><button class="tgl" id="tgl-haptic" aria-label="Bật/tắt rung phản hồi"></button></div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg> Độ khó</span>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg> <span data-i18n="settings.title">Cài đặt</span></h3>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg> <span data-i18n="settings.music">Nhạc nền</span></span><button class="tgl" id="tgl-music" data-i18n-aria="settings.music_aria" aria-label="Bật/tắt nhạc nền"></button></div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg> <span data-i18n="settings.sfx">Hiệu ứng âm thanh</span></span><button class="tgl" id="tgl-sfx" data-i18n-aria="settings.sfx_aria" aria-label="Bật/tắt hiệu ứng âm thanh"></button></div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-vibrate"/></svg> <span data-i18n="settings.shake">Rung cửa sổ khi trúng đòn</span></span><button class="tgl" id="tgl-shake" data-i18n-aria="settings.shake_aria" aria-label="Bật/tắt rung cửa sổ"></button></div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg> <span data-i18n="settings.haptic">Rung phản hồi (mobile)</span></span><button class="tgl" id="tgl-haptic" data-i18n-aria="settings.haptic_aria" aria-label="Bật/tắt rung phản hồi"></button></div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg> <span data-i18n="settings.difficulty">Độ khó</span></span>
       <div class="row diff-btns" style="gap:8px">
-        <button class="btn-ghost" data-diff="chill"><svg class="ic" aria-hidden="true"><use href="#i-smile"/></svg> Chill</button>
-        <button class="btn-ghost" data-diff="normal"><svg class="ic" aria-hidden="true"><use href="#i-meh"/></svg> Thường</button>
-        <button class="btn-ghost" data-diff="hard"><svg class="ic" aria-hidden="true"><use href="#i-skull"/></svg> Khắc nghiệt</button>
+        <button class="btn-ghost" data-diff="chill"><svg class="ic" aria-hidden="true"><use href="#i-smile"/></svg> <span data-i18n="menu.diff.chill">Chill</span></button>
+        <button class="btn-ghost" data-diff="normal"><svg class="ic" aria-hidden="true"><use href="#i-meh"/></svg> <span data-i18n="menu.diff.normal">Thường</span></button>
+        <button class="btn-ghost" data-diff="hard"><svg class="ic" aria-hidden="true"><use href="#i-skull"/></svg> <span data-i18n="menu.diff.hard">Khắc nghiệt</span></button>
       </div>
     </div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Hiệu ứng hình ảnh</span>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> <span data-i18n="settings.fx">Hiệu ứng hình ảnh</span></span>
       <div class="row opt-btns" style="gap:8px">
-        <button class="btn-ghost" data-fx="full">Đầy đủ</button>
-        <button class="btn-ghost" data-fx="reduced">Giảm</button>
+        <button class="btn-ghost" data-fx="full" data-i18n="settings.fx_full">Đầy đủ</button>
+        <button class="btn-ghost" data-fx="reduced" data-i18n="settings.fx_reduced">Giảm</button>
       </div>
     </div>
-    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-window"/></svg> Cửa sổ vệ tinh</span>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-window"/></svg> <span data-i18n="settings.sat">Cửa sổ vệ tinh</span></span>
       <div class="row opt-btns" style="gap:8px">
-        <button class="btn-ghost" data-sat="auto">Tự động</button>
-        <button class="btn-ghost" data-sat="sim">Luôn mô phỏng</button>
-        <button class="btn-ghost" data-sat="off">Tắt</button>
+        <button class="btn-ghost" data-sat="auto" data-i18n="settings.sat_auto">Tự động</button>
+        <button class="btn-ghost" data-sat="sim" data-i18n="settings.sat_sim">Luôn mô phỏng</button>
+        <button class="btn-ghost" data-sat="off" data-i18n="settings.sat_off">Tắt</button>
       </div>
     </div>
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> Kỷ lục <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="hs-who"></span></h3>
-    <div id="hs-list">Chưa có dữ liệu — vào game lập kỷ lục đi!</div>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> <span data-i18n="menu.scores.title">Kỷ lục</span> <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="hs-who"></span></h3>
+    <div id="hs-list" data-i18n="menu.scores.empty_default">Chưa có dữ liệu — vào game lập kỷ lục đi!</div>
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg> Thống kê <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="st-who"></span></h3>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg> <span data-i18n="menu.stats.title">Thống kê</span> <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="st-who"></span></h3>
     <div id="stat-list" style="font-size:14.5px;color:#c8dcf5;line-height:2">—</div>
   </div>
 
   <div class="row" style="justify-content:center;margin:10px 0 6px">
-    <button class="btn-big" id="btn-play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> CHƠI NGAY</button>
+    <button class="btn-big" id="btn-play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="common.play">CHƠI NGAY</span></button>
   </div>
-  <div style="text-align:center;color:#5f7ba3;font-size:13px">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</div>
+  <div style="text-align:center;color:#5f7ba3;font-size:13px" data-i18n-html="menu.popup_note">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</div>
 
   <footer>
-    Fan-made game lấy cảm hứng từ <b>Windowkill</b> (Steam) &mdash; không liên quan tới nhà phát triển gốc.<br>
-    Phát triển bởi <b>FU-DEVER</b> &mdash; CLB Lập trình, Đại học FPT Đà Nẵng &bull; WORK HARD &mdash; PLAY HARD
+    <span data-i18n-html="menu.footer_made">Fan-made game lấy cảm hứng từ <b>Windowkill</b> (Steam) &mdash; không liên quan tới nhà phát triển gốc.</span><br>
+    <span data-i18n-html="menu.footer_dev">Phát triển bởi <b>FU-DEVER</b> &mdash; CLB Lập trình, Đại học FPT Đà Nẵng &bull; WORK HARD &mdash; PLAY HARD</span>
     <div class="footer-links">
       <a href="https://github.com/fudever-club/windowkill-web" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-github"/></svg> GitHub</a>
-      <a href="https://windowkill-web.vercel.app" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-vercel"/></svg> Chơi trên Vercel</a>
+      <a href="https://windowkill-web.vercel.app" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-vercel"/></svg> <span data-i18n="menu.footer_vercel">Chơi trên Vercel</span></a>
     </div>
   </footer>
 </div>
@@ -318,10 +318,24 @@
 <script src="js/api.js" defer></script>
 <script src="js/juice.js" defer></script>
 <script src="js/cinema.js" defer></script>
+<script src="js/campaign.js" defer></script>
+<script src="js/monsters.js" defer></script>
+<script src="js/bosses.js" defer></script>
+<script src="js/stagefx.js" defer></script>
+<script src="js/tutorial.js" defer></script>
+<script src="js/meta.js" defer></script>
+<script src="js/juice2.js" defer></script>
+<script src="js/sfx2.js" defer></script>
+<script src="js/upgrades2.js" defer></script>
+<script src="js/i18n.js" defer></script>
+<script src="js/campaign.js" defer></script>
+<script src="js/meta.js" defer></script>
+<script src="js/tutorial.js" defer></script>
 <script src="js/menu.js" defer></script>
 <script>
 // PWA: đăng ký Service Worker — cache tài nguyên + màn hình offline
-if ("serviceWorker" in navigator) {
+// PORTAL: không đăng ký SW trong iframe portal (một số portal từ chối SW)
+if ("serviceWorker" in navigator && !window.WK_PORTAL_MODE) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {
       /* SW không bắt buộc: game vẫn chạy online bình thường */

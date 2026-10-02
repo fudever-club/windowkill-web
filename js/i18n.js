@@ -554,6 +554,18 @@
       "monster.healer.desc": "Heals other monsters, doesn't attack.",
       "monster.kamikaze.name": "Kamikaze",
       "monster.kamikaze.desc": "Dives into the window edge, then explodes.",
+      /* ----- Season 1 "Deadline Season" ----- */
+      "monster.deadline.name": "Deadline Chaser",
+      "monster.deadline.desc": "12s countdown — kill it before the bell rings!",
+      "monster.otworker.name": "OT Worker",
+      "monster.otworker.desc": "The longer it lives, the angrier: +speed, +damage. Ice bullets give it a break.",
+      "monster.meeting.name": "Meeting Goblin",
+      "monster.meeting.desc": "Emits a meeting zone that slows your ship. Stay out, shoot from afar.",
+      "season.bell_ring": "RING RING! The whole team is rushed!",
+      "season.rage_up": "Anger +1!",
+      "season.rage_reset": "Break time!",
+      "season.summon": "Meeting summoned!",
+      "season.in_meeting": "Meetings slow everything down!",
       /* ----- wave banners ----- */
       "banner.wave1": "Shoot the purple ones first — they chew the window!",
       "banner.tip1": "Purple monsters chew the window edge — shoot them down!",

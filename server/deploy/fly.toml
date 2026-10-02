@@ -1,0 +1,44 @@
+# Fly.io config for windowkill-backend (free tier, persistent volume)
+# Lives in the repo at server/deploy/fly.toml (finding B3). Deploy from the
+# REPO ROOT so the Dockerfile build context contains server/:
+#   fly deploy --config server/deploy/fly.toml --dockerfile server/deploy/Dockerfile
+app = "windowkill-backend"
+primary_region = "sin" # Singapore — closest to VN
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+  HOST = "0.0.0.0"
+  WK_DB = "/data/windowkill.db"
+  # B6: the game page origin AND the origin the game actually runs from on
+  # itch.io (HTML5 iframe host) — both are required, plus the main site.
+  WK_CORS_ORIGINS = "https://windowkill.fudever.com,https://quangnhat1504.itch.io,https://html-classic.itch.zone"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "suspend" # free-tier friendly: sleeps when idle
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 100
+    soft_limit = 60
+  # B13: Fly-level readiness probe against the DB-backed health endpoint.
+  [[http_service.checks]]
+    type = "http"
+    method = "GET"
+    path = "/api/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[mounts]]
+  source = "wk_data"
+  destination = "/data" # SQLite lives here, persistent across deploys
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

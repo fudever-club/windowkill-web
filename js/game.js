@@ -2934,6 +2934,29 @@ function killBoss() {
   G.pickups.push({ kind: "heart", x: bs.x + 40, y: bs.y, t: 0 });
 }
 
+/* SEASON 1 — hệ thống vùng họp + chuông haste (chạy 1 lần/frame, ngoài vòng lặp quái) */
+function seasonTick(dt, s) {
+  if (G.hasteT > 0) { G.hasteT -= dt; if (G.hasteT <= 0) G.globalHaste = 1; }
+  if (G.slowZones.length) {
+    for (const z of G.slowZones) z.ttl -= dt;
+    G.slowZones = G.slowZones.filter(z => z.ttl > 0 && !(z.from && z.from.dead));
+  }
+  if (shipSlowMult() < 1) {
+    G.zoneFloatT = Math.max(0, (G.zoneFloatT || 0) - dt);
+    if (G.zoneFloatT <= 0) { G.zoneFloatT = 2.5; addFloat(s.x, s.y - 30, I18N.t("season.in_meeting"), "#7dff9a"); }
+  } else G.zoneFloatT = 0;
+}
+/* SEASON 1: tàu trong vùng họp bị slow 35% — trả về multiplier tốc độ (1 = bình thường) */
+function shipSlowMult() {
+  const s = G.ship; if (!s) return 1;
+  let m = 1;
+  for (const z of (G.slowZones || [])) {
+    const dx = s.x - z.x, dy = s.y - z.y;
+    if (dx * dx + dy * dy < z.r * z.r) m = Math.min(m, 1 - z.slow);
+  }
+  return m;
+}
+
 function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
@@ -2988,7 +3011,7 @@ function update(dt) {
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
   if (ml > 0.05) {
-    const sp = s.speed * Math.min(1, ml);
+    const sp = s.speed * Math.min(1, ml) * shipSlowMult(); // SEASON 1: vùng họp slow 35%
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
     s.moveSpeed = sp; // WOW: Cinema.playerFx tự vẽ trail khi speed > 180
   } else s.moveSpeed = 0;
@@ -3098,12 +3121,13 @@ function update(dt) {
     if (dead) G.ebullets.splice(i, 1);
   }
 
+  seasonTick(dt, s); // SEASON 1: tick chuông haste + vùng họp (1 lần/frame)
   /* quái */
   for (const e of G.enemies) {
     if (e.dead) continue;
     e.t += dt; e.flash = Math.max(0, e.flash - dt); e.slowT = Math.max(0, e.slowT - dt);
     e.sayNangT = Math.max(0, (e.sayNangT || 0) - dt); // CEO §9-Q2: đếm ngược "say nắng"
-    const spd = e.speed * (e.slowT > 0 ? 0.45 : 1);
+    const spd = e.speed * (e.slowT > 0 ? 0.45 : 1) * (G.globalHaste || 1); // SEASON 1: chuông Deadline Dí
     // knockback vật lý
     e.x += e.kbx * dt; e.y += e.kby * dt; e.kbx *= 0.9; e.kby *= 0.9;
 
@@ -3285,7 +3309,14 @@ function damageEnemy(e, dmg, bl) {
   // v2.0: tutorial beat 2 (bắn trúng quái)
   if (window.V2) { try { V2.onBulletHit(e); } catch (er) {} }
   e.hp -= dmg; e.flash = 0.09;
-  if (G.ship.slow) e.slowT = G.ship.slow;
+  if (G.ship.slow) {
+    e.slowT = G.ship.slow;
+    // SEASON 1: đạn băng reset stack Cáu của Nhân Viên OT ("cho nó nghỉ ngơi")
+    if (e.type === "otworker" && e.rage > 0) {
+      e.rage = 0; e.rageT = 0;
+      addFloat(e.x, e.y - 24, I18N.t("season.rage_reset"), "#7dd3fc");
+    }
+  }
   if (bl) { e.kbx += bl.vx * 0.12; e.kby += bl.vy * 0.12; }
   AudioEngine.sfx.hit();
   // WOW: damage number (tự gộp theo target trong 120ms) + hit flash
@@ -3457,6 +3488,52 @@ function render(now) {
       ctx.fillStyle = armed && Math.floor(now / 90) % 2 === 0 ? "#ffffff" : (slow ? "#7dd3fc" : e.color);
       ctx.beginPath(); ctx.moveTo(e.r + 2, 0); ctx.lineTo(-e.r, -e.r * 0.8); ctx.lineTo(-e.r, e.r * 0.8); ctx.closePath(); ctx.fill();
       if (armed) { ctx.fillStyle = "#ff7a1a"; ctx.font = "13px sans-serif"; ctx.textAlign = "center"; ctx.fillText("!", 0, -e.r - 6); }
+    } else if (e.type === "deadline") {
+      const urgent = e.countdown <= 3;
+      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
+      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#7a5c00";
+      ctx.beginPath(); ctx.arc(-e.r * 0.7, -e.r * 0.7, e.r * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e.r * 0.7, -e.r * 0.7, e.r * 0.35, 0, Math.PI * 2); ctx.fill();
+      const ang = (Math.max(0, e.countdown) / 12) * Math.PI * 2;
+      ctx.strokeStyle = "#5b4300"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ang) * e.r * 0.7, Math.sin(ang) * e.r * 0.7); ctx.stroke();
+      const blink = Math.floor(now / (urgent ? 120 : 300)) % 2 === 0;
+      ctx.fillStyle = urgent ? (blink ? "#ff3b30" : "#7a1f1f") : "#ffe14d";
+      ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(String(Math.max(0, Math.ceil(e.countdown))), 0, -e.r - 8);
+    } else if (e.type === "otworker") {
+      for (let pi = 0; pi < 5; pi++) {
+        ctx.fillStyle = pi < e.rage ? "#ff3b30" : "#ffffff28";
+        ctx.fillRect(-15 + pi * 7, -e.r - 12, 5, 5);
+      }
+      ctx.rotate(Math.atan2(s.y - e.y, s.x - e.x));
+      const shades = ["#ff5252", "#f43f3e", "#e5342e", "#d42a24", "#c21f1a", "#a81512"];
+      ctx.fillStyle = slow ? "#7dd3fc" : (shades[Math.min(5, e.rage || 0)] || "#ff5252");
+      ctx.beginPath(); ctx.moveTo(e.r + 2, 0); ctx.lineTo(-e.r, -e.r * 0.85);
+      ctx.lineTo(-e.r * 0.4, 0); ctx.lineTo(-e.r, e.r * 0.85); ctx.closePath(); ctx.fill();
+      if (e.rage > 0) {
+        ctx.fillStyle = "#8b5a2b";
+        ctx.beginPath(); ctx.arc(-e.r * 0.5, e.r * 0.5, 3 + e.rage, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (e.type === "meeting") {
+      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
+      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0b3b1a";
+      ctx.beginPath(); ctx.arc(0, 0, e.r * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = e.warnT > 0 ? "#ff3b30" : "rgba(125,255,154,0.55)";
+      ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+      ctx.beginPath(); ctx.arc(0, 0, 160, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.textAlign = "center";
+      if (e.warnT > 0) {
+        ctx.fillStyle = "#ff3b30"; ctx.font = "bold 13px sans-serif";
+        ctx.fillText("!", 0, -e.r - 8);
+      } else {
+        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "11px sans-serif";
+        ctx.fillText("HỌP", 0, -e.r - 8);
+      }
     } else {
       // fallback: quái mới chưa có nhánh vẽ riêng vẫn chạy được — hình tròn màu registry
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;

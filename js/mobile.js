@@ -121,4 +121,39 @@
      dead code (hàm nằm trong IIFE của game.js). Đường cong R3 (mép deadzone → 0%,
      mép base 60px → 100%, giữ nguyên deadzone 12px/hướng/tốc độ tối đa) nay được
      áp TRỰC TIẾP trong touchMoveVec() của game.js. Block này giữ lại làm tài liệu. */
+  /* ---------- 6. Hint touch-aware (iPhone) ----------
+     iPhone 2026-10-03: nhiều chuỗi hint ghi cho desktop ("P / Esc", "Phím 1/2/3",
+     "WASD ...") nhưng hiện cả trên máy cảm ứng. Đổi sang bản mobile khi thiết bị
+     có touch. Chạy sau i18n.js đã dịch (defer order đảm bảo). */
+  function isTouchDevice() {
+    try { return ("ontouchstart" in window) || navigator.maxTouchPoints > 0; } catch (e) { return false; }
+  }
+  function applyMobileHints() {
+    if (!isTouchDevice()) return;
+    try {
+      var ph = document.querySelector('[data-i18n="pause.hint"]');
+      if (ph && window.I18N && typeof I18N.t === "function") ph.textContent = I18N.t("pause.hint_mobile");
+    } catch (e) {}
+    // draft hint: cinema.js render lúc mở draft → bọc sau khi panel hiện
+    try {
+      if (window.Cinema && typeof Cinema.showDraft === "function" && !Cinema.showDraft.__wkHintWrapped) {
+        var _orig = Cinema.showDraft;
+        var _w = function () {
+          var r = _orig.apply(this, arguments);
+          try {
+            var h = document.querySelector(".cin-draft-hint");
+            if (h && window.I18N && typeof I18N.t === "function") h.textContent = I18N.t("draft.hint_mobile");
+          } catch (e2) {}
+          return r;
+        };
+        _w.__wkHintWrapped = true;
+        Cinema.showDraft = _w;
+      }
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyMobileHints);
+  } else {
+    applyMobileHints();
+  }
 })();

@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- MOBILE 2026-10-03: viewport-fit=cover để env(safe-area-inset-*) có tác dụng trên iPhone tai thỏ; khóa zoom để gesture không phá game -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'">
 <title data-i18n="game.title">WINDOWKILL: Web Edition — Chiến trường</title>
 <meta name="description" content="Chiến trường WINDOWKILL: Web Edition — twin-stick shooter trong popup trình duyệt, nơi cửa sổ chính là thanh máu. Chơi miễn phí trên web, phát triển bởi FU-DEVER.">
@@ -30,7 +31,7 @@
 <style>
   html, body { height: 100%; overflow: hidden; background: #04080f; }
   #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
-  #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+  #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; /* MOBILE 2026-10-03: joystick cần độc quyền gesture, không để Safari cuộn/zoom */ }
   .menu-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
   .stat-line { color: #9db8d9; font-size: 15px; line-height: 2; }
   .stat-line b { color: #fde68a; }
@@ -260,7 +261,7 @@
   </div>
 
   <!-- banner xin phép mở popup vệ tinh (non-blocking, MULTIWINDOW-SPEC §3.1) -->
-  <div id="satperm" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
+  <div id="satperm" style="display:none;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:60;
        align-items:center;gap:10px;background:#0d1626ee;border:1px solid #2e6db488;border-radius:12px;
        padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
     <span data-i18n="satperm.text">Màn này có cửa sổ vệ tinh — cho mở nhé?</span>

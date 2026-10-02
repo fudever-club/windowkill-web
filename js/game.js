@@ -67,6 +67,17 @@ document.addEventListener("fullscreenchange", () => {
   if (b) b.classList.toggle("on", !!document.fullscreenElement);
 });
 document.getElementById("btn-hud-full")?.addEventListener("click", toggleFullscreen);
+// MOBILE 2026-10-03 (iPhone): iPhone Safari không có Fullscreen API cho
+// documentElement (chỉ iPad/macOS) → nút "toàn màn hình" bấm không có tác dụng.
+// Ẩn nút và đưa nút pause về sát mép phải cho gọn.
+try {
+  var _de = document.documentElement;
+  if (!_de.requestFullscreen && !_de.webkitRequestFullscreen) {
+    var _bf = document.getElementById("btn-hud-full");
+    if (_bf) _bf.style.display = "none";
+    try { document.body.classList.add("no-fullscreen"); } catch (e2) {}
+  }
+} catch (e) {}
 // AUDIT 2026-10-02: nút pause HUD phải được nối TẠI ĐÂY (trong scope IIFE của game.js).
 // mobile.js không truy cập được pauseGame() (game.js bọc IIFE) nên wiring ở đó
 // chết im — nút pause từng không hoạt động trên mọi thiết bị.
@@ -81,7 +92,21 @@ const MIN_W = 250, MIN_H = 190;      // cửa sổ nhỏ hơn -> vỡ
 const START_W = 980;
 
 /* ---------------- helpers ---------------- */
-function fit() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+// MOBILE 2026-10-03 (iPhone): canvas render theo devicePixelRatio để không bị mờ
+// trên màn hình DPR cao (iPhone DPR 2-3). Backing store = CSS px * dpr, còn mọi
+// logic vẽ vẫn dùng CSS px nhờ ctx.setTransform. Chặn dpr ở 2 để giữ perf GPU
+// mobile (DPR 3 native = 1170x2532 quá nặng cho hiệu ứng shadowBlur mỗi frame).
+function wkDpr() {
+  try { return Math.min(window.devicePixelRatio || 1, 2); } catch (e) { return 1; }
+}
+function fit() {
+  var dpr = wkDpr();
+  canvas.width = Math.round(window.innerWidth * dpr);
+  canvas.height = Math.round(window.innerHeight * dpr);
+  try { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); } catch (e) {}
+  // kích thước logic (CSS px) — mọi code vẽ/hit-test dùng cái này, KHÔNG dùng canvas.width
+  try { window.WKViewW = window.innerWidth; window.WKViewH = window.innerHeight; } catch (e) {}
+}
 fit();
 window.addEventListener("resize", () => { fit(); if (typeof refreshBG === "function") refreshBG(); });
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -1945,7 +1970,8 @@ function updateFragments(dt) {
 /* ---------------- input: phím + chuột + touch ---------------- */
 const keys = {};
 const mouse = { x: innerWidth / 2, y: innerHeight / 2 - 100, down: false };
-const touch = { active: false, moveId: null, aimId: null,
+const touch = { active: (function(){ try { return ("ontouchstart" in window) || navigator.maxTouchPoints > 0; } catch (e) { return false; } })(), // MOBILE 2026-10-03: nhận touch-capable ngay từ đầu (trước touch đầu tiên) để hiện hint mobile
+  moveId: null, aimId: null,
   moveOX: 0, moveOY: 0, moveX: 0, moveY: 0, aimX: 0, aimY: 0, aimDX: 0, aimDY: 0 };
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
@@ -2016,7 +2042,7 @@ canvas.addEventListener("touchstart", e => {
       } catch (er) {}
     }
     if (tutTap) { try { Tutorial.onEvent("tap", { x: t.clientX, y: t.clientY }); } catch (er) {} continue; }
-    if (t.clientX < canvas.width / 2 && touch.moveId === null) {
+    if (t.clientX < window.innerWidth / 2 && touch.moveId === null) { // MOBILE 2026-10-03: canvas.width giờ là device px (DPR)
       touch.moveId = t.identifier; touch.moveOX = touch.moveX = t.clientX; touch.moveOY = touch.moveY = t.clientY;
     } else if (touch.aimId === null) {
       touch.aimId = t.identifier; touch.aimX = t.clientX; touch.aimY = t.clientY;
@@ -2456,7 +2482,7 @@ function actOf(w) { return w <= 10 ? 1 : w <= 20 ? 2 : 3; }
 /* Rebuild background khi đổi ải / resize (được gọi sau khi G đã khởi tạo). */
 function refreshBG() {
   if (typeof BG === "undefined") return;
-  BG.build((ACTS[(G.act || 1) - 1] || {}).bgStage || 1, canvas.width, canvas.height);
+  BG.build((ACTS[(G.act || 1) - 1] || {}).bgStage || 1, window.innerWidth, window.innerHeight); // MOBILE 2026-10-03: CSS px
 }
 let curTrack = "act1";
 function playActMusic() {
@@ -3336,7 +3362,7 @@ function damageEnemy(e, dmg, bl) {
  * Gọi BG.build khi đổi ải / resize; mỗi frame chỉ BG.draw. */
 
 function render(now) {
-  const W = canvas.width, H = canvas.height, b = bounds(), s = G.ship;
+  const W = window.innerWidth, H = window.innerHeight, b = bounds(), s = G.ship; // MOBILE 2026-10-03: CSS px (canvas.width = device px)
   ctx.save();
   // WOW: Juice camera shake (fallback: G.shake cũ)
   if (window.Juice) { try { Juice.applyShake(ctx); } catch (e) {} }
@@ -3685,7 +3711,15 @@ function render(now) {
    // banner
    if (G.bannerT > 0) {
     ctx.globalAlpha = Math.min(1, G.bannerT);
-    ctx.fillStyle = "#ffd7f4"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd7f4";
+    // MOBILE 2026-10-03: banner dài (vd "⭐ Điểm = tổng điểm gốc — không nhân.")
+    // bị cắt 2 mép trên màn hình hẹp (iPhone 375-390px) → co font cho vừa 94% rộng
+    let _bfs = 44;
+    ctx.font = "bold " + _bfs + "px sans-serif"; ctx.textAlign = "center";
+    try {
+      const _btw = ctx.measureText(G.banner || "").width;
+      if (_btw > W * 0.94) { _bfs = Math.max(18, Math.floor(_bfs * W * 0.94 / _btw)); ctx.font = "bold " + _bfs + "px sans-serif"; }
+    } catch (e) {}
     ctx.fillText(G.banner, W / 2, H / 2 - 20);
     if (G.bannerSub) {
       ctx.font = "15px sans-serif"; ctx.fillStyle = "#c9b8e0";
@@ -3862,7 +3896,7 @@ window.WKWinPct = function () {
 };
 window.WKDrawBossBar = function (d) {
   // thanh boss 3 nấc (§5.4): viền sáng + 3 khấc phase + tên
-  const W = canvas.width, bbw = Math.min(560, W - 120);
+  const W = window.innerWidth, bbw = Math.min(560, W - 120); // MOBILE 2026-10-03: CSS px
   ctx.fillStyle = "#000000aa"; ctx.fillRect((W - bbw) / 2, 12, bbw, 14);
   const f = clamp((d.hp || 0) / (d.maxHp || 1), 0, 1);
   ctx.fillStyle = d.color || "#c084fc"; ctx.fillRect((W - bbw) / 2, 12, bbw * f, 14);

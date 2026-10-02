@@ -190,6 +190,9 @@ button:disabled { opacity: .55; cursor: not-allowed; }
    không bấm được bằng tay/chuột (chỉ .click() lập trình mới qua). Tách vị trí:
    fullscreen ở góc, pause lùi sang trái 1 nút + khoảng hở. */
 #btn-hud-pause { right: calc(62px + env(safe-area-inset-right, 0px)); }
+/* MOBILE 2026-10-03: khi nút fullscreen bị ẩn (iPhone không có Fullscreen API),
+   đưa nút pause về sát mép phải */
+body.no-fullscreen #btn-hud-pause { right: calc(10px + env(safe-area-inset-right, 0px)); }
 /* nút bấm: bỏ delay/zoom khi double-tap */
 button { touch-action: manipulation; }
 /* draft/overlay vừa màn hình nhỏ */

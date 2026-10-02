@@ -316,7 +316,7 @@ function loop(t) {
 }
 
 function paintHp() {
-  document.getElementById("hpfill").style.width = (100 * HP / MAXHP) + "%";
+  document.getElementById("hpfill").style.width = (100 * HP / MAXHP) + "%"; try { document.getElementById("hppct").textContent = HP + "%"; } catch (_) {}
 }
 function floatDmg(x, y) {
   const d = document.createElement("div"); d.className = "dmg"; d.textContent = "-1";

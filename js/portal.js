@@ -42,6 +42,16 @@
   if (!portal) portal = queryPortal();
   if (!portal) portal = inIframe();
 
+  // POKI (blocker #3): detect Poki qua ?portal=poki hoặc referrer → WK_POKI.
+  // Poki chặn mọi external request: analytics đã tắt theo WK_PORTAL_MODE; footer links ra ngoài bị ẩn.
+  var poki = false;
+  try {
+    poki = new URLSearchParams(window.location.search).get("portal") === "poki" ||
+      (document.referrer && /(^|\.)poki\.com$/i.test(new URL(document.referrer).hostname));
+  } catch (e) {}
+  window.WK_POKI = poki;
+  if (poki) portal = true;
+
   window.WK_PORTAL_MODE = portal;
   window.WKPortal = {
     isPortal: portal,
@@ -62,5 +72,16 @@
       }
     } catch (e) {}
     try { console.info("[Portal] portal mode ON — simulation satellites, no service worker, same-window launch"); } catch (e) {}
+    // POKI: ẩn link ra ngoài ở footer (Poki cấm branding/quảng cáo ngoài)
+    if (poki) {
+      var hideLinks = function () {
+        try {
+          var fl = document.querySelector(".footer-links");
+          if (fl) fl.style.display = "none";
+        } catch (e) {}
+      };
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hideLinks);
+      else hideLinks();
+    }
   }
 })();

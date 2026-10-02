@@ -43,9 +43,11 @@ window.WKAnalytics = (() => {
     } catch { return false; }
   };
 
-  /* enabled state: DNT always wins; otherwise the user toggle (default ON). */
-  let enabled = !dnt() && store.get("wk_analytics") !== "0";
-  const isEnabled = () => enabled && !dnt();
+  /* enabled state: DNT always wins; otherwise the user toggle (default ON).
+   * PORTAL (blocker #3): tắt hẳn analytics trong iframe portal — Poki chặn mọi external request. */
+  const portalMode = (() => { try { return window.WK_PORTAL_MODE === true; } catch { return false; } })();
+  let enabled = !dnt() && !portalMode && store.get("wk_analytics") !== "0";
+  const isEnabled = () => enabled && !dnt() && !portalMode;
 
   const queue = [];            // analytics events awaiting batch flush
   const errorQueue = [];       // error events (own pipeline -> /api/errors)

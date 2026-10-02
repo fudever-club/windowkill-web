@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'">
-<title>WINDOWKILL: Web Edition — Chiến trường</title>
+<title data-i18n="game.title">WINDOWKILL: Web Edition — Chiến trường</title>
 <meta name="description" content="Chiến trường WINDOWKILL: Web Edition — twin-stick shooter trong popup trình duyệt, nơi cửa sổ chính là thanh máu. Chơi miễn phí trên web, phát triển bởi FU-DEVER.">
 <link rel="canonical" href="https://windowkill-web.vercel.app/game.html">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -26,6 +26,7 @@
 <script src="js/portal.js" defer></script>
 <script src="js/pwa.js" defer></script>
 <script src="js/analytics.js" defer></script>
+<script src="js/i18n.js" defer></script>
 <style>
   html, body { height: 100%; overflow: hidden; background: #04080f; }
   #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
@@ -213,19 +214,19 @@
   <canvas id="game-canvas"></canvas>
 
   <div class="overlay" id="ov-draft">
-    <h2><svg class="ic" aria-hidden="true"><use href="#i-levelup"/></svg> LÊN CẤP! Chọn 1 nâng cấp</h2>
+    <h2><svg class="ic" aria-hidden="true"><use href="#i-levelup"/></svg> <span data-i18n="draft.title">LÊN CẤP! Chọn 1 nâng cấp</span></h2>
     <div class="cards" id="draft-cards"></div>
   </div>
 
   <div class="overlay" id="ov-pause">
     <div class="ov-brand"><img src="assets/brand/dever-logo.png" alt="FU-DEVER" data-hide-onerror> FU-DEVER</div>
-    <h2><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> Tạm dừng</h2>
+    <h2><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> <span data-i18n="pause.title">Tạm dừng</span></h2>
     <div class="menu-btns">
-      <button class="btn-big" id="btn-resume" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Tiếp tục</button>
-      <button class="btn-ghost" id="btn-restart"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> Chơi lại</button>
-      <button class="btn-ghost" id="btn-quit"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> Về menu</button>
+      <button class="btn-big" id="btn-resume" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="pause.resume">Tiếp tục</span></button>
+      <button class="btn-ghost" id="btn-restart"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="pause.retry">Chơi lại</span></button>
+      <button class="btn-ghost" id="btn-quit"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="pause.quit">Về menu</span></button>
     </div>
-    <div class="stat-line">P / Esc: tiếp tục · M: bật/tắt nhạc</div>
+    <div class="stat-line" data-i18n="pause.hint">P / Esc: tiếp tục · M: bật/tắt nhạc</div>
   </div>
 
   <div class="overlay" id="ov-over">
@@ -235,8 +236,8 @@
     <div class="stat-line" id="over-stats"></div>
     <div id="over-record" style="color:#fde68a;font-weight:700;font-size:18px"></div>
     <div class="menu-btns">
-      <button class="btn-big" id="btn-again" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> Chơi lại (R)</button>
-      <button class="btn-ghost" id="btn-quit2"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> Về menu</button>
+      <button class="btn-big" id="btn-again" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="gameover.retry">Chơi lại (R)</span></button>
+      <button class="btn-ghost" id="btn-quit2"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="gameover.menu">Về menu</span></button>
     </div>
   </div>
 
@@ -244,24 +245,35 @@
   <div id="satperm" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
        align-items:center;gap:10px;background:#0d1626ee;border:1px solid #2e6db488;border-radius:12px;
        padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
-    <span>Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
-    <button class="btn-ghost" id="btn-sat-allow" style="padding:10px 18px;min-height:44px">Cho phép</button>
-    <button class="btn-ghost" id="btn-sat-single" style="padding:10px 18px;min-height:44px">Chơi 1 cửa sổ</button>
+    <span data-i18n="satperm.text">Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
+    <button class="btn-ghost" id="btn-sat-allow" style="padding:10px 18px;min-height:44px" data-i18n="satperm.allow">Cho phép</button>
+    <button class="btn-ghost" id="btn-sat-single" style="padding:10px 18px;min-height:44px" data-i18n="satperm.single">Chơi 1 cửa sổ</button>
   </div>
 </div>
 
-  <button id="btn-hud-pause" class="hud-btn" aria-label="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
-  <button id="btn-hud-full" class="hud-btn" aria-label="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
+  <button id="btn-hud-pause" class="hud-btn" data-i18n-aria="game.hud_pause_aria" aria-label="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+  <button id="btn-hud-full" class="hud-btn" data-i18n-aria="game.hud_full_aria" aria-label="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
 <script src="js/audio.js" defer></script>
 <script src="js/bgm.js" defer></script>
 <script src="js/bg.js" defer></script>
 <script src="js/juice.js" defer></script>
 <script src="js/cinema.js" defer></script>
+<script src="js/campaign.js" defer></script>
+<script src="js/monsters.js" defer></script>
+<script src="js/bosses.js" defer></script>
+<script src="js/stagefx.js" defer></script>
+<script src="js/tutorial.js" defer></script>
+<script src="js/meta.js" defer></script>
+<script src="js/juice2.js" defer></script>
+<script src="js/sfx2.js" defer></script>
+<script src="js/upgrades2.js" defer></script>
+<script src="js/v2glue.js" defer></script>
 <script src="js/game.js" defer></script>
 <script src="js/mobile.js" defer></script>
 <script>
 // PWA: đăng ký Service Worker — cache tài nguyên + màn hình offline
-if ("serviceWorker" in navigator) {
+// PORTAL: không đăng ký SW trong iframe portal (một số portal từ chối SW)
+if ("serviceWorker" in navigator && !window.WK_PORTAL_MODE) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {
       /* SW không bắt buộc: game vẫn chạy online bình thường */

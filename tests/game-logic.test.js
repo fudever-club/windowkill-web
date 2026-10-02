@@ -197,9 +197,10 @@ describe("regression core loop & wave (static, luôn chạy)", () => {
     assert.match(src, /draft-cards/);
   });
 
-  it("combo tính điểm theo chuỗi hạ quái", () => {
+  it("combo theo chuỗi hạ quái (§6: điểm gốc cố định, không nhân)", () => {
     assert.match(src, /G\.combo\+\+/);
-    assert.match(src, /G\.combo \* 2/);
+    assert.match(src, /COMBO x\$\{G\.combo\}/);
+    assert.match(src, /G\.combo = 0/);
   });
 
   it("wave clear vá cửa sổ (banner WAVE ... CLEAR)", () => {

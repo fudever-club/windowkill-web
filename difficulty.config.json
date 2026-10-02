@@ -1,0 +1,258 @@
+{
+  "_note": "Toàn bộ số liệu cân bằng của GAME-DESIGN-DOC v2.0 (§8). Không hard-code số trong logic — đọc từ file này. Bản §8.1 wave 8–10 doc ghi khoảng (1.60–1.90×, 28–34 con...): đã nội suy tuyến tính, ghi chú 'interpolated' để balance pass chỉnh lại.",
+  "campaign": {
+    "_note": "Hằng số khung ải (§3, §4). §8 chỉ cho số endless + modifier; các số dưới là default suy từ §3/§4, balance pass chỉnh được mà không động code.",
+    "boss": {
+      "_note": "§5: phase chuyển tại 66%/33% HP; telegraph ≥ 0.7s. HP ≈ DPS_kỳ_vọng × 150s (~2–3 phút/fight) — P1 boss module dùng boss_hp_mult từ difficulties.",
+      "phase_thresholds": [
+        0.66,
+        0.33
+      ]
+    },
+    "miniboss": {
+      "_note": "§5: elite variant = quái thường phóng to 2.5×, HP ×8, thêm đúng 1 đòn mới. Thưởng: 20 gem + draft 1/3 ngay + vá +60px.",
+      "gem_reward": 20,
+      "hp_mult": 8,
+      "scale": 2.5
+    },
+    "spawn": {
+      "batch_refill_threshold": 4,
+      "batch_size": 12,
+      "interval_s": 2.0,
+      "max_entities": 120
+    },
+    "stage_time_target_min": [
+      14,
+      18
+    ],
+    "stages": 5,
+    "wave_clear": {
+      "_note": "§3: hết wave vá +40px & +1 máu (Thường — lấy từ difficulties.wave_repair_px / wave_heal); wave 5 mini-boss vá +60px; wave 10 boss: vá 100% + hồi đầy máu + draft 2/3.",
+      "boss_kill_full_heal": true,
+      "boss_kill_repair_pct": 1.0,
+      "miniboss_repair_bonus_px": 20
+    },
+    "waves_per_stage": 10
+  },
+  "difficulties": {
+    "_note": "§8.2 — Modifier theo độ khó, áp cho cả Campaign lẫn Endless. Khắc nghiệt: không tăng số lượng vượt bảng, không thêm pattern boss — khó vì quái trâu + nhanh + telegraph ngắn.",
+    "chill": {
+      "blackout": {
+        "cycle_s": 22,
+        "dark_s": 4
+      },
+      "boss5_p3_countdown_s": 25,
+      "boss_hp_mult": 0.65,
+      "chew_dps_mult": 0.55,
+      "gem_drop_mult": 1.4,
+      "label": "Chill",
+      "monster_hp_mult": 0.55,
+      "monster_speed_mult": 0.75,
+      "score_mult": 0.8,
+      "ship_hp": 4,
+      "shrink": {
+        "px_per_10s": 5
+      },
+      "spawn_count_min": 1,
+      "spawn_count_mult": 0.8,
+      "spikes": {
+        "off_s": 3,
+        "on_s": 3
+      },
+      "telegraph_mult": 1.4,
+      "wave_heal": {
+        "amount": 1,
+        "every_n_waves": 1
+      },
+      "wave_repair_px": 50,
+      "window_lose_threshold_pct": 50
+    },
+    "hardcore": {
+      "blackout": {
+        "cycle_s": 18,
+        "dark_s": 8
+      },
+      "boss5_p3_countdown_s": 16,
+      "boss_hp_mult": 1.35,
+      "chew_dps_mult": 1.25,
+      "gem_drop_mult": 0.85,
+      "label": "Khắc nghiệt",
+      "monster_hp_mult": 1.45,
+      "monster_speed_mult": 1.15,
+      "score_mult": 1.6,
+      "ship_hp": 2,
+      "shrink": {
+        "px_per_10s": 12
+      },
+      "spawn_count_min": 1,
+      "spawn_count_mult": 1.25,
+      "spikes": {
+        "off_s": 1.5,
+        "on_s": 5
+      },
+      "telegraph_mult": 0.75,
+      "wave_heal": {
+        "amount": 1,
+        "every_n_waves": 2
+      },
+      "wave_repair_px": 30,
+      "window_lose_threshold_pct": 75
+    },
+    "normal": {
+      "blackout": {
+        "cycle_s": 20,
+        "dark_s": 6
+      },
+      "boss5_p3_countdown_s": 20,
+      "boss_hp_mult": 1.0,
+      "chew_dps_mult": 1.0,
+      "gem_drop_mult": 1.0,
+      "label": "Thường",
+      "monster_hp_mult": 1.0,
+      "monster_speed_mult": 1.0,
+      "score_mult": 1.0,
+      "ship_hp": 3,
+      "shrink": {
+        "px_per_10s": 8
+      },
+      "spawn_count_min": 1,
+      "spawn_count_mult": 1.0,
+      "spikes": {
+        "off_s": 2,
+        "on_s": 4
+      },
+      "telegraph_mult": 1.0,
+      "wave_heal": {
+        "amount": 1,
+        "every_n_waves": 1
+      },
+      "wave_repair_px": 40,
+      "window_lose_threshold_pct": 65
+    }
+  },
+  "endless": {
+    "_note": "§8.1 — Endless mode, baseline độ khó Thường. Boss nhịp mỗi 5 wave (§2 R2).",
+    "boss": {
+      "_note": "Boss mỗi 5 wave (nhịp cũ, §2 R2).",
+      "every_n_waves": 5,
+      "hp_mult_per_boss_met": 0.25,
+      "keep_pattern": true,
+      "_hp_mult_formula": "1 + 0.25 * (số boss đã gặp)"
+    },
+    "formulas_11plus": {
+      "_note": "Công thức wave 11+ (§8.1), n = số wave.",
+      "chew_dps": "18 + 1.2*(n-10)",
+      "count": "34 + 3*(n-10)",
+      "hp_mult": "1.90 * 1.12^(n-10)",
+      "spawn_interval_s": "max(1.10 - 0.05*(n-10), 0.60)",
+      "speed_mult": "min(1.20 + 0.03*(n-10), 1.65)"
+    },
+    "loop": {
+      "_note": "Chế độ Vô Tận: quay vòng 5 ải (1→5→1...), mechanic đặc trưng mỗi ải giữ nguyên. Mỗi vòng quay lại ải 1: vá full + hồi đầy máu (1 lần/vòng). BXH endless riêng per profile.",
+      "dmg_growth_per_loop": 1.15,
+      "full_repair_on_loop_restart": true,
+      "hp_growth_per_loop": 1.25,
+      "loop_stages": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "milestone_banners": {
+        "10": "Tâm bão",
+        "15": "Lõi hệ thống",
+        "20": "Vực sâu",
+        "25": "Vô định",
+        "5": "Vùng ven"
+      },
+      "stacking": "additive"
+    },
+    "waves": {
+      "1": {
+        "boss": null,
+        "chew_dps": 8,
+        "count": 7,
+        "hp_mult": 0.75,
+        "spawn_interval_s": 2.5,
+        "speed_mult": 0.85
+      },
+      "10": {
+        "boss": "boss2",
+        "chew_dps": 18,
+        "count": 34,
+        "hp_mult": 1.9,
+        "spawn_interval_s": 1.1,
+        "speed_mult": 1.2
+      },
+      "2": {
+        "boss": null,
+        "chew_dps": 9,
+        "count": 10,
+        "hp_mult": 0.85,
+        "spawn_interval_s": 2.2,
+        "speed_mult": 0.9
+      },
+      "3": {
+        "boss": null,
+        "chew_dps": 10,
+        "count": 13,
+        "hp_mult": 1.0,
+        "spawn_interval_s": 2.0,
+        "speed_mult": 0.95
+      },
+      "4": {
+        "boss": null,
+        "chew_dps": 11,
+        "count": 16,
+        "hp_mult": 1.1,
+        "spawn_interval_s": 1.8,
+        "speed_mult": 1.0
+      },
+      "5": {
+        "boss": "boss1",
+        "chew_dps": 12,
+        "count": 19,
+        "hp_mult": 1.15,
+        "spawn_interval_s": 1.7,
+        "speed_mult": 1.0
+      },
+      "6": {
+        "boss": null,
+        "chew_dps": 13,
+        "count": 22,
+        "hp_mult": 1.3,
+        "spawn_interval_s": 1.6,
+        "speed_mult": 1.05
+      },
+      "7": {
+        "boss": null,
+        "chew_dps": 14,
+        "count": 25,
+        "hp_mult": 1.45,
+        "spawn_interval_s": 1.45,
+        "speed_mult": 1.1
+      },
+      "8": {
+        "boss": null,
+        "chew_dps": 15,
+        "count": 28,
+        "hp_mult": 1.6,
+        "interpolated": true,
+        "spawn_interval_s": 1.3,
+        "speed_mult": 1.15
+      },
+      "9": {
+        "boss": null,
+        "chew_dps": 16.5,
+        "count": 31,
+        "hp_mult": 1.75,
+        "interpolated": true,
+        "spawn_interval_s": 1.2,
+        "speed_mult": 1.175
+      }
+    }
+  },
+  "source": "studio/game-design/GAME-DESIGN-DOC.md §8",
+  "version": "2.0.0"
+}

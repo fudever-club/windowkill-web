@@ -225,7 +225,7 @@ function waveBanner(n, opts) {
   opts = opts || {};
   return new Promise(function (resolve) {
     try { if (_banner && _banner.resolve) _banner.resolve(false); } catch (e) {}
-    _banner = { kind: "wave", text: "WAVE " + n, sub: opts.sub || "Tiêu diệt tất cả!",
+    _banner = { kind: "wave", text: "WAVE " + n, sub: opts.sub || I18N.t("juice.wave_default"),
       age: 0, resolve: resolve, boss: !!opts.boss };
   });
 }
@@ -338,7 +338,7 @@ function drawBanner(ctx) {
 function waveClear(n, shards, patches) {
   jSlowMo(0.3, 350);
   spawnConfetti(36, true);
-  jFloat(_player.x, _player.y - 46, "+" + shards + " Mảnh Kính", "#5dff8f", { size: 18 });
+  jFloat(_player.x, _player.y - 46, I18N.t("juice.shard_float", { n: shards }), "#5dff8f", { size: 18 });
   sfx("fanfare");
   setMusic("VICTORY");
   (patches || []).forEach(function (p) { patch(p.x, p.y); });
@@ -432,23 +432,23 @@ function showDraft(upgrades, onPick, opts) {
   var ov = _draftEl("div", "cin-draft-overlay");
   var panel = _draftEl("div", "cin-draft-panel", ov);
   var title = _draftEl("div", "cin-draft-title", panel);
-  title.textContent = "LEVEL UP";
+  title.textContent = I18N.t("draft.cine_title");
   var sub = _draftEl("div", "cin-draft-sub", panel);
-  sub.textContent = "Chọn 1 nâng cấp";
+  sub.textContent = I18N.t("draft.pick_one");
   var cardsWrap = _draftEl("div", "cin-draft-cards", panel);
   var hint = _draftEl("div", "cin-draft-hint", panel);
-  hint.textContent = "Phím 1 / 2 / 3 để chọn nhanh";
+  hint.textContent = I18N.t("draft.hint");
 
   var cards = [];
   (upgrades || []).slice(0, 3).forEach(function (u, i) {
     var card = _draftEl("button", "cin-card", cardsWrap);
     card.type = "button";
-    card.setAttribute("aria-label", "Nâng cấp: " + (u.name || ("#" + (i + 1))));
+    card.setAttribute("aria-label", I18N.t("draft.aria", { name: u.name || ("#" + (i + 1)) }));
     var ico = _draftEl("div", "cin-card-ico", card);
     if (typeof u.icon === "string" && /^\s*<svg/i.test(u.icon)) ico.innerHTML = u.icon;
     else ico.textContent = u.icon || "◆";
     var nm = _draftEl("div", "cin-card-name", card);
-    nm.textContent = u.name || ("Nâng cấp " + (i + 1));
+    nm.textContent = u.name || I18N.t("draft.fallback_name", { n: i + 1 });
     var ds = _draftEl("div", "cin-card-desc", card);
     ds.innerHTML = u.desc || ""; // desc do dev viết, chứa SVG icon → cần parse HTML
     var key = _draftEl("div", "cin-card-key", card);
@@ -614,7 +614,7 @@ function drawCombo(ctx) {
     ctx.globalAlpha = la * 0.8;
     ctx.translate(_W * COMBO_X, COMBO_Y + 34);
     ctx.scale(1 - 0.2 * lt, 1 - 0.2 * lt);
-    drawText(ctx, "Combo mất!", 0, 0, "600 12px " + FONT_UI, "#9DB4D0", 1);
+    drawText(ctx, I18N.t("juice.combo_lost"), 0, 0, "600 12px " + FONT_UI, "#9DB4D0", 1);
     ctx.restore();
     return;
   }
@@ -809,7 +809,7 @@ function updateBossCine(dt) {
     // loot burst magnet tại 0.45s (sau implode)
     if (!c.looted && c.age >= 0.45) {
       c.looted = true;
-      _banner = { kind: "bossdown", text: "BOSS BỊ HẠ!", age: 0, dur: 1.8, resolve: null };
+      _banner = { kind: "bossdown", text: I18N.t("juice.boss_down"), age: 0, dur: 1.8, resolve: null };
       var cols = ["#38BDF8", "#FFE14D", "#5dff8f"];
       for (var j = 0; j < 12; j++) {
         var m = P_MGEM.next();
@@ -821,7 +821,7 @@ function updateBossCine(dt) {
         m.life = 0.8;
         m.color = cols[j % 3]; m.size = rand(5, 8);
       }
-      jFloat(c.px, c.py - 50, "+ Mảnh Kính", "#5dff8f", { size: 16 });
+      jFloat(c.px, c.py - 50, I18N.t("juice.shard_float2"), "#5dff8f", { size: 16 });
       sfx("fanfare");
     }
     if (c.age >= 2.0) c.resolve();
@@ -882,9 +882,9 @@ function drawBossCine(ctx) {
     if (t > 0.4 && t < 1.3) {
       var bt = (t - 0.4) / 0.9;
       var on = rm ? true : (Math.sin(bt * Math.PI * 6) > 0);
-      if (on) drawText(ctx, "⚠ CẢNH BÁO ⚠", _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
+      if (on) drawText(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
     } else if (rm && t >= 0.4 && t < 1.0) {
-      drawText(ctx, "⚠ CẢNH BÁO ⚠", _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
+      drawText(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
     }
     // 3. tên boss slide-in từ trái 350ms easeOutBack (0.9–1.25s)
     if (t > 0.9) {
@@ -1382,7 +1382,7 @@ function nukeFlash() {
 function pickupCollect(kind, x, y, amount) {
   var conf = {
     heart:  { c: "#FF5470", t: "+1 HP" },
-    shield: { c: "#7DD3FC", t: "Khiên!" },
+    shield: { c: "#7DD3FC", t: I18N.t("juice.pickup_shield") },
     nuke:   { c: "#FF7A1A", t: "NUKE!" },
     gem:    { c: "#38BDF8", t: "+" + (amount || 1) }
   }[kind] || { c: "#ffffff", t: "" };

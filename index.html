@@ -42,14 +42,14 @@
   .brand { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 14px; background: #0080FF14; border: 1px solid #0080FF44; padding: 8px 18px 8px 10px; border-radius: 999px; }
   .brand img { width: 40px; height: 40px; border-radius: 10px; }
   .brand .bn { font-weight: 800; letter-spacing: 2px; color: #8fc3ff; font-size: 15px; text-align: left; }
-  .brand .tag { font-size: 11px; color: #9db8d9; letter-spacing: 1px; text-align: left; }
+  .brand .tag { font-size: 13px; color: #9db8d9; letter-spacing: 1px; text-align: left; }
   .game-logo { max-width: 420px; width: 80%; margin: 6px auto 10px; display: block; filter: drop-shadow(0 6px 24px #0080FF66); }
   h1.title { font-size: 52px; letter-spacing: 6px; background: linear-gradient(135deg, #8fc3ff, #0080FF 60%, #0066CC); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 4px 0 8px; }
   .sub { color: #9db8d9; font-size: 16px; line-height: 1.7; max-width: 640px; margin: 0 auto; }
   .sub b { color: #cfe6ff; }
   .howto li { margin-bottom: 8px; font-size: 14.5px; color: #c8dcf5; line-height: 1.6; }
   .diff-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
-  .setrow { display: flex; align-items: center; justify-content: space-between; padding: 9px 2px; font-size: 15px; }
+  .setrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 9px 2px; font-size: 15px; } /* QW12: wrap */
   .tgl { width: 52px; height: 28px; border-radius: 999px; border: none; cursor: pointer; background: #33415c; position: relative; transition: background .15s; }
   /* QW5: vùng chạm 64×44px trong khi hình vẫn 52×28px */
   .tgl::before { content:''; position: absolute; inset: -8px -6px; }
@@ -57,7 +57,7 @@
   .tgl.on { background: #0080FF; } .tgl.on::after { left: 27px; }
   #hs-list { font-size: 14.5px; color: #c8dcf5; line-height: 2; }
   #new-profile-box { display: none; gap: 8px; margin-top: 10px; }
-  #new-profile-box input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff2e; background: #0c1f3a; color: #fff; font-size: 15px; }
+  #new-profile-box input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff2e; background: #0c1f3a; color: #fff; font-size: 15px; } /* QW12: wrap */
   footer { text-align: center; color: #8fb0d8; font-size: 13px; margin-top: 34px; line-height: 1.8; }
   footer b { color: #8fc3ff; }
 </style>

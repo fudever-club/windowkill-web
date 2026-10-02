@@ -651,7 +651,7 @@ function drawSkipPill(c, W) {
   var label = T("tut.skip");
   c.font = "600 13px system-ui, sans-serif";
   var w = c.measureText(label).width + 26, h = 30;
-  var x = W - w - 12, y = 12;
+  var x = 12, y = 12;
   c.save();
   rr(c, x, y, w, h, 15);
   c.fillStyle = "rgba(6,14,28,0.72)"; c.fill();

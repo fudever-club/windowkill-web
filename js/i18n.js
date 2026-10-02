@@ -346,6 +346,18 @@
       "monster.healer.desc": "Hồi máu quái khác, không tấn công.",
       "monster.kamikaze.name": "Cảm Tử",
       "monster.kamikaze.desc": "Lao vào viền cửa sổ rồi tự nổ.",
+      /* ----- Season 1 "Mùa Deadline" ----- */
+      "monster.deadline.name": "Deadline Dí",
+      "monster.deadline.desc": "Đếm ngược 12s — hạ nó trước khi chuông reo!",
+      "monster.otworker.name": "Nhân Viên OT",
+      "monster.otworker.desc": "Càng sống lâu càng cáu: +tốc, +dame. Đạn băng cho nó nghỉ ngơi.",
+      "monster.meeting.name": "Kẻ Họp Hành",
+      "monster.meeting.desc": "Tỏa vùng họp làm chậm tàu. Đứng ngoài, bắn từ xa.",
+      "season.bell_ring": "RENG RENG! Cả team bị dí!",
+      "season.rage_up": "Cáu +1!",
+      "season.rage_reset": "Nghỉ ngơi!",
+      "season.summon": "Triệu tập họp!",
+      "season.in_meeting": "Họp hành làm chậm tiến độ!",
       /* ----- banner wave (§12.4) ----- */
       "banner.wave1": "Bắn quái tím trước — chúng gặm cửa sổ!",
       "banner.tip1": "Quái tím gặm viền cửa sổ — bắn chúng xuống!",

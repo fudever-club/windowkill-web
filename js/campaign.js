@@ -190,7 +190,7 @@
         [{ monster: "freezer", count: 4, debut: true }, { monster: "chaser", count: 5 }],
         [{ monster: "dasher", count: 6 }],
         [{ monster: "mini_boss_3", count: 1 }, { monster: "chaser", count: 4 }],
-        [{ monster: "tank", count: 2 }, { monster: "chaser", count: 6 }, { monster: "freezer", count: 2 }],
+        [{ monster: "tank", count: 2 }, { monster: "chaser", count: 6 }, { monster: "freezer", count: 2 }, { monster: "deadline", count: 2, debut: true }],
         [{ monster: "dasher", count: 4 }, { monster: "freezer", count: 4 }, { monster: "chewer", count: 3 }],
         [{ monster: "splitter", count: 3 }, { monster: "chaser", count: 6 }],
         [{ monster: "dasher", count: 8 }, { monster: "chaser", count: 6 }, { monster: "freezer", count: 3 }],
@@ -213,10 +213,10 @@
         [{ monster: "phantom", count: 4, debut: true }, { monster: "chaser", count: 5 }],
         [{ monster: "dasher", count: 6 }],
         [{ monster: "mini_boss_4", count: 1 }, { monster: "chaser", count: 3 }],
-        [{ monster: "splitter", count: 3 }, { monster: "chaser", count: 5 }, { monster: "phantom", count: 3 }],
+        [{ monster: "splitter", count: 3 }, { monster: "chaser", count: 5 }, { monster: "phantom", count: 3 }, { monster: "otworker", count: 2, debut: true }],
         [{ monster: "tank", count: 2 }, { monster: "spitter", count: 4 }, { monster: "chaser", count: 4 }],
         [{ monster: "chewer", count: 6 }, { monster: "chaser", count: 6 }],
-        [{ monster: "phantom", count: 8 }, { monster: "dasher", count: 6 }, { monster: "bomber", count: 3 }],
+        [{ monster: "phantom", count: 8 }, { monster: "dasher", count: 6 }, { monster: "bomber", count: 3 }, { monster: "deadline", count: 2 }],
         [{ monster: "boss_4", count: 1 }]
       ]
     },
@@ -237,9 +237,9 @@
         [{ monster: "tank", count: 2 }, { monster: "chaser", count: 6 }],
         [{ monster: "mini_boss_5", count: 1 }, { monster: "dasher", count: 4 }],
         [{ monster: "spitter", count: 4 }, { monster: "chaser", count: 6 }, { monster: "booster", count: 2, debut: true }],
-        [{ monster: "dasher", count: 4 }, { monster: "phantom", count: 4 }, { monster: "chewer", count: 4 }, { monster: "warden", count: 1, debut: true }],
-        [{ monster: "splitter", count: 3 }, { monster: "chaser", count: 8 }, { monster: "broodmother", count: 1, debut: true }],
-        [{ monster: "chaser", count: 10 }, { monster: "tank", count: 4 }, { monster: "bomber", count: 4 }, { monster: "spitter", count: 2 }],
+        [{ monster: "dasher", count: 4 }, { monster: "phantom", count: 4 }, { monster: "chewer", count: 4 }, { monster: "warden", count: 1, debut: true }, { monster: "deadline", count: 2 }],
+        [{ monster: "splitter", count: 3 }, { monster: "chaser", count: 8 }, { monster: "broodmother", count: 1, debut: true }, { monster: "meeting", count: 1, debut: true }],
+        [{ monster: "chaser", count: 10 }, { monster: "tank", count: 4 }, { monster: "bomber", count: 4 }, { monster: "spitter", count: 2 }, { monster: "otworker", count: 2 }, { monster: "meeting", count: 1 }],
         [{ monster: "boss_5", count: 1 }]
       ]
     }

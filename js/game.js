@@ -3500,7 +3500,7 @@ function render(now) {
   }
     
    
-   
+     // banner
      // hint điều khiển chỉ hiện 6 giây đầu mỗi lượt chơi (render-local, không chạm update)
         if (G.phase !== "play") { G._hintArmed = false; }
            if (G.phase === "play" && !G._hintArmed) { G._hintArmed = true; G._hintUntil = now + 6000; }
@@ -3508,15 +3508,10 @@ function render(now) {
                  if (now < G._hintUntil) {
                   ctx.fillStyle = "#8f7bb5"; ctx.font = "13px sans-serif";
     ctx.fillText(touch.active ? I18N.t("hud.controls_mobile") : I18N.t("hud.controls"), 14, H - 14); }
-                 }
-                 }
-}
-                      }
 
- }
- }
- }
-if (G.bannerT > 0) {
+   
+   // banner
+   if (G.bannerT > 0) {
     ctx.globalAlpha = Math.min(1, G.bannerT);
     ctx.fillStyle = "#ffd7f4"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "center";
     ctx.fillText(G.banner, W / 2, H / 2 - 20);

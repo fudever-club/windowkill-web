@@ -421,7 +421,7 @@
         if (window.Campaign) {
           const wrap = document.createElement("div");
           wrap.className = "panel"; wrap.id = "v2-stages";
-          const playRow = document.querySelector("#btn-play").closest(".row");
+          const playRow = document.querySelector("#btn-play").closest(".cta-band, .row");
           playRow.parentNode.insertBefore(wrap, playRow);
           // AUDIT 2026-10-02: tách thành paintStages() để renderAll() gọi lại khi đổi
           // profile (window.__wkRefreshV2) — khóa ải + kỷ lục là dữ liệu theo profile.
@@ -433,16 +433,16 @@
               const b = best[String(st.id)] || {};
               return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
                 style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
-                <div style="font-weight:800">${lock ? "🔒" : "🪟"} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
+                <div style="font-weight:800">${lock ? svgIcon("i-lock") : svgIcon("i-window")} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
                 <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-                <div style="font-size:11.5px;color:#8fb0d8">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
+                <div style="font-size:11.5px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
               </button>`;
             }).join("");
             const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;
             wrap.innerHTML = `<h3><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> ${escapeHtml(vt("campaign.title", "Chiến dịch"))}</h3>
               <div class="row" style="gap:8px;flex-wrap:wrap">
                 <button class="btn-ghost v2-stage ${selStage === 0 ? "sel" : ""}" data-stage="0" style="min-width:148px;text-align:left">
-                  <div style="font-weight:800">♾️ ${escapeHtml(vt("campaign.free", "Chơi tự do"))}</div>
+                  <div style="font-weight:800">${svgIcon("i-infinity")} ${escapeHtml(vt("campaign.free", "Chơi tự do"))}</div>
                   <div style="font-size:12.5px">${escapeHtml(vt("campaign.free_desc", "Endless như cũ, boss mỗi 5 wave"))}</div>
                 </button>${cards}
               </div>`;
@@ -468,7 +468,7 @@
         ov.id = "v2-tutmodal";
         ov.style.cssText = "position:fixed;inset:0;background:rgba(2,8,20,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
         ov.innerHTML = `<div class="panel" style="max-width:420px;text-align:center">
-          <h3>🎓 ${escapeHtml(vt("tutorial.modal_title", "Học chơi trong 2 phút?"))}</h3>
+          <h3>svgIcon("i-grad") ${escapeHtml(vt("tutorial.modal_title", "Học chơi trong 2 phút?"))}</h3>
           <p style="font-size:14px;color:#c8dcf5">${escapeHtml(vt("tutorial.modal_desc", "Hướng dẫn tương tác ngay trong game: di chuyển, bắn, nhặt gem, chọn nâng cấp."))}</p>
           <div class="row" style="gap:10px;justify-content:center;margin-top:12px">
             <button class="btn-big" id="v2-tut-yes">${escapeHtml(vt("tutorial.modal_yes", "Học chơi"))}</button>
@@ -482,29 +482,33 @@
         if (window.Tutorial && v2skipTut === null && !Tutorial.isDone(activeId)) { showTutModal(); return; }
         launchGame();
       };
-      try { // nút "chơi lại hướng dẫn" trong panel cách chơi
-        const howto = document.querySelector("[data-i18n='menu.howto.1']");
+      try { // nút "chơi lại hướng dẫn" — nằm trong dialog Cách chơi (hub)
+        // DESIGN 2026-10-02: selector cũ [data-i18n='menu.howto.1'] không bao
+        // giờ khớp (markup dùng data-i18n-html) nên nút rơi ra document.body.
+        const host = document.querySelector("#v2-howto-body") || document.body;
         const btn = document.createElement("button");
         btn.className = "btn-ghost"; btn.style.marginTop = "10px";
-        btn.innerHTML = `🎓 ${escapeHtml(vt("tutorial.replay", "Chơi lại hướng dẫn"))}`;
+        btn.innerHTML = svgIcon("i-grad") + ` ${escapeHtml(vt("tutorial.replay", "Chơi lại hướng dẫn"))}`;
         btn.onclick = () => { v2skipTut = false; launchGame(); };
-        (howto ? howto.closest(".panel") : document.body).appendChild(btn);
+        host.appendChild(btn);
       } catch (e) {}
 
-      /* 4. Meta panels: Xưởng + Thành tựu + Daily */
+      /* 4. Meta: Xưởng (shop) + Thành tựu + Daily — mỗi phần render vào
+         1 dialog riêng của hub. Dữ liệu/logic mua/claim giữ nguyên 100%.
+         AUDIT 2026-10-02: viết lại theo đúng contract js/meta.js (trước đây
+         dùng nhầm d.maxLevel/d.costs không tồn tại → văng TypeError, catch
+         nuốt → panel Xưởng/Thành tựu/Daily rỗng hoàn toàn trên production).
+         Dùng d.max/d.prices, unlock thật, modifiers theo tên (không join
+         object), hỗ trợ EN qua field nameEn/descEn.
+         DESIGN 2026-10-02: icon DOM toàn bộ là SVG sprite (assets/icons) —
+         không còn emoji. Nút "Sửa khẩn cấp" đã bỏ khỏi launcher ở đợt audit
+         (bấm ở menu trừ 20 mảnh oan, tính năng thuộc luồng in-game). */
       try {
         if (window.Meta) {
-          const mp = document.createElement("div");
-          mp.className = "panel"; mp.id = "v2-meta";
-          const anchor = document.querySelector("#hs-list").closest(".panel");
-          anchor.parentNode.insertBefore(mp, anchor.nextSibling);
-          function renderMeta() {
-            // AUDIT 2026-10-02: viết lại theo đúng contract js/meta.js (trước đây dùng nhầm
-            // d.maxLevel/d.costs không tồn tại → văng TypeError, catch nuốt → panel Xưởng/Thành
-            // tựu/Daily rỗng hoàn toàn trên production). Dùng d.max/d.prices, unlock thật,
-            // modifiers hiển thị theo tên (không join object), hỗ trợ EN qua field nameEn/descEn.
-            const en = (window.I18N && I18N.getLang && I18N.getLang() === "en");
-            const pick = (d, vi) => (en && d[vi.replace("Vi", "En")]) ? d[vi.replace("Vi", "En")] : d[vi];
+          const en = (window.I18N && I18N.getLang && I18N.getLang() === "en");
+          const pick = (d, vi) => (en && d[vi.replace("Vi", "En")]) ? d[vi.replace("Vi", "En")] : d[vi];
+          function renderWorkshop() {
+            const shopEl = $("v2-shop"); if (!shopEl) return;
             const shards = Meta.getShards();
             const ws = Meta.getWorkshop();
             const nodes = Meta.WORKSHOP.map(d => {
@@ -517,52 +521,102 @@
               const needTitle = (!maxed && unlocked && shards < cost)
                 ? ` title="${escapeHtml(en ? `Need ${cost - shards} more shards` : `Còn thiếu ${cost - shards} Mảnh Kính`)}"` : "";
               return `<div style="border:1px solid #1c3d6e;border-radius:10px;padding:8px;min-width:150px;flex:1">
-                <div style="font-weight:800;font-size:13px">${escapeHtml(pick(d, "nameVi"))} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(Math.max(0, d.max - lv))}</span>${unlocked ? "" : " 🔒"}</div>
-                <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>🔒 " + escapeHtml(pick(d, "unlockVi"))}</div>
+                <div style="font-weight:800;font-size:13px">${escapeHtml(pick(d, "nameVi"))} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(Math.max(0, d.max - lv))}</span>${unlocked ? "" : " " + svgIcon("i-lock")}</div>
+                <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>" + svgIcon("i-lock") + " " + escapeHtml(pick(d, "unlockVi"))}</div>
                 <button class="btn-ghost v2-buy" data-node="${d.id}" ${can ? "" : "disabled"}${needTitle} style="margin-top:6px;font-size:12px">
-                  ${maxed ? "MAX" : ("💎 " + cost)}</button></div>`;
+                  ${maxed ? "MAX" : (svgIcon("i-gem") + " " + cost)}</button></div>`;
             }).join("");
-            const achvs = Meta.getAchievements();
-            const unCount = achvs.filter(a => a.unlocked).length;
-            const skinName = (id) => { const s = (Meta.SKINS || []).filter(x => x.id === id)[0]; return s ? (en && s.nameEn ? s.nameEn : s.nameVi) : id; };
-            const rewardTxt = (r) => (typeof r === "number") ? ("+" + r + "💎")
-              : (String(r).indexOf("skin:") === 0 ? ("🎨 " + skinName(String(r).slice(5))) : String(r));
-            const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${a.unlocked ? "✅" : "🔒"} <b>${escapeHtml(pick(a, "nameVi"))}</b>
-              <span style="color:#8fb0d8">${escapeHtml(rewardTxt(a.reward))}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
-            const d = Meta.getDaily();
-            const dMods = (d.modifiers || []).map(m => `<span title="${escapeHtml(pick(m, "descVi"))}">${escapeHtml(pick(m, "nameVi"))}</span>`).join(" · ");
-            // AUDIT 2026-10-02: bỏ nút "Sửa khẩn cấp" khỏi launcher — trước đây bấm ở menu
-            // trừ thẳng 20💎 trong khi không có cửa sổ game nào được vá (điều kiện
-            // winPct < 40% chỉ có nghĩa trong run; RunFlags là state theo trang).
-            // Tính năng thuộc về luồng in-game, không để ở menu để tránh mất mảnh oan.
-            mp.innerHTML = `
-              <h3><svg class="ic" aria-hidden="true"><use href="#i-anvil"/></svg> ${escapeHtml(vt("meta.workshop", "Xưởng"))}
-                <span style="float:right;font-size:14px">💎 <span class="v2-shard-num" data-v="${shards}">${I18N.fmtNum(shards)}</span> ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}</span></h3>
-              <div class="row" style="gap:8px;flex-wrap:wrap">${nodes}</div>
-              <h3 style="margin-top:14px">🏆 ${escapeHtml(vt("meta.achievements", "Thành tựu"))} (${unCount}/${achvs.length})</h3>
-              <div style="max-height:220px;overflow:auto">${achHtml}</div>
-              <h3 style="margin-top:14px">📅 Daily — ${escapeHtml(d.dateStr || "")}</h3>
-              <div style="font-size:13px;color:#c8dcf5">${dMods || "—"}</div>
-              <div style="font-size:12.5px;color:#8fb0d8">${escapeHtml(vt("meta.daily_best", "Kỷ lục hôm nay"))}: ${I18N.fmtNum(d.bestScore || 0)} · 🔥 ${d.streak || 0}</div>
-              <div class="row" style="gap:8px;margin-top:8px">
-                <button class="btn-ghost" id="v2-daily-play">📅 ${escapeHtml(vt("meta.daily_play", "Chơi Daily"))}</button>
-              </div>`;
-            mp.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => {
+            shopEl.innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap">${nodes}</div>`;
+            const badge = $("v2-shard-badge");
+            if (badge) badge.innerHTML = svgIcon("i-gem") + ` <span class="v2-shard-num" data-v="${shards}">${I18N.fmtNum(shards)}</span> ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}`;
+            shopEl.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => {
               const r = Meta.buyNode(b.dataset.node);
               if (r && r.ok) {
-                renderMeta();
+                renderWorkshop();
                 /* QW14: mua thành công → số dư Mảnh Kính chạy count-up ăn mừng
                    (cùng mẫu Cinema.countUp đã dùng cho kỷ lục ở wowUI()). */
                 try {
-                  const numEl = mp.querySelector(".v2-shard-num");
+                  const numEl = document.querySelector("#v2-shard-badge .v2-shard-num");
                   if (numEl && window.Cinema && Cinema.countUp) Cinema.countUp(numEl, Meta.getShards(), { format: (x) => I18N.fmtNum(Math.round(x)) });
                 } catch (e) {}
               }
             }; });
-            const dp = mp.querySelector("#v2-daily-play");
+          }
+          function renderAch() {
+            const el = $("v2-ach"); if (!el) return;
+            const achvs = Meta.getAchievements();
+            const unCount = achvs.filter(a => a.unlocked).length;
+            const skinName = (id) => { const s = (Meta.SKINS || []).filter(x => x.id === id)[0]; return s ? (en && s.nameEn ? s.nameEn : s.nameVi) : id; };
+            /* rewardHtml trả về HTML an toàn (số + icon SVG + tên đã escape) —
+               KHÔNG bọc thêm escapeHtml vì icon SVG cần render thật. */
+            const rewardHtml = (r) => (typeof r === "number") ? ("+" + r + " " + svgIcon("i-gem"))
+              : (String(r).indexOf("skin:") === 0 ? (svgIcon("i-palette") + " " + escapeHtml(skinName(String(r).slice(5)))) : escapeHtml(String(r)));
+            const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${svgIcon(a.unlocked ? "i-check" : "i-lock")} <b>${escapeHtml(pick(a, "nameVi"))}</b>
+              <span style="color:#8fb0d8">${rewardHtml(a.reward)}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
+            el.innerHTML = `<div style="max-height:46vh;overflow:auto">${achHtml}</div>`;
+            const cnt = $("v2-ach-count"); if (cnt) cnt.textContent = `(${unCount}/${achvs.length})`;
+          }
+          function renderDaily() {
+            const el = $("v2-daily"); if (!el) return;
+            const d = Meta.getDaily();
+            const dMods = (d.modifiers || []).map(m => `<span title="${escapeHtml(pick(m, "descVi"))}">${escapeHtml(pick(m, "nameVi"))}</span>`).join(" · ");
+            const dateEl = $("v2-daily-date"); if (dateEl) dateEl.textContent = "— " + (d.dateStr || "");
+            el.innerHTML = `
+              <div style="font-size:13px;color:#c8dcf5">${dMods || "—"}</div>
+              <div style="font-size:12.5px;color:#8fb0d8">${escapeHtml(vt("meta.daily_best", "Kỷ lục hôm nay"))}: ${I18N.fmtNum(d.bestScore || 0)} · ${svgIcon("i-fire")} ${d.streak || 0}</div>
+              <div class="row" style="gap:8px;margin-top:8px">
+                <button class="btn-ghost" id="v2-daily-play">${svgIcon("i-calendar")} ${escapeHtml(vt("meta.daily_play", "Chơi Daily"))}</button>
+              </div>`;
+            const dp = el.querySelector("#v2-daily-play");
             if (dp) dp.onclick = () => { v2sel = { kind: "daily" }; launchGame(); v2sel = { kind: "free" }; };
           }
-          renderMeta();
+          function renderV2Meta() { renderWorkshop(); renderAch(); renderDaily(); }
+          renderV2Meta();
+          // renderAll() đổi profile → vẽ lại cả ải + meta (giữ behavior audit:
+          // khóa ải + kỷ lục + meta là dữ liệu theo profile).
+          const _paintStages0 = window.__wkRefreshV2;
+          window.__wkRefreshV2 = () => { try { if (_paintStages0) _paintStages0(); } catch (e) {} renderV2Meta(); };
+        }
+      } catch (e) {}
+      /* 5. Hub nav: 6 nút icon mở overlay panel (landing sạch).
+         Chức năng/logic các panel giữ nguyên — chỉ đổi cách trình bày/điều hướng. */
+      try {
+        const overlay = $("hub-overlay");
+        if (overlay) {
+          const dialogs = {};
+          overlay.querySelectorAll("[data-hub-panel]").forEach(d => { dialogs[d.dataset.hubPanel] = d; });
+          let lastFocus = null;
+          function openHub(name) {
+            const dlg = dialogs[name]; if (!dlg) return;
+            lastFocus = document.activeElement;
+            Object.keys(dialogs).forEach(k => { dialogs[k].hidden = true; });
+            dlg.hidden = false;
+            overlay.hidden = false;
+            requestAnimationFrame(() => { overlay.classList.add("open"); });
+            document.querySelectorAll("[data-hub]").forEach(b => b.setAttribute("aria-expanded", b.dataset.hub === name ? "true" : "false"));
+            document.body.style.overflow = "hidden";
+            const c = dlg.querySelector("[data-hub-close]");
+            if (c) c.focus();
+            try { history.replaceState(null, "", "#" + name); } catch (e) {}
+            Analytics.track("hub_open", { panel: name });
+          }
+          function closeHub() {
+            overlay.classList.remove("open");
+            overlay.hidden = true;
+            document.querySelectorAll("[data-hub]").forEach(b => b.setAttribute("aria-expanded", "false"));
+            document.body.style.overflow = "";
+            try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+            if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
+          }
+          document.querySelectorAll("[data-hub]").forEach(b => { b.onclick = () => openHub(b.dataset.hub); });
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay || (e.target.closest && e.target.closest("[data-hub-close]"))) closeHub();
+          });
+          document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !overlay.hidden) closeHub(); });
+          window.__wkHub = { open: openHub, close: closeHub };
+          // deep-link: #shop / #ach / #daily / #stats / #settings / #howto
+          const h0 = (location.hash || "").replace("#", "");
+          if (dialogs[h0]) setTimeout(() => openHub(h0), 350);
         }
       } catch (e) {}
     } catch (e) {}

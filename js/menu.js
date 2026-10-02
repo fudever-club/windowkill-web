@@ -435,7 +435,7 @@
                 style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
                 <div style="font-weight:800">${lock ? svgIcon("i-lock") : svgIcon("i-window")} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
                 <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-                <div style="font-size:11.5px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
+                <div style="font-size:13px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
               </button>`;
             }).join("");
             const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;
@@ -522,7 +522,7 @@
                 ? ` title="${escapeHtml(en ? `Need ${cost - shards} more shards` : `Còn thiếu ${cost - shards} Mảnh Kính`)}"` : "";
               return `<div style="border:1px solid #1c3d6e;border-radius:10px;padding:8px;min-width:150px;flex:1">
                 <div style="font-weight:800;font-size:13px">${escapeHtml(pick(d, "nameVi"))} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(Math.max(0, d.max - lv))}</span>${unlocked ? "" : " " + svgIcon("i-lock")}</div>
-                <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>" + svgIcon("i-lock") + " " + escapeHtml(pick(d, "unlockVi"))}</div>
+                <div style="font-size:13px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>" + svgIcon("i-lock") + " " + escapeHtml(pick(d, "unlockVi"))}</div>
                 <button class="btn-ghost v2-buy" data-node="${d.id}" ${can ? "" : "disabled"}${needTitle} style="margin-top:6px;font-size:12px">
                   ${maxed ? "MAX" : (svgIcon("i-gem") + " " + cost)}</button></div>`;
             }).join("");
@@ -552,7 +552,7 @@
             const rewardHtml = (r) => (typeof r === "number") ? ("+" + r + " " + svgIcon("i-gem"))
               : (String(r).indexOf("skin:") === 0 ? (svgIcon("i-palette") + " " + escapeHtml(skinName(String(r).slice(5)))) : escapeHtml(String(r)));
             const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${svgIcon(a.unlocked ? "i-check" : "i-lock")} <b>${escapeHtml(pick(a, "nameVi"))}</b>
-              <span style="color:#8fb0d8">${rewardHtml(a.reward)}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
+              <span style="color:#8fb0d8">${rewardHtml(a.reward)}</span><br><span style="color:#8fb0d8;font-size:13px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
             el.innerHTML = `<div style="max-height:46vh;overflow:auto">${achHtml}</div>`;
             const cnt = $("v2-ach-count"); if (cnt) cnt.textContent = `(${unCount}/${achvs.length})`;
           }

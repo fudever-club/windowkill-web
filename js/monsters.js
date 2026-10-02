@@ -318,8 +318,7 @@ var BEHAVIORS = {
       ctx.fillStyle = "#2a0a3a";
       ctx.fillRect(-5, -5 + (m.latched ? Math.sin(m.t * 10) * 2 : 0), 10, 10);
       if (m.latched) {
-        ctx.fillStyle = "#ff5470"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("⚠", 0, -q - 6);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-alert", 14, "#ffd23f", 0, -q - 11);
         // báo gặm: răng cưa chớp tại điểm gặm
         if (m.warnSfx && Math.floor(m.t * 12) % 2 === 0) {
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
@@ -332,19 +331,16 @@ var BEHAVIORS = {
         }
       }
       if (m.stunT > 0) { // sao xoay trên đầu
-        ctx.fillStyle = "#ffe14d"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
         const sa = m.t * 6;
-        ctx.fillText("⭐", Math.cos(sa) * 14, -m.r - 8 + Math.sin(sa) * 4);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-star", 14, "#ffe14d", Math.cos(sa) * 14, -m.r - 8 + Math.sin(sa) * 4 - 5, true);
       }
       // vương miện đỏ của Chewer Chúa Tể
       if (m.miniboss && m.miniboss.id === "lord") {
-        ctx.fillStyle = "#ef4444"; ctx.font = "16px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("👑", 0, -m.r - 10);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-trophy", 16, "#ffd23f", 0, -m.r - 16);
       }
       // răng vàng của Chewer Cổ Đại
       if (m.miniboss && m.miniboss.id === "ancient") {
-        ctx.fillStyle = "#fbbf24"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("🦷", 0, -m.r - 8);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-fang", 12, "#ffffff", 0, -m.r - 13);
       }
       ctx.restore(); ctx.globalAlpha = 1;
     }
@@ -700,8 +696,7 @@ var BEHAVIORS = {
         ctx.beginPath(); ctx.arc(0, 0, 220 * (1 - m.pulse) + 20, 0, TAU); ctx.stroke();
       }
       if (off) { // icon ❄ ngắt khuếch đại
-        ctx.fillStyle = "#7dd3fc"; ctx.font = "16px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("❄", 0, -m.r - 12);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-snow", 16, "#7dd3fc", 0, -m.r - 18);
       }
       // sao 5 cánh xoay chậm
       ctx.rotate(m.t * 0.6);
@@ -1172,8 +1167,7 @@ var BEHAVIORS = {
         ctx.stroke();
       }
       if (m.edgeEgg) { // đánh dấu trứng dính viền
-        ctx.fillStyle = "#ff5470"; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("⚠", 0, -m.r - 8);
+        if (window.HUDIcons) HUDIcons.draw(ctx, "i-alert", 12, "#ffd23f", 0, -m.r - 12);
       }
       ctx.restore(); ctx.globalAlpha = 1;
     }
@@ -1321,7 +1315,7 @@ function drawEdgeFx(ctx, b, G) {
       ctx.fillStyle = "#e0f2fe"; ctx.font = "18px sans-serif";
       const cx = edge === "left" ? b.x + 24 : edge === "right" ? b.x + b.w - 24 : b.x + b.w / 2;
       const cy = edge === "top" ? b.y + 28 : edge === "bottom" ? b.y + b.h - 12 : b.y + 30;
-      ctx.fillText("❄", cx, cy);
+      if (window.HUDIcons) HUDIcons.draw(ctx, "i-snow", 18, "#e0f2fe", cx, cy - 7);
       // đếm ngược
       ctx.font = "12px sans-serif";
       ctx.fillText(Math.ceil(G.frozenEdges[edge]) + "s", cx, cy + 16);
@@ -1650,7 +1644,7 @@ var STRINGS = {
     "edge.eggStuck": "⚠ Trứng dính viền!",
     "booster.off": "❄ Ngắt khuếch đại!",
     "booster.dead": "Đã ngắt khuếch đại!",
-    "glimmer.spawn": "✨ Đom Đóm Vàng! Bắn hạ để nhận gem!",
+    "glimmer.spawn": "Đom Đóm Vàng! Bắn hạ để nhận gem!",
     "glimmer.escape": "Mất rồi...",
     "bomber.armed": "SẮP NỔ!",
     "phantom.reveal": "Hiện hình!",
@@ -1682,7 +1676,7 @@ var STRINGS = {
     "edge.eggStuck": "⚠ Egg stuck on edge!",
     "booster.off": "❄ Boost interrupted!",
     "booster.dead": "Boost offline!",
-    "glimmer.spawn": "✨ Gold Glimmer! Shoot it for gems!",
+    "glimmer.spawn": "Gold Glimmer! Shoot it for gems!",
     "glimmer.escape": "It got away...",
     "bomber.armed": "ABOUT TO BLOW!",
     "phantom.reveal": "Revealed!",

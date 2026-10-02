@@ -89,22 +89,72 @@
     }
   } catch (e) {}
 
-  /* ---------- 2. Nút pause HUD (mobile không có phím P) ---------- */
-  function wirePauseBtn() {
-    var bp = document.getElementById("btn-hud-pause");
-    if (!bp || bp.__wkWired) return;
-    bp.__wkWired = true;
-    bp.addEventListener("click", function (e) {
+  /* ---------- 2. Nút menu HUD + radial (H3/A5.1 — chỉ coarse pointer) ----------
+     Desktop (fine pointer): giữ 2 nút pause/fullscreen cũ của game.js.
+     Coarse pointer (touch): 1 nút tròn #btn-hud-menu, tap bung 3 action theo
+     cung 90° (xuống-trái), stagger 40ms. */
+  function coarseNow() {
+    try {
+      if (window.matchMedia && window.matchMedia("(pointer:coarse)").matches) return true;
+    } catch (e) {}
+    return document.body.classList.contains("wk-coarse"); // game.js bật khi touch.active
+  }
+  // vị trí 3 action trên cung 90°: xuống (0,76) → chéo (-54,54) → trái (-76,0)
+  var RADIAL_ACTS = [
+    { act: "pause", dx: 0, dy: 76 },
+    { act: "full", dx: -54, dy: 54 },
+    { act: "quit", dx: -76, dy: 0 }
+  ];
+  function wireHudMenu() {
+    var btn = document.getElementById("btn-hud-menu");
+    var radial = document.getElementById("hud-radial");
+    var backdrop = document.getElementById("hud-menu-backdrop");
+    if (!btn || !radial || !backdrop || btn.__wkWired) return;
+    btn.__wkWired = true;
+    var acts = radial.querySelectorAll(".hud-radial-btn");
+    acts.forEach(function (b, i) {
+      var a = RADIAL_ACTS[i];
+      if (a) {
+        b.style.setProperty("--tx", a.dx + "px");
+        b.style.setProperty("--ty", a.dy + "px");
+      }
+      b.style.setProperty("--i", String(i));
+    });
+    function isOpen() { return radial.classList.contains("open"); }
+    function setOpen(open) {
+      radial.classList.toggle("open", open);
+      backdrop.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    btn.addEventListener("click", function (e) {
       e.stopPropagation();
       buzz(10);
-      try { if (typeof pauseGame === "function") pauseGame(true); } catch (e2) {}
+      setOpen(!isOpen());
+    });
+    backdrop.addEventListener("click", function () { setOpen(false); });
+    radial.addEventListener("click", function (e) {
+      var b = e.target && e.target.closest ? e.target.closest(".hud-radial-btn") : null;
+      if (!b) return;
+      var act = b.getAttribute("data-act");
+      setOpen(false);
+      buzz(10);
+      try {
+        if (act === "pause" && typeof window.pauseGame === "function") window.pauseGame(true);
+        else if (act === "full" && typeof window.toggleFullscreen === "function") window.toggleFullscreen();
+        else if (act === "quit" && typeof window.quitToMenu === "function") window.quitToMenu();
+      } catch (err) {}
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && isOpen()) setOpen(false);
     });
   }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", wirePauseBtn);
+    document.addEventListener("DOMContentLoaded", wireHudMenu);
   } else {
-    wirePauseBtn();
+    wireHudMenu();
   }
+  // thêm class wk-coarse sớm cho thiết bị touch (game.js cũng thêm khi touch.active)
+  if (coarseNow()) document.body.classList.add("wk-coarse");
 
   /* ---------- 3. Chặn iOS pinch-zoom khi chơi ---------- */
   ["gesturestart", "gesturechange", "gestureend"].forEach(function (ev) {

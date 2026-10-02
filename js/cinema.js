@@ -190,6 +190,19 @@ var FONT_NUM = 'ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Consolas
 var FONT_UI = 'system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
 
 /** Text có shadow 2px đen alpha 0.6 (§7) — không dùng stroke dày. */
+/* A3: cảnh báo boss — icon i-alert 2 bên + text (không emoji) */
+function drawWarn(ctx, str, x, y) {
+  var font = "900 44px " + FONT_UI;
+  ctx.save();
+  ctx.font = font; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  var w = ctx.measureText(str).width;
+  if (window.HUDIcons) {
+    HUDIcons.draw(ctx, "i-alert", 34, "#ff5d5d", x - w / 2 - 12 - 17, y);
+    HUDIcons.draw(ctx, "i-alert", 34, "#ff5d5d", x + w / 2 + 12 + 17, y);
+  }
+  ctx.restore();
+  drawText(ctx, str, x, y, font, "#ff5d5d", 1);
+}
 function drawText(ctx, str, x, y, font, fill, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha === undefined ? 1 : alpha;
@@ -416,6 +429,102 @@ function _draftEl(tag, cls, parent) {
   return el;
 }
 
+/* H1/B4: shatter vui nhộn khi cửa sổ vỡ — canvas riêng #fx-shatter.
+ * 24 mảnh kính bo tròn (palette tươi sáng brand), vật lý cartoon (nảy tưng tưng),
+ * 10 sparkle lấp lánh. Timeline 1.8s rồi dừng rAF. reduced-motion: không burst. */
+var _shatterRAF = 0;
+function shatterBurst(x, y) {
+  var cv = document.getElementById("fx-shatter");
+  if (!cv || !cv.getContext) return;
+  var rm = false;
+  try { rm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+  if (rm) return;
+  var W = window.innerWidth || 800, H = window.innerHeight || 600;
+  if (typeof x !== "number") x = W / 2;
+  if (typeof y !== "number") y = H / 2;
+  cv.width = W; cv.height = H;
+  var ctx = cv.getContext("2d");
+  try {
+    if (window.AudioEngine && AudioEngine.sfx) {
+      if (typeof AudioEngine.sfx.boing === "function") AudioEngine.sfx.boing();
+      if (typeof AudioEngine.sfx.crack === "function") AudioEngine.sfx.crack();
+    }
+  } catch (e2) {}
+  var palette = ["#0080FF", "#7df9ff", "#bfe6ff", "#ffffff"];
+  var shards = [];
+  for (var i = 0; i < 24; i++) {
+    var n = 3 + Math.floor(Math.random() * 3); // 3–5 đỉnh
+    var size = 14 + Math.random() * 32; // 14–46px
+    var pts = [];
+    for (var k = 0; k < n; k++) {
+      var a = (k / n) * Math.PI * 2 + Math.random() * 0.6;
+      var rr = size * (0.55 + Math.random() * 0.45);
+      pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
+    }
+    var va = Math.random() * Math.PI * 2, sp = 180 + Math.random() * 340; // 180–520 px/s
+    shards.push({
+      x: x, y: y, vx: Math.cos(va) * sp, vy: Math.sin(va) * sp - 120,
+      rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 12, // ±6 rad/s
+      pts: pts, c: palette[i % palette.length], bounces: 0
+    });
+  }
+  var sparks = [];
+  for (var s2 = 0; s2 < 10; s2++) {
+    var sa = Math.random() * Math.PI * 2, ss = 30 + Math.random() * 60;
+    sparks.push({ x: x, y: y, vx: Math.cos(sa) * ss, vy: Math.sin(sa) * ss,
+      r: 5 + Math.random() * 6, ph: Math.random() * Math.PI * 2 });
+  }
+  var t0 = performance.now();
+  function star4(c, px, py, r) {
+    c.beginPath();
+    c.moveTo(px, py - r); c.quadraticCurveTo(px, py, px + r, py);
+    c.quadraticCurveTo(px, py, px, py + r); c.quadraticCurveTo(px, py, px - r, py);
+    c.quadraticCurveTo(px, py, px, py - r); c.closePath(); c.fill();
+  }
+  function frame(now) {
+    var t = (now - t0) / 1000;
+    if (t > 1.8) { ctx.clearRect(0, 0, W, H); _shatterRAF = 0; return; }
+    var dt = Math.min(0.05, 1 / 60);
+    ctx.clearRect(0, 0, W, H);
+    var fade = t < 1.1 ? 1 : 1 - (t - 1.1) / 0.7; // 1.1–1.8s alpha → 0
+    // mảnh kính
+    for (var i = 0; i < shards.length; i++) {
+      var p = shards[i];
+      p.vy += 900 * dt; // trọng lực
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      if (p.y > H - 8 && p.vy > 0 && p.bounces < 3) { // nảy tưng tưng ở đáy
+        p.y = H - 8; p.vy *= -0.55; p.vx *= 0.8; p.bounces++;
+      }
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fade);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.beginPath();
+      ctx.moveTo(p.pts[0][0], p.pts[0][1]);
+      for (var k = 1; k < p.pts.length; k++) ctx.lineTo(p.pts[k][0], p.pts[k][1]);
+      ctx.closePath();
+      ctx.fillStyle = p.c; ctx.globalAlpha = Math.max(0, fade) * 0.9;
+      ctx.fill();
+      ctx.lineJoin = "round"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = Math.max(0, fade) * 0.7;
+      ctx.stroke();
+      ctx.restore();
+    }
+    // sparkle
+    for (var s3 = 0; s3 < sparks.length; s3++) {
+      var q = sparks[s3];
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fade) * (0.4 + 0.6 * Math.abs(Math.sin(t * 6 + q.ph))); // twinkle 0.4↔1
+      ctx.fillStyle = "#fff7c2";
+      star4(ctx, q.x, q.y, q.r);
+      ctx.restore();
+    }
+    _shatterRAF = requestAnimationFrame(frame);
+  }
+  if (_shatterRAF) cancelAnimationFrame(_shatterRAF);
+  _shatterRAF = requestAnimationFrame(frame);
+}
+
 function showDraft(upgrades, onPick, opts) {
   opts = opts || {};
   if (_draft || !document.body) return;
@@ -431,10 +540,11 @@ function showDraft(upgrades, onPick, opts) {
 
   var ov = _draftEl("div", "cin-draft-overlay");
   var panel = _draftEl("div", "cin-draft-panel", ov);
+  var isPatch = (opts.theme || "patch") === "patch"; // H1/B3: reframe "VÁ CỬA SỔ" (mặc định cho mọi draft level-up)
   var title = _draftEl("div", "cin-draft-title", panel);
-  title.textContent = I18N.t("draft.cine_title");
+  title.textContent = I18N.t(isPatch ? "draft.patch_title" : "draft.cine_title");
   var sub = _draftEl("div", "cin-draft-sub", panel);
-  sub.textContent = I18N.t("draft.pick_one");
+  sub.textContent = I18N.t(isPatch ? "draft.patch_sub" : "draft.pick_one");
   var cardsWrap = _draftEl("div", "cin-draft-cards", panel);
   var hint = _draftEl("div", "cin-draft-hint", panel);
   hint.textContent = I18N.t("draft.hint");
@@ -443,10 +553,17 @@ function showDraft(upgrades, onPick, opts) {
   (upgrades || []).slice(0, 3).forEach(function (u, i) {
     var card = _draftEl("button", "cin-card", cardsWrap);
     card.type = "button";
-    card.setAttribute("aria-label", I18N.t("draft.aria", { name: u.name || ("#" + (i + 1)) }));
+    card.setAttribute("aria-label", I18N.t(isPatch ? "draft.patch_aria" : "draft.aria", { name: u.name || ("#" + (i + 1)) }));
+    card.setAttribute("aria-keyshortcuts", String(i + 1));
+    if (isPatch) card.classList.add("is-patch");
     var ico = _draftEl("div", "cin-card-ico", card);
-    if (typeof u.icon === "string" && /^\s*<svg/i.test(u.icon)) ico.innerHTML = u.icon;
-    else ico.textContent = u.icon || "◆";
+    if (isPatch) {
+      // mảnh kính vá: icon i-shard xoay --rot mỗi card (0/140/250)
+      ico.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-shard"/></svg>';
+      ico.style.setProperty("--rot", ["0deg", "140deg", "250deg"][i % 3]);
+    }
+    else if (typeof u.icon === "string" && /^\s*<svg/i.test(u.icon)) ico.innerHTML = u.icon;
+    else ico.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg>';
     var nm = _draftEl("div", "cin-card-name", card);
     nm.textContent = u.name || I18N.t("draft.fallback_name", { n: i + 1 });
     var ds = _draftEl("div", "cin-card-desc", card);
@@ -458,7 +575,7 @@ function showDraft(upgrades, onPick, opts) {
   });
 
   document.body.appendChild(ov);
-  _draft = { ov: ov, panel: panel, cards: cards, picked: false, onPick: onPick, t0: performance.now() };
+  _draft = { ov: ov, panel: panel, cards: cards, picked: false, onPick: onPick, t0: performance.now(), isPatch: isPatch };
 
   // entrance animation (real-time rAF — không bị timescale ảnh hưởng)
   var t0 = _draft.t0;
@@ -509,6 +626,54 @@ function _draftPick(i) {
   }
   // selected: flash trắng 90ms + scale 1.12→1.0 (160ms easeOutBack)
   card.classList.add("cin-selected");
+  if (d.isPatch && !rm) {
+    // H1/B3: mảnh vá bay từ icon card tới mép viewport gần nhất + seal-flash ring
+    try {
+      var icoEl = card.querySelector(".cin-card-ico") || card;
+      var cr = icoEl.getBoundingClientRect();
+      var sx = cr.left + cr.width / 2, sy = cr.top + cr.height / 2;
+      var sh = document.createElement("div");
+      sh.className = "fly-shard";
+      sh.setAttribute("aria-hidden", "true");
+      sh.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-shard"/></svg>';
+      sh.style.left = Math.round(sx) + "px";
+      sh.style.top = Math.round(sy) + "px";
+      document.body.appendChild(sh);
+      // điểm đích = điểm trên mép viewport gần nhất theo hướng tâm viewport → tâm card
+      var vx = window.innerWidth, vy = window.innerHeight;
+      var ddx = sx - vx / 2, ddy = sy - vy / 2;
+      var tx, ty;
+      if (Math.abs(ddx) / vx > Math.abs(ddy) / vy) { tx = ddx > 0 ? vx : 0; ty = sy; }
+      else { tx = sx; ty = ddy > 0 ? vy : 0; }
+      var fdx = Math.round(tx - sx), fdy = Math.round(ty - sy);
+      var sealTx = tx, sealTy = ty, done = false;
+      var anim = null;
+      try {
+        anim = sh.animate(
+          [{ transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 },
+           { transform: "translate(" + fdx + "px," + fdy + "px) scale(0.3) rotate(50deg)", opacity: 0.9 }],
+          { duration: 480, easing: "cubic-bezier(0.3,0.7,0.25,1)" });
+      } catch (e5) {}
+      var finish = function () {
+        if (done) return; done = true;
+        try { if (sh.parentNode) sh.parentNode.removeChild(sh); } catch (e6) {}
+        // seal-flash: vòng ring tại điểm đích
+        var fl = document.createElement("div");
+        fl.className = "seal-flash";
+        fl.setAttribute("aria-hidden", "true");
+        fl.style.left = Math.round(sealTx) + "px";
+        fl.style.top = Math.round(sealTy) + "px";
+        document.body.appendChild(fl);
+        setTimeout(function () { try { if (fl.parentNode) fl.parentNode.removeChild(fl); } catch (e7) {} }, 380);
+        try {
+          if (window.AudioEngine && AudioEngine.sfx && typeof AudioEngine.sfx.boing === "function") AudioEngine.sfx.boing();
+          else sfx("ui_click");
+        } catch (e8) {}
+      };
+      if (anim && anim.onfinish !== undefined) anim.onfinish = finish;
+      setTimeout(finish, 620); // fallback nếu WAAPI không kích hoạt onfinish
+    } catch (e4) {}
+  }
   function sel(now) {
     if (!_draft) return;
     var t = (now - t0) / 1000;
@@ -882,9 +1047,9 @@ function drawBossCine(ctx) {
     if (t > 0.4 && t < 1.3) {
       var bt = (t - 0.4) / 0.9;
       var on = rm ? true : (Math.sin(bt * Math.PI * 6) > 0);
-      if (on) drawText(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
+      if (on) drawWarn(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3);
     } else if (rm && t >= 0.4 && t < 1.0) {
-      drawText(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3, "900 44px " + FONT_UI, "#ff5d5d", 1);
+      drawWarn(ctx, I18N.t("juice.warn"), _W / 2, _H * 0.3);
     }
     // 3. tên boss slide-in từ trái 350ms easeOutBack (0.9–1.25s)
     if (t > 0.9) {
@@ -1668,6 +1833,9 @@ window.Cinema = {
 
   /* upgrade draft (§9) — DOM */
   showDraft: showDraft,
+
+  /* H1/B2: shatter vui nhộn khi cửa sổ vỡ */
+  shatterBurst: shatterBurst,
 
   /* combo (§12) */
   combo: combo,

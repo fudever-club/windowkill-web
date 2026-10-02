@@ -426,11 +426,11 @@
   /** Banner boss theo §12.2 (qua I18N để coordinator dịch). */
   function getBossBanner(stageId) {
     var fallbacks = {
-      1: { title: "⚠ BOSS: GÃ GẶM KHỔNG LỒ", sub: "Nó nện cửa sổ — giữ 🪟 sống sót!" },
-      2: { title: "⚠ BOSS: TƯỜNG LỬA SỐNG", sub: "Gai tắt 2.5s sau mỗi đợt quét — áp sát!" },
-      3: { title: "⚠ BOSS: TRỌNG TÂM HỖN LOẠN", sub: "Ngừng bắn lúc hút — dồn đạn lúc quá tải!" },
-      4: { title: "⚠ BOSS: MÀN ĐÊM VÔ TẬN", sub: "Bắn vào con ngươi lúc nó sáng rực!" },
-      5: { title: "⚠ BOSS CUỐI: NULL POINTER", sub: "20 giây. Giết nó trước khi cửa sổ về 0!" }
+      1: { title: "BOSS: GÃ GẶM KHỔNG LỒ", sub: "Nó nện cửa sổ — giữ cửa sổ sống sót!" },
+      2: { title: "BOSS: TƯỜNG LỬA SỐNG", sub: "Gai tắt 2.5s sau mỗi đợt quét — áp sát!" },
+      3: { title: "BOSS: TRỌNG TÂM HỖN LOẠN", sub: "Ngừng bắn lúc hút — dồn đạn lúc quá tải!" },
+      4: { title: "BOSS: MÀN ĐÊM VÔ TẬN", sub: "Bắn vào con ngươi lúc nó sáng rực!" },
+      5: { title: "BOSS CUỐI: NULL POINTER", sub: "20 giây. Giết nó trước khi cửa sổ về 0!" }
     };
     var fb = fallbacks[stageId];
     if (!fb) return null;

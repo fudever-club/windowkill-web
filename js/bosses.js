@@ -181,7 +181,7 @@
       // §5 boss 5 P3 "Lệnh Xóa": đếm ngược 20s (diff.boss5Timer)
       b.countdown = b.diff.boss5Timer;
       b.shrinkTick = 0; b.gemT = 2; b.sideT = 2;
-      hooks.banner("⚠ LỆNH XÓA", "Giết nó trước khi cửa sổ về 0!");
+      hooks.banner("LỆNH XÓA", "Giết nó trước khi cửa sổ về 0!");
     }
   }
 
@@ -192,8 +192,8 @@
     /* ---------------- BOSS 1 — GÃ GẶM KHỔNG LỒ (ải 1) ---------------- */
     {
       id: "gnawer", stage: 1, nameVi: "GÃ GẶM KHỔNG LỒ", nameEn: "THE COLOSSAL GNAWER",
-      bannerTitle: "⚠ BOSS: GÃ GẶM KHỔNG LỒ", bannerTitleEn: "⚠ BOSS: THE COLOSSAL GNAWER",
-      bannerSub: "Nó nện cửa sổ — giữ 🪟 sống sót!", bannerSubEn: "It slams the window — keep 🪟 alive!",
+      bannerTitle: "BOSS: GÃ GẶM KHỔNG LỒ", bannerTitleEn: "BOSS: THE COLOSSAL GNAWER",
+      bannerSub: "Nó nện cửa sổ — giữ cửa sổ sống sót!", bannerSubEn: "It slams the window — keep the window alive!",
       expDps: 10, color: "#8b2fc9", r: 54,
       hpAt: function (d) { return Math.round(10 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["fan", "adds"],
@@ -347,7 +347,7 @@
     /* ---------------- BOSS 2 — TƯỜNG LỬA SỐNG (ải 2) ---------------- */
     {
       id: "firewall", stage: 2, nameVi: "TƯỜNG LỬA SỐNG", nameEn: "THE LIVING FIREWALL",
-      bannerTitle: "⚠ BOSS: TƯỜNG LỬA SỐNG", bannerTitleEn: "⚠ BOSS: THE LIVING FIREWALL",
+      bannerTitle: "BOSS: TƯỜNG LỬA SỐNG", bannerTitleEn: "BOSS: THE LIVING FIREWALL",
       bannerSub: "Gai tắt 2.5s sau mỗi đợt quét — áp sát!", bannerSubEn: "Spikes drop 2.5s after each sweep — get close!",
       expDps: 14, color: "#ff6a00", r: 40,
       hpAt: function (d) { return Math.round(14 * 150 * resolveDiff(d).bossHpMul); },
@@ -478,7 +478,7 @@
     /* ---------------- BOSS 3 — TRỌNG TÂM HỖN LOẠN (ải 3) ---------------- */
     {
       id: "chaos", stage: 3, nameVi: "TRỌNG TÂM HỖN LOẠN", nameEn: "CHAOS CORE",
-      bannerTitle: "⚠ BOSS: TRỌNG TÂM HỖN LOẠN", bannerTitleEn: "⚠ BOSS: CHAOS CORE",
+      bannerTitle: "BOSS: TRỌNG TÂM HỖN LOẠN", bannerTitleEn: "BOSS: CHAOS CORE",
       bannerSub: "Ngừng bắn lúc hút — dồn đạn lúc quá tải!", bannerSubEn: "Hold fire while it sucks — burst when it overloads!",
       expDps: 18, color: "#9D4EDD", r: 46,
       hpAt: function (d) { return Math.round(18 * 150 * resolveDiff(d).bossHpMul); },
@@ -602,7 +602,7 @@
     /* ---------------- BOSS 4 — MÀN ĐÊM VÔ TẬN (ải 4) ---------------- */
     {
       id: "night", stage: 4, nameVi: "MÀN ĐÊM VÔ TẬN", nameEn: "ENDLESS NIGHT",
-      bannerTitle: "⚠ BOSS: MÀN ĐÊM VÔ TẬN", bannerTitleEn: "⚠ BOSS: ENDLESS NIGHT",
+      bannerTitle: "BOSS: MÀN ĐÊM VÔ TẬN", bannerTitleEn: "BOSS: ENDLESS NIGHT",
       bannerSub: "Bắn vào con ngươi lúc nó sáng rực!", bannerSubEn: "Shoot the pupil when it blazes!",
       expDps: 22, color: "#1a0533", r: 60,
       hpAt: function (d) { return Math.round(22 * 150 * resolveDiff(d).bossHpMul); },
@@ -764,7 +764,7 @@
     /* ---------------- BOSS 5 — NULL POINTER (ải 5, boss cuối) ---------------- */
     {
       id: "null", stage: 5, nameVi: "NULL POINTER", nameEn: "NULL POINTER",
-      bannerTitle: "⚠ BOSS CUỐI: NULL POINTER", bannerTitleEn: "⚠ FINAL BOSS: NULL POINTER",
+      bannerTitle: "BOSS CUỐI: NULL POINTER", bannerTitleEn: "FINAL BOSS: NULL POINTER",
       bannerSub: "20 giây. Giết nó trước khi cửa sổ về 0!", bannerSubEn: "20 seconds. Kill it before the window hits 0!",
       expDps: 26, color: "#f43f5e", r: 52,
       hpAt: function (d) { return Math.round(26 * 150 * resolveDiff(d).bossHpMul); },

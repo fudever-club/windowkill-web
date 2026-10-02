@@ -2839,6 +2839,9 @@ function resetGame() {
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
   try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
+  // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
+  // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.
+  try { if (typeof BG !== "undefined") BG.setDim(0); } catch (e) {}
   try { if (window.Upgrades2) Upgrades2.resetRun(); } catch (e) {} // M22: mở lại pool draft v2 (giữ unlock boss ải trong phiên)
   G.cracks = []; G.windowDamagePx = 0;
   // Khôi phục kích thước: arena ảo về null (tự tính lại full-size), cửa sổ thật

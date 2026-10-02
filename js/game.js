@@ -2377,14 +2377,67 @@ const MONSTER_REGISTRY = {
     }
     const p = nearestEdgePoint(e.x, e.y);
     const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
-    if (d < 46) {
+        if (d < 46) {
       e.fuse = 0.8;
       AudioEngine.sfx.shrink();
       addFloat(e.x, e.y - 20, I18N.t("combat.kamikaze_warn"), "#ff7a1a");
     } else { e.x += dx / d * spd * dt; e.y += dy / d * spd * dt; }
   } },
+  /* SEASON 1 — 3 behavior mới */
+  countdownBell: { update(e, dt, s, spd) {
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 5) * 60;
+    e.x += (dx / d * spd * 0.7 + -dy / d * wob) * dt;
+    e.y += (dy / d * spd * 0.7 + dx / d * wob) * dt;
+    if (e.slowT <= 0) e.countdown -= dt;
+    const secs = Math.max(0, Math.ceil(e.countdown));
+    if (secs !== e.tickLast) { e.tickLast = secs; AudioEngine.sfx.click(); }
+    if (e.countdown <= 0 && !e.dead) {
+      G.globalHaste = 1.35; G.hasteT = 10;
+      try { AudioEngine.sfx.bellRing(); } catch (err) { try { AudioEngine.sfx.boom(); } catch (e2) {} }
+      burst(e.x, e.y, 24, ["#ffe14d", "#ffffff", "#ffb020"], 320);
+      addFloat(e.x, e.y - 30, I18N.t("season.bell_ring"), "#ffe14d", true);
+      jxShake(4, 200, 3);
+      e.dead = true;
+    }
+  } },
+  rageChase: { update(e, dt, s, spd) {
+    e.rageT += dt;
+    if (e.rageT >= 10 && e.rage < 5) {
+      e.rageT = 0; e.rage++;
+      addFloat(e.x, e.y - 24, I18N.t("season.rage_up"), "#ff5252");
+      try { AudioEngine.sfx.angryStack(); } catch (err) { try { AudioEngine.sfx.hit(); } catch (e2) {} }
+    }
+    const rageSpd = spd * (1 + 0.15 * e.rage);
+    e.dmg = 1 + Math.floor(e.rage / 2);
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 6) * 12;
+    e.x += (dx / d * rageSpd + -dy / d * wob) * dt;
+    e.y += (dy / d * rageSpd + dx / d * wob) * dt;
+  } },
+  meetingAura: { update(e, dt, s, spd) {
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
+    e.x += dx / d * spd * 0.3 * dt; e.y += dy / d * spd * 0.3 * dt;
+    let z = null;
+    for (const zz of G.slowZones) if (zz.from === e) { z = zz; break; }
+    if (!z) { z = { x: e.x, y: e.y, r: 160, slow: 0.35, ttl: 9999, from: e }; G.slowZones.push(z); }
+    z.x = e.x; z.y = e.y;
+    e.summonT -= dt;
+    if (e.summonT <= 0.6 && e.warnT <= 0) e.warnT = 0.6;
+    if (e.warnT > 0) e.warnT -= dt;
+    if (e.summonT <= 0) {
+      e.summonT = 12;
+      for (const o of G.enemies) {
+        if (o === e || o.dead) continue;
+        const ox = e.x - o.x, oy = e.y - o.y, od = hypot(ox, oy) || 1;
+        if (od < 420) { o.kbx += ox / od * 260; o.kby += oy / od * 260; }
+      }
+      burst(e.x, e.y, 20, ["#7dff9a", "#ffffff"], 240);
+      addFloat(e.x, e.y - 30, I18N.t("season.summon"), "#7dff9a", true);
+      try { AudioEngine.sfx.summonPulse(); } catch (err) { try { AudioEngine.sfx.wave(); } catch (e2) {} }
+    }
+  } },
 };
-
 const ACTS = [
   { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, bgStage: 1,
     palette: { bg0: "#0b1e3a", bg1: "#04080f", grid: "#ffffff08", edge: "rgba(255,110,196,0.28)" },

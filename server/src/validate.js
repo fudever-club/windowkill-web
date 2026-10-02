@@ -40,6 +40,22 @@ export function validScoreBody(body) {
   if (!profileId || score === null || wave === null || kills === null || durationMs === null || !difficulty) {
     return null;
   }
+  /* SEC-04: cross-field plausibility (casual anti-cheat, NOT a proof of play).
+   * Calibrated against js/game.js, where scores are fixed per kill
+   * (max base 50/kill, boss 500, chain-popup bonuses 40–500 per event):
+   *   1. score ceiling — score <= kills*200 + wave*5000 + 10000.
+   *      200/kill is ~4x the richest regular kill; the wave term absorbs
+   *      boss/chain bonuses; the flat 10000 covers a short lucky run.
+   *      Kills the classic "score=99,999,999, wave=0, kills=0" forgery.
+   *   2. wave needs time — reaching wave N (N>=2) means clearing N-1 waves,
+   *      at a very lenient >=3s per cleared wave: durationMs >= (wave-1)*3000.
+   *   3. kill rate — sustained kills cannot exceed ~5/s (+100 slack for
+   *      nuke/chain bursts): kills <= 100 + durationMs/200.
+   * A cheater who maxes EVERY field consistently can still pass — that is
+   * accepted for a casual leaderboard; see SEC-04 in the security audit. */
+  if (score > kills * 200 + wave * 5000 + 10_000) return null;
+  if (wave >= 2 && durationMs < (wave - 1) * 3000) return null;
+  if (kills > 100 + Math.floor(durationMs / 200)) return null;
   return { profileId, score, wave, kills, durationMs, difficulty };
 }
 

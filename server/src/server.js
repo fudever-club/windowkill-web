@@ -2,13 +2,31 @@
  *
  * Exports createApp(options) so tests can boot the server on an ephemeral port
  * with a throwaway database. src/index.js is the thin production bootstrap.
+ *
+ * Security model (Pha B, xem studio/dev/audits/{backend,security}.md):
+ *  - SEC-01/B1/B2: profile-token auth. POST /api/profiles issues a random
+ *    token ONCE (only its sha256 hash is stored). DELETE profile and
+ *    POST /api/scores require header `X-Profile-Token`. Legacy profiles
+ *    (created before tokens existed, token_hash IS NULL) stay writable
+ *    WITHOUT a token — with a warning log — and are *claimed* (hash stored)
+ *    the first time a request presents a token for them. Rationale: the
+ *    backend has never been deployed publicly, so legacy rows are the
+ *    owner's own local data; locking them out would orphan them, while a
+ *    pure first-come claim race would be strictly worse than the status
+ *    quo for un-claimed rows (they are no more exposed than before).
+ *  - SEC-03: write requests carrying a non-allowlisted, non-same-origin
+ *    Origin are rejected 403 (CORS headers alone do not stop writes), and
+ *    POST/PUT/PATCH must be application/json (415 otherwise).
+ *  - B5: rate limiting keys on the real client IP (X-Forwarded-For first
+ *    entry behind the Fly proxy) and /api/health is exempt.
  */
 "use strict";
 import { createServer } from "node:http";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { config as defaultConfig } from "./config.js";
-import { openDb } from "./db.js";
+import { hashProfileToken, openDb } from "./db.js";
 import { createRateLimiter } from "./ratelimit.js";
-import { applyCors, applySecurityHeaders } from "./security.js";
+import { applyCors, applySecurityHeaders, clientIp, isOriginAllowed } from "./security.js";
 import { validErrorsBody, validEventsBody, validId, validLeaderboardQuery, validProfileBody, validScoreBody } from "./validate.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -54,7 +72,43 @@ function compileRoutes(store, cfg) {
     routes.push({ method, re, names, handler });
   };
 
+  /* SEC-01 gate for profile-scoped writes. Returns true if the request may
+   * proceed; otherwise the error response has already been sent.
+   * Assumes the profile EXISTS (caller checks 404 first). */
+  function requireProfileAuth(req, res, profileId) {
+    const storedHash = store.getProfileTokenHash(profileId);
+    const presented = req.headers["x-profile-token"];
+    if (!storedHash) {
+      // Legacy profile (pre-token DB row): still writable, but a presented
+      // token claims it — from then on the token is required.
+      if (typeof presented === "string" && presented) {
+        store.setProfileTokenHash(profileId, hashProfileToken(presented));
+        console.warn(`[windowkill-backend] legacy profile ${profileId} claimed with a profile token`);
+      } else {
+        console.warn(`[windowkill-backend] unauthenticated write to legacy profile ${profileId} (no token on file)`);
+      }
+      return true;
+    }
+    if (typeof presented !== "string" || !presented) {
+      fail(res, 401, "profile token required (X-Profile-Token header)");
+      return false;
+    }
+    const a = Buffer.from(hashProfileToken(presented));
+    const b = Buffer.from(storedHash);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      fail(res, 403, "invalid profile token");
+      return false;
+    }
+    return true;
+  }
+
   add("GET", "/api/health", async (_req, res) => {
+    // B13: readiness, not just liveness — a dead DB must read as down.
+    try {
+      store.ping();
+    } catch {
+      return fail(res, 503, "database unavailable");
+    }
     ok(res, { status: "up", version: cfg.version, time: Date.now() });
   });
 
@@ -71,18 +125,23 @@ function compileRoutes(store, cfg) {
     }
     const v = validProfileBody(body);
     if (!v) return fail(res, 400, "invalid profile: need name (1-24 chars), optional id/emoji");
+    // SEC-01: mint the token here; only its hash is persisted, the raw
+    // token is returned in this response and never again.
+    const token = randomBytes(32).toString("hex");
     try {
-      const created = store.createProfile(v);
-      ok(res, created, 201);
+      const created = store.createProfile({ ...v, tokenHash: hashProfileToken(token) });
+      ok(res, { ...created, token }, 201);
     } catch (e) {
       if (String(e?.message).includes("UNIQUE")) return fail(res, 409, "profile id already exists");
       throw e;
     }
   });
 
-  add("DELETE", "/api/profiles/:id", async (_req, res, params) => {
+  add("DELETE", "/api/profiles/:id", async (req, res, params) => {
     const id = validId(params.id);
     if (!id) return fail(res, 400, "invalid profile id");
+    if (!store.getProfile(id)) return fail(res, 404, "profile not found");
+    if (!requireProfileAuth(req, res, id)) return;
     if (!store.deleteProfile(id)) return fail(res, 404, "profile not found");
     ok(res, { deleted: id });
   });
@@ -95,8 +154,9 @@ function compileRoutes(store, cfg) {
       return fail(res, 400, "invalid JSON body");
     }
     const v = validScoreBody(body);
-    if (!v) return fail(res, 400, "invalid score: need profileId, score, wave, kills, durationMs, difficulty(chill|normal|hard)");
+    if (!v) return fail(res, 400, "invalid score: need profileId, score, wave, kills, durationMs, difficulty(chill|normal|hard) with plausible score/wave/kills/duration correlation");
     if (!store.getProfile(v.profileId)) return fail(res, 404, "profile not found");
+    if (!requireProfileAuth(req, res, v.profileId)) return;
     const created = store.addScore(v);
     ok(res, created, 201);
   });
@@ -177,25 +237,42 @@ export function createApp(overrides = {}) {
         return fail(res, 400, "bad request");
       }
 
-      // Rate limit per client IP. Analytics/error pipelines get their own
-      // buckets so a beacon burst can never starve gameplay writes.
-      const ip = req.socket.remoteAddress || "unknown";
       const isWrite = WRITE_METHODS.has(req.method);
-      const rlKind = !isWrite ? "read"
-        : url.pathname === "/api/events" ? "events"
-        : url.pathname === "/api/errors" ? "errors"
-        : "write";
-      const rl = limiter.checkKind(ip, rlKind);
-      if (!rl.allowed) {
-        return fail(res, 429, "rate limit exceeded, slow down", );
+
+      // SEC-03: CORS headers only stop cross-origin READS. Enforce the
+      // allowlist on real write requests too: a write carrying a foreign
+      // Origin (and not same-origin with the Host) is refused outright.
+      if (isWrite && req.headers.origin && !isOriginAllowed(req, cfg.corsOrigins)) {
+        return fail(res, 403, "origin not allowed");
       }
-      res.setHeader("X-RateLimit-Limit", String(rl.limit));
-      res.setHeader("X-RateLimit-Remaining", String(rl.remaining));
+
+      // B5: rate limit per REAL client IP; /api/health is a probe and is
+      // never charged against any bucket.
+      const isHealth = req.method === "GET" && url.pathname === "/api/health";
+      if (!isHealth) {
+        const ip = clientIp(req);
+        const rlKind = !isWrite ? "read"
+          : url.pathname === "/api/events" ? "events"
+          : url.pathname === "/api/errors" ? "errors"
+          : "write";
+        const rl = limiter.checkKind(ip, rlKind);
+        if (!rl.allowed) {
+          return fail(res, 429, "rate limit exceeded, slow down", );
+        }
+        res.setHeader("X-RateLimit-Limit", String(rl.limit));
+        res.setHeader("X-RateLimit-Remaining", String(rl.remaining));
+      }
 
       const route = routes.find((r) => r.method === req.method && r.re.test(url.pathname));
       if (!route) return fail(res, 404, "not found");
 
       if (isWrite) {
+        // SEC-03 (second layer): bodies must actually be JSON — a cross-site
+        // "simple request" cannot set this Content-Type without preflight.
+        if (req.method !== "DELETE") {
+          const ct = String(req.headers["content-type"] || "").toLowerCase();
+          if (!ct.includes("application/json")) return fail(res, 415, "expected Content-Type: application/json");
+        }
         try {
           req.rawBody = await readBody(req, cfg.maxBodyBytes);
         } catch (e) {
@@ -232,3 +309,6 @@ export function createApp(overrides = {}) {
       }),
   };
 }
+
+// Re-exported for tests/tools that need the same hashing the server applies.
+export { hashProfileToken };

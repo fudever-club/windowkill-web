@@ -101,25 +101,25 @@
      Giá từng node theo doc: tổng full cây 3.650 mảnh (doc ghi 3.580 — vênh 70,
      dùng giá từng node trong bảng, KHÔNG tự chỉnh). */
   var WORKSHOP_DEFS = [
-    { id: 1,  nameVi: "Khung gia cố",    descVi: "+1 máu tối đa đầu run (mỗi cấp, tối đa +3).",
+    { id: 1,  nameVi: "Khung gia cố", nameEn: "Reinforced Frame", descEn: "+1 max HP at run start per level (max +3).", unlockEn: "Available",    descVi: "+1 máu tối đa đầu run (mỗi cấp, tối đa +3).",
       max: 3, prices: [50, 120, 250], unlock: { type: "always" }, unlockVi: "Có sẵn" },
-    { id: 2,  nameVi: "Nòng đôi",        descVi: "+10% tốc bắn mỗi cấp (tối đa +30%).",
+    { id: 2,  nameVi: "Nòng đôi", nameEn: "Twin Barrels", descEn: "+10% fire rate per level (max +30%).", unlockEn: "Earn 100 total shards",        descVi: "+10% tốc bắn mỗi cấp (tối đa +30%).",
       max: 3, prices: [60, 140, 300], unlock: { type: "shards_total", n: 100 }, unlockVi: "Kiếm tổng 100 mảnh" },
-    { id: 3,  nameVi: "Đạn chuẩn",       descVi: "+1 sát thương đạn mỗi cấp (tối đa +2).",
+    { id: 3,  nameVi: "Đạn chuẩn", nameEn: "Precision Rounds", descEn: "+1 bullet damage per level (max +2).", unlockEn: "Reach wave 5",       descVi: "+1 sát thương đạn mỗi cấp (tối đa +2).",
       max: 2, prices: [100, 250],      unlock: { type: "bestWave", n: 5 }, unlockVi: "Đạt wave 5" },
-    { id: 4,  nameVi: "Động cơ phản lực", descVi: "+8% tốc chạy mỗi cấp (tối đa +24%).",
+    { id: 4,  nameVi: "Động cơ phản lực", nameEn: "Jet Engine", descEn: "+8% move speed per level (max +24%).", unlockEn: "Available", descVi: "+8% tốc chạy mỗi cấp (tối đa +24%).",
       max: 3, prices: [40, 100, 220], unlock: { type: "always" }, unlockVi: "Có sẵn" },
-    { id: 5,  nameVi: "Nam châm hút",    descVi: "+25% bán kính hút gem mỗi cấp (tối đa +75%).",
+    { id: 5,  nameVi: "Nam châm hút", nameEn: "Magnet Coil", descEn: "+25% gem pickup radius per level (max +75%).", unlockEn: "Earn 60 total shards",    descVi: "+25% bán kính hút gem mỗi cấp (tối đa +75%).",
       max: 3, prices: [30, 80, 180],  unlock: { type: "shards_total", n: 60 }, unlockVi: "Kiếm tổng 60 mảnh" },
-    { id: 6,  nameVi: "Keo siêu dính",   descVi: "Vá cuối wave +60px (cấp 1) / +80px (cấp 2), thay vì 40px.",
+    { id: 6,  nameVi: "Keo siêu dính", nameEn: "Super Glue", descEn: "End-of-wave repair +60px (lv 1) / +80px (lv 2) instead of 40px.", unlockEn: "Reach wave 5",   descVi: "Vá cuối wave +60px (cấp 1) / +80px (cấp 2), thay vì 40px.",
       max: 2, prices: [80, 200],       unlock: { type: "bestWave", n: 5 }, unlockVi: "Đạt wave 5" },
-    { id: 7,  nameVi: "Giáp gai",        descVi: "Gai phản 2 (cấp 1) / 4 (cấp 2) sát thương khi quái chạm.",
+    { id: 7,  nameVi: "Giáp gai", nameEn: "Spiked Armor", descEn: "Reflect 2 (lv 1) / 4 (lv 2) damage on contact.", unlockEn: "Reach wave 8",        descVi: "Gai phản 2 (cấp 1) / 4 (cấp 2) sát thương khi quái chạm.",
       max: 2, prices: [120, 280],      unlock: { type: "bestWave", n: 8 }, unlockVi: "Đạt wave 8" },
-    { id: 8,  nameVi: "Mồi thơm",        descVi: "+15% (cấp 1) / +30% (cấp 2) tỉ lệ rớt pickup.",
+    { id: 8,  nameVi: "Mồi thơm", nameEn: "Sweet Bait", descEn: "+15% (lv 1) / +30% (lv 2) pickup drop rate.", unlockEn: "Earn 200 total shards",        descVi: "+15% (cấp 1) / +30% (cấp 2) tỉ lệ rớt pickup.",
       max: 2, prices: [90, 210],       unlock: { type: "shards_total", n: 200 }, unlockVi: "Kiếm tổng 200 mảnh" },
-    { id: 9,  nameVi: "Trợ lý kỹ thuật", descVi: "Bắt đầu run với 1 nâng cấp ngẫu nhiên.",
+    { id: 9,  nameVi: "Trợ lý kỹ thuật", nameEn: "Tech Assistant", descEn: "Start each run with 1 random upgrade.", unlockEn: "Reach wave 10", descVi: "Bắt đầu run với 1 nâng cấp ngẫu nhiên.",
       max: 1, prices: [350],           unlock: { type: "bestWave", n: 10 }, unlockVi: "Đạt wave 10" },
-    { id: 10, nameVi: "Túi cứu sinh",    descVi: "1 lần/run: máu về 0 → hồi 1 máu + bất tử 2s.",
+    { id: 10, nameVi: "Túi cứu sinh", nameEn: "Life Pack", descEn: "Once per run: at 0 HP, restore 1 HP + 2s invulnerability.", unlockEn: "Kill 1 boss",    descVi: "1 lần/run: máu về 0 → hồi 1 máu + bất tử 2s.",
       max: 1, prices: [400],           unlock: { type: "bossKills", n: 1 }, unlockVi: "Giết 1 boss" },
   ];
 
@@ -197,19 +197,19 @@
 
   /* ================= 4. SKINS (§7.3 — chỉ đổi ngoại hình, công bằng tuyệt đối) ================= */
   var SKIN_DEFS = [
-    { id: "default", nameVi: "Mặc định",   unlock: { type: "always" },
+    { id: "default", nameVi: "Mặc định", nameEn: "Default",   unlock: { type: "always" },
       unlockVi: "Có sẵn",
       paletteOverride: { hull: "#22d3ee", accent: "#0ea5e9", trail: "#67e8f9" } },
-    { id: "sunset",  nameVi: "Hoàng hôn",  unlock: { type: "bestWave", n: 5 },
+    { id: "sunset",  nameVi: "Hoàng hôn", nameEn: "Sunset",  unlock: { type: "bestWave", n: 5 },
       unlockVi: "Đạt wave 5",
       paletteOverride: { hull: "#fb923c", accent: "#f43f5e", trail: "#fdba74" } },
-    { id: "night",   nameVi: "Bóng đêm",   unlock: { type: "bossKills", n: 3 },
+    { id: "night",   nameVi: "Bóng đêm", nameEn: "Night",   unlock: { type: "bossKills", n: 3 },
       unlockVi: "Giết 3 boss",
       paletteOverride: { hull: "#1e1b4b", accent: "#7c3aed", trail: "#a78bfa" } },
-    { id: "frost",   nameVi: "Băng giá",   unlock: { type: "dailyCompleted", n: 1 },
+    { id: "frost",   nameVi: "Băng giá", nameEn: "Frost",   unlock: { type: "dailyCompleted", n: 1 },
       unlockVi: "Hoàn thành 1 Daily Challenge",
       paletteOverride: { hull: "#bae6fd", accent: "#38bdf8", trail: "#e0f2fe" } },
-    { id: "smith",   nameVi: "Thợ rèn",    unlock: { type: "workshopNodes", n: 5 },
+    { id: "smith",   nameVi: "Thợ rèn", nameEn: "Blacksmith",    unlock: { type: "workshopNodes", n: 5 },
       unlockVi: "Mua 5 node Xưởng",
       paletteOverride: { hull: "#d97706", accent: "#92400e", trail: "#fcd34d" } },
     { id: "fudever", nameVi: "FU-DEVER",   unlock: { type: "any", list: [
@@ -273,31 +273,31 @@
 
   /* ================= 5. ACHIEVEMENTS (§10.2 — 25 cái) ================= */
   var ACHV_DEFS = [
-    { id: 1,  nameVi: "Chào sân",                 condDescVi: "Hoàn thành wave 1 đầu tiên",            reward: 5 },
-    { id: 2,  nameVi: "Hiểu luật rồi",            condDescVi: "Vượt wave 3 ở Chill",                    reward: 10 },
-    { id: 3,  nameVi: "Thợ săn tập sự",           condDescVi: "100 quái (cộng dồn)",                    reward: 10 },
-    { id: 4,  nameVi: "Thợ săn thực thụ",         condDescVi: "1.000 quái (cộng dồn)",                  reward: 25 },
-    { id: 5,  nameVi: "Cỗ máy hủy diệt",          condDescVi: "10.000 quái (cộng dồn)",                 reward: 60 },
-    { id: 6,  nameVi: "Kẻ gặm bị gặm",            condDescVi: "50 chewer (cộng dồn)",                   reward: 15 },
-    { id: 7,  nameVi: "Đập tan âm mưu",           condDescVi: "Hạ boss đầu tiên",                       reward: 20 },
-    { id: 8,  nameVi: "Chuyên gia diệt boss",     condDescVi: "10 boss (cộng dồn)",                     reward: 50 },
-    { id: 9,  nameVi: "Người vá víu",             condDescVi: "Vá tổng 2.000px cửa sổ (cộng dồn)",      reward: 15 },
-    { id: 10, nameVi: "Cửa sổ bất khả xâm phạm",  condDescVi: "Thắng 1 wave không mất px cửa sổ nào",   reward: 20 },
-    { id: 11, nameVi: "Suýt thì toang",           condDescVi: "Thắng boss khi cửa sổ còn < 15%",        reward: 25 },
-    { id: 12, nameVi: "Người hùng thầm lặng",     condDescVi: "25 pickup (cộng dồn)",                   reward: 10 },
-    { id: 13, nameVi: "Dọn sạch",                 condDescVi: "1 nuke giết ≥ 15 quái",                  reward: 20 },
-    { id: 14, nameVi: "Tốc độ ánh sáng",          condDescVi: "Cấp 10 trong một run",                   reward: 20 },
-    { id: 15, nameVi: "Full build",               condDescVi: "6 nâng cấp khác nhau trong một run",     reward: 25 },
-    { id: 16, nameVi: "Tay to",                   condDescVi: "50.000 điểm/run (Thường trở lên)",        reward: 30 },
-    { id: 17, nameVi: "Huyền thoại",              condDescVi: "200.000 điểm/run (Thường trở lên)",       reward: 60 },
-    { id: 18, nameVi: "Không cần nghỉ",           condDescVi: "1 run dài 15 phút",                      reward: 25 },
-    { id: 19, nameVi: "Kiên cường",               condDescVi: "Sống sót wave 10 Thường",                reward: 30 },
-    { id: 20, nameVi: "Vực sâu gọi tên",          condDescVi: "Chạm wave 15 (mọi độ khó)",              reward: 40 },
-    { id: 21, nameVi: "Dám chơi dám chịu",        condDescVi: "Hoàn thành 1 run Khắc nghiệt (qua wave 1)", reward: 30 },
-    { id: 22, nameVi: "Thử thách mỗi ngày",       condDescVi: "Hoàn thành 1 Daily Challenge",           reward: "skin:frost" },
-    { id: 23, nameVi: "Đều như vắt chanh",        condDescVi: "Streak daily 7 ngày",                    reward: 30 },
-    { id: 24, nameVi: "Gắn bó",                   condDescVi: "Streak daily 30 ngày",                    reward: 100 },
-    { id: 25, nameVi: "WORK HARD – PLAY HARD",    condDescVi: "Mua full 10 node Xưởng",                 reward: "skin:fudever" },
+    { id: 1,  nameVi: "Chào sân", nameEn: "First Blood", condDescEn: "Clear your first wave 1",                 condDescVi: "Hoàn thành wave 1 đầu tiên",            reward: 5 },
+    { id: 2,  nameVi: "Hiểu luật rồi", nameEn: "Got the Rules", condDescEn: "Clear wave 3 on Chill",            condDescVi: "Vượt wave 3 ở Chill",                    reward: 10 },
+    { id: 3,  nameVi: "Thợ săn tập sự", nameEn: "Novice Hunter", condDescEn: "100 kills (cumulative)",           condDescVi: "100 quái (cộng dồn)",                    reward: 10 },
+    { id: 4,  nameVi: "Thợ săn thực thụ", nameEn: "True Hunter", condDescEn: "1,000 kills (cumulative)",         condDescVi: "1.000 quái (cộng dồn)",                  reward: 25 },
+    { id: 5,  nameVi: "Cỗ máy hủy diệt", nameEn: "Destroyer", condDescEn: "10,000 kills (cumulative)",          condDescVi: "10.000 quái (cộng dồn)",                 reward: 60 },
+    { id: 6,  nameVi: "Kẻ gặm bị gặm", nameEn: "Chewed the Chewers", condDescEn: "50 chewers (cumulative)",            condDescVi: "50 chewer (cộng dồn)",                   reward: 15 },
+    { id: 7,  nameVi: "Đập tan âm mưu", nameEn: "Plot Foiled", condDescEn: "Defeat your first boss",           condDescVi: "Hạ boss đầu tiên",                       reward: 20 },
+    { id: 8,  nameVi: "Chuyên gia diệt boss", nameEn: "Boss Slayer", condDescEn: "10 bosses (cumulative)",     condDescVi: "10 boss (cộng dồn)",                     reward: 50 },
+    { id: 9,  nameVi: "Người vá víu", nameEn: "Patchwork Hero", condDescEn: "Repair 2,000px of window (cumulative)",             condDescVi: "Vá tổng 2.000px cửa sổ (cộng dồn)",      reward: 15 },
+    { id: 10, nameVi: "Cửa sổ bất khả xâm phạm", nameEn: "Untouchable", condDescEn: "Win a wave without losing any window px",  condDescVi: "Thắng 1 wave không mất px cửa sổ nào",   reward: 20 },
+    { id: 11, nameVi: "Suýt thì toang", nameEn: "Close Call", condDescEn: "Beat a boss with < 15% window left",           condDescVi: "Thắng boss khi cửa sổ còn < 15%",        reward: 25 },
+    { id: 12, nameVi: "Người hùng thầm lặng", nameEn: "Silent Hero", condDescEn: "25 pickups (cumulative)",     condDescVi: "25 pickup (cộng dồn)",                   reward: 10 },
+    { id: 13, nameVi: "Dọn sạch", nameEn: "Clean Sweep", condDescEn: "One nuke kills ≥ 15 enemies",                 condDescVi: "1 nuke giết ≥ 15 quái",                  reward: 20 },
+    { id: 14, nameVi: "Tốc độ ánh sáng", nameEn: "Lightspeed", condDescEn: "Reach level 10 in one run",          condDescVi: "Cấp 10 trong một run",                   reward: 20 },
+    { id: 15, nameVi: "Full build", nameEn: "Full Build", condDescEn: "6 different upgrades in one run",               condDescVi: "6 nâng cấp khác nhau trong một run",     reward: 25 },
+    { id: 16, nameVi: "Tay to", nameEn: "Heavy Hitter", condDescEn: "50,000 score in one run (Normal+)",                   condDescVi: "50.000 điểm/run (Thường trở lên)",        reward: 30 },
+    { id: 17, nameVi: "Huyền thoại", nameEn: "Legend", condDescEn: "200,000 score in one run (Normal+)",              condDescVi: "200.000 điểm/run (Thường trở lên)",       reward: 60 },
+    { id: 18, nameVi: "Không cần nghỉ", nameEn: "No Breaks", condDescEn: "One run lasting 15 minutes",           condDescVi: "1 run dài 15 phút",                      reward: 25 },
+    { id: 19, nameVi: "Kiên cường", nameEn: "Resilient", condDescEn: "Survive wave 10 on Normal",               condDescVi: "Sống sót wave 10 Thường",                reward: 30 },
+    { id: 20, nameVi: "Vực sâu gọi tên", nameEn: "The Abyss Calls", condDescEn: "Reach wave 15 (any difficulty)",          condDescVi: "Chạm wave 15 (mọi độ khó)",              reward: 40 },
+    { id: 21, nameVi: "Dám chơi dám chịu", nameEn: "Risk Taker", condDescEn: "Finish a Harsh run (past wave 1)",        condDescVi: "Hoàn thành 1 run Khắc nghiệt (qua wave 1)", reward: 30 },
+    { id: 22, nameVi: "Thử thách mỗi ngày", nameEn: "Daily Grind", condDescEn: "Complete 1 Daily Challenge",       condDescVi: "Hoàn thành 1 Daily Challenge",           reward: "skin:frost" },
+    { id: 23, nameVi: "Đều như vắt chanh", nameEn: "Clockwork", condDescEn: "7-day daily streak",        condDescVi: "Streak daily 7 ngày",                    reward: 30 },
+    { id: 24, nameVi: "Gắn bó", nameEn: "Devoted", condDescEn: "30-day daily streak",                   condDescVi: "Streak daily 30 ngày",                    reward: 100 },
+    { id: 25, nameVi: "WORK HARD – PLAY HARD", nameEn: "WORK HARD – PLAY HARD", condDescEn: "Buy all 10 Workshop nodes",    condDescVi: "Mua full 10 node Xưởng",                 reward: "skin:fudever" },
   ];
   var achvListeners = [];
   var Achievements = {
@@ -316,15 +316,16 @@
       var rewardNote;
       if (typeof def.reward === "number") {
         Shards.add(def.reward, "achievement:" + id);
-        rewardNote = "+" + def.reward + " mảnh kính";
+        rewardNote = "+" + def.reward + (lang === "en" ? " shards" : " mảnh kính");
       } else if (typeof def.reward === "string" && def.reward.indexOf("skin:") === 0) {
         var skinId = def.reward.slice(5);
         Skins.unlockSkin(skinId, true); // force: phần thưởng thành tích
         var skin = SKIN_DEFS.filter(function (x) { return x.id === skinId; })[0];
-        rewardNote = "skin " + (skin ? skin.nameVi : skinId);
+        rewardNote = "skin " + (skin ? ((lang === "en" && skin.nameEn) ? skin.nameEn : skin.nameVi) : skinId);
       }
-      var info = { id: id, nameVi: def.nameVi, reward: def.reward, rewardNote: rewardNote,
-                   copy: "Thành tích mới: " + def.nameVi + " — " + rewardNote + "." };
+      var aName = (lang === "en" && def.nameEn) ? def.nameEn : def.nameVi;
+      var info = { id: id, nameVi: def.nameVi, nameEn: def.nameEn, reward: def.reward, rewardNote: rewardNote,
+                   copy: ((lang === "en") ? "New achievement: " : "Thành tích mới: ") + aName + " — " + rewardNote + "." };
       achvListeners.forEach(function (cb) { try { cb(info); } catch (e) {} });
       return { ok: true, info: info };
     },
@@ -409,14 +410,14 @@
 
   /* ================= 6. DAILY CHALLENGE (§10.3) ================= */
   var DAILY_MODS = [
-    { id: "M1", nameVi: "Ngày hội chewer", descVi: "Chewer từ wave 1, số lượng ×2, chew dps −20%." },
-    { id: "M2", nameVi: "Đạn nặng",        descVi: "Tốc đạn −25%, sát thương +50%." },
-    { id: "M3", nameVi: "Sàn trơn",        descVi: "Tốc chạy +20%, quán tính trượt +40%." },
-    { id: "M4", nameVi: "Mưa gem",         descVi: "Gem rớt ×2 số lượng, mỗi gem 1 XP." },
-    { id: "M5", nameVi: "Boss giận dữ",    descVi: "Boss 2 pattern đạn cùng lúc, boss +50% điểm." },
-    { id: "M6", nameVi: "Cửa sổ mong manh", descVi: "Ngưỡng thua 35% (thay vì 25%), vá cuối wave +60px." },
-    { id: "M7", nameVi: "Chợ đen",         descVi: "Draft 4 lựa chọn thay vì 3." },
-    { id: "M8", nameVi: "Giờ cao điểm",    descVi: "Spawn −30% interval, điểm quái +30%." },
+    { id: "M1", nameVi: "Ngày hội chewer", nameEn: "Chewer Fest", descEn: "Chewers from wave 1, count ×2, chew DPS −20%.", descVi: "Chewer từ wave 1, số lượng ×2, chew dps −20%." },
+    { id: "M2", nameVi: "Đạn nặng", nameEn: "Heavy Rounds", descEn: "Bullet speed −25%, damage +50%.",        descVi: "Tốc đạn −25%, sát thương +50%." },
+    { id: "M3", nameVi: "Sàn trơn", nameEn: "Slippery Floor", descEn: "Move speed +20%, slide inertia +40%.",        descVi: "Tốc chạy +20%, quán tính trượt +40%." },
+    { id: "M4", nameVi: "Mưa gem", nameEn: "Gem Rain", descEn: "Gem drops ×2 quantity, 1 XP each.",         descVi: "Gem rớt ×2 số lượng, mỗi gem 1 XP." },
+    { id: "M5", nameVi: "Boss giận dữ", nameEn: "Enraged Boss", descEn: "Boss fires 2 bullet patterns at once, +50% boss score.",    descVi: "Boss 2 pattern đạn cùng lúc, boss +50% điểm." },
+    { id: "M6", nameVi: "Cửa sổ mong manh", nameEn: "Fragile Window", descEn: "Defeat threshold 35% (instead of 25%), +60px end-of-wave repair.", descVi: "Ngưỡng thua 35% (thay vì 25%), vá cuối wave +60px." },
+    { id: "M7", nameVi: "Chợ đen", nameEn: "Black Market", descEn: "Draft offers 4 choices instead of 3.",         descVi: "Draft 4 lựa chọn thay vì 3." },
+    { id: "M8", nameVi: "Giờ cao điểm", nameEn: "Rush Hour", descEn: "Spawn interval −30%, enemy score +30%.",    descVi: "Spawn −30% interval, điểm quái +30%." },
   ];
   function mulberry32(a) {
     return function () {
@@ -493,7 +494,9 @@
         Achievements.check("streak", { days: streakNow });
         this._saveStore(store);
         Shards.add(reward, "daily:" + key);
-        this.syncToServer(); // stub — coordinator nối api.js sau
+        // AUDIT 2026-10-02: nuốt rejection của sync (mất mạng/backend lỗi) — trước đây
+        // fire-and-forget nên mỗi lần hoàn thành Daily mà API lỗi là 1 unhandled rejection.
+        try { var sp = this.syncToServer(); if (sp && typeof sp.catch === "function") sp.catch(function () {}); } catch (e2) {}
       } else {
         this._saveStore(store);
       }
@@ -610,7 +613,7 @@
     getSkins: function () {
       var self = this;
       return SKIN_DEFS.map(function (d) {
-        return { id: d.id, nameVi: d.nameVi, unlockVi: d.unlockVi,
+        return { id: d.id, nameVi: d.nameVi, nameEn: d.nameEn, unlockVi: d.unlockVi, unlockEn: d.unlockEn,
                  unlocked: Skins.isUnlocked(d.id), canUnlock: Skins.canUnlock(d.id),
                  active: self.getActiveSkin() === d.id, paletteOverride: d.paletteOverride };
       });
@@ -622,7 +625,7 @@
     ACHV_DEFS: ACHV_DEFS,
     getAchievements: function () {
       return ACHV_DEFS.map(function (d) {
-        return { id: d.id, nameVi: d.nameVi, condDescVi: d.condDescVi,
+        return { id: d.id, nameVi: d.nameVi, nameEn: d.nameEn, condDescVi: d.condDescVi, condDescEn: d.condDescEn,
                  reward: d.reward, unlocked: Achievements.isUnlocked(d.id) };
       });
     },
@@ -634,6 +637,7 @@
     getLocalLeaderboard: function (limit) { return Daily.getLocalLeaderboard(limit); },
     syncToServer: function () { return Daily.syncToServer(); },
     // emergency repair
+    getEmergencyCost: function () { return EMERGENCY_COST; },
     canEmergencyRepair: function () { return Emergency.canEmergencyRepair(); },
     emergencyRepair: function () { return Emergency.emergencyRepair(); },
     // hard unlock

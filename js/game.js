@@ -35,6 +35,10 @@ const DIFF = DIFFS[qp.get("diff")] || DIFFS.normal;
 const DIFF_KEY = qp.get("diff") in DIFFS ? qp.get("diff") : "normal";
 const PROFILE_ID = qp.get("profile") || null;
 AudioEngine.setSettings({ music: qp.get("music") === "1", sfx: qp.get("sfx") === "1" });
+let musicOn = qp.get("music") === "1"; // AUDIT 2026-10-02: trạng thái nhạc cho phím M (xem handler KeyM)
+// AUDIT 2026-10-02: nối toggle SFX cho lớp sfx2 — trước đây Sfx2.setEnabled không có
+// caller nào nên tắt SFX ở menu vẫn nghe tiếng multikill/levelup/shield của sfx2.
+if (window.Sfx2) { try { Sfx2.setEnabled(qp.get("sfx") === "1"); } catch (e) {} }
 if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật, tiếp tục từ menu
 // BGM handoff: game chạy ở popup riêng, tab menu (opener) vẫn mở nền → bảo opener tạm nhường nhạc, khỏi chồng 2 bài
 try {
@@ -63,6 +67,13 @@ document.addEventListener("fullscreenchange", () => {
   if (b) b.classList.toggle("on", !!document.fullscreenElement);
 });
 document.getElementById("btn-hud-full")?.addEventListener("click", toggleFullscreen);
+// AUDIT 2026-10-02: nút pause HUD phải được nối TẠI ĐÂY (trong scope IIFE của game.js).
+// mobile.js không truy cập được pauseGame() (game.js bọc IIFE) nên wiring ở đó
+// chết im — nút pause từng không hoạt động trên mọi thiết bị.
+document.getElementById("btn-hud-pause")?.addEventListener("click", (e) => {
+  try { e.stopPropagation(); } catch (_) {}
+  if (typeof pauseGame === "function") pauseGame(true);
+});
 const SHAKE_WINDOW = qp.get("shake") === "1";
 if (typeof BG !== "undefined") BG.setQuality(qp.get("fx") === "reduced" ? "reduced" : "full");
 
@@ -1892,10 +1903,13 @@ function updateFragments(dt) {
         sat.shipCD = 1; hurtShip(1, cx, cy);
         sat.vx *= -1; sat.vy *= -1;
       }
-      if (cx < b.x + 20) { fragmentBite("left"); sat.vx = Math.abs(sat.vx); }
-      else if (cx > b.x + b.w - 20) { fragmentBite("right"); sat.vx = -Math.abs(sat.vx); }
-      if (cy < b.y + 20) { fragmentBite("top"); sat.vy = Math.abs(sat.vy); }
-      else if (cy > b.y + b.h - 20) { fragmentBite("bottom"); sat.vy = -Math.abs(sat.vy); }
+      // AUDIT 2026-10-02: nhánh sim trước đây cắn mỗi frame (không đọc biteCD) — mảnh
+      // chạm viền dao động trong vùng 20px, cắn ~10–20 lần × 8px cho 1 lần chạm thay vì
+      // 8px/3s như nhánh popup thật. Chỉ cắn khi biteCD hết, cắn xong đặt lại 3s.
+      if (cx < b.x + 20) { if (sat.biteCD <= 0) { fragmentBite("left"); sat.biteCD = 3; } sat.vx = Math.abs(sat.vx); }
+      else if (cx > b.x + b.w - 20) { if (sat.biteCD <= 0) { fragmentBite("right"); sat.biteCD = 3; } sat.vx = -Math.abs(sat.vx); }
+      if (cy < b.y + 20) { if (sat.biteCD <= 0) { fragmentBite("top"); sat.biteCD = 3; } sat.vy = Math.abs(sat.vy); }
+      else if (cy > b.y + b.h - 20) { if (sat.biteCD <= 0) { fragmentBite("bottom"); sat.biteCD = 3; } sat.vy = -Math.abs(sat.vy); }
     } else {
       if (!sat.steered && sat.win && !sat.win.closed) { // popup đã mở → bắt đầu bay
         sat.steered = true;
@@ -1935,17 +1949,28 @@ const touch = { active: false, moveId: null, aimId: null,
   moveOX: 0, moveOY: 0, moveX: 0, moveY: 0, aimX: 0, aimY: 0, aimDX: 0, aimDY: 0 };
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
+  // AUDIT 2026-10-02: resume AudioContext ngay trong gesture — trước đây trang game
+  // chỉ resume ở touchstart nên người chơi desktop (chuột/phím) mất toàn bộ SFX
+  // procedural vì context kẹt "suspended" (gesture ở tab menu không chuyển sang popup).
+  try { AudioEngine.resume(); } catch (er) {}
   SatManager.flush(); // phím cũng là user gesture hợp lệ để mở popup
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
   if ((e.code === "KeyP" || e.code === "Escape")) {
     if (G.phase === "play") pauseGame(true); else if (G.phase === "paused") pauseGame(false);
   }
   if (e.code === "KeyM") {
-    const on = qp.get("music") === "off";
-    qp.set("music", on ? "on" : "off");
-    AudioEngine.setSettings({ music: on });
-    if (window.BGM) { try { BGM.setEnabled(on); } catch (e2) {} }
-    if (on) AudioEngine.startMusic(curTrack);
+    // AUDIT 2026-10-02: trước đây M đọc qp "music" theo chuẩn "off"/"on" trong khi
+    // launcher gửi "1"/"0" → vào game với nhạc tắt phải bấm M 2 lần mới bật được, và
+    // trạng thái không lưu về settings nên ván sau revert. Dùng biến trạng thái nội
+    // bộ khởi tạo từ qp "1"/"0" + ghi lại wk_settings.
+    musicOn = !musicOn;
+    AudioEngine.setSettings({ music: musicOn });
+    if (window.BGM) { try { BGM.setEnabled(musicOn); } catch (e2) {} }
+    if (musicOn) AudioEngine.startMusic(curTrack);
+    try {
+      const st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
+      st.music = musicOn; localStorage.setItem("wk_settings", JSON.stringify(st));
+    } catch (e2) {}
   }
   if (e.code === "KeyR" && G.phase === "over") resetGame();
 });
@@ -1953,6 +1978,7 @@ window.addEventListener("keyup", e => keys[e.code] = false);
 canvas.addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 canvas.addEventListener("mousedown", e => {
   mouse.down = true;
+  try { AudioEngine.resume(); } catch (er) {} // AUDIT 2026-10-02: xem keydown — cứu SFX desktop
   SatManager.flush(); // user gesture: mở popup vệ tinh đang xếp hàng
   SatManager.hitSim(e.clientX, e.clientY); // click vào cửa sổ mô phỏng = 1 sát thương
   // v2.0: tutorial — nút Bỏ qua / nút beat 10
@@ -2014,7 +2040,11 @@ function touchMoveVec() {
   const dx = touch.moveX - touch.moveOX, dy = touch.moveY - touch.moveOY;
   const d = hypot(dx, dy);
   if (d < 12) return null;
-  const m = Math.min(d, 60) / 60;
+  // AUDIT 2026-10-02: áp đường cong joystick R3 ngay tại đây (mobile.js round3 từng
+  // cố thay window.touchMoveVec nhưng hàm này nằm trong IIFE nên không thay được —
+  // dead code). Cũ: m = min(d,60)/60 → nhảy 20% tốc độ ngay tại mép deadzone.
+  // Mới: mép deadzone → 0%, mép 60px → 100%, giữ nguyên deadzone/hướng/tốc độ tối đa.
+  const m = Math.min(1, (d - 12) / (60 - 12));
   return { x: dx / d * m, y: dy / d * m };
 }
 function touchAim() {
@@ -2396,8 +2426,12 @@ function spawnEnemyAt(type, x, y) {
     G.pendingSpawns = (G.pendingSpawns || 0) + 1;
     try {
       Juice.spawnWarning(x, y, e.r, { elite: e.r >= 23 }).then(
-        () => {
+        (ok) => {
           G.pendingSpawns = Math.max(0, (G.pendingSpawns || 1) - 1);
+          // AUDIT 2026-10-02: Juice.reset() settle warning đang treo bằng resolve(false)
+          // (fulfilled, không phải reject) — trước đây handler này không kiểm tra nên
+          // quái của run cũ spawn thẳng vào run mới sau restart. Hủy khi ok === false.
+          if (ok === false) return;
           if (G.phase === "over") return; // game over trong lúc warning → huỷ
           G.enemies.push(e);
           try { Juice.materialize(e); } catch (err) {}
@@ -2606,6 +2640,18 @@ function resetGame() {
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
   });
   G.ship = newShip();
+  // AUDIT 2026-10-02: resetGame() trước đây không dọn vệ tinh/boss module/Juice2 —
+  // restart từ pause hoặc sau game-over để sót bomb/mother/nest và boss ma của run cũ
+  // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
+  try { SatManager.closeAll(); } catch (e) {}
+  try { if (window.Bosses) Bosses.stop(); } catch (e) {}
+  try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
+  try { if (window.Juice2) Juice2.reset(); } catch (e) {}
+  G.cracks = []; G.windowDamagePx = 0;
+  // Khôi phục kích thước: arena ảo về null (tự tính lại full-size), cửa sổ thật
+  // grow về cỡ ban đầu (growWindow tự cap ở START_W × 720).
+  arena = null;
+  try { growWindow(START_W, 720); } catch (e) {}
   // §6.4.7: tooltip điểm 1 lần duy nhất sau update — "Điểm = tổng điểm gốc — không nhân."
   try {
     if (!localStorage.getItem("wk_score_tip_seen")) {
@@ -2931,7 +2977,12 @@ function update(dt) {
 
   /* boss */
   const bs = G.boss;
-  if (bs && !bs.dead) {
+  // AUDIT 2026-10-02: boss module (campaign, do Bosses điều khiển) phải được bỏ qua ở
+  // block boss cũ này — trước đây engine cũ vừa kéo boss về phía tàu 34px/s, vừa ghi
+  // đè bs.phase theo thang 1–4 (module dùng 1–3) khiến enterPhase không bao giờ chạy
+  // và pickAttack đọc phases[2] không tồn tại khi HP ≤ 25% (boss đứng đòn).
+  const bsIsModule = !!(bs && window.Bosses && Bosses.active === bs);
+  if (bs && !bs.dead && !bsIsModule) {
     bs.t += dt; bs.flash = Math.max(0, bs.flash - dt);
     // WOW: boss phase mỗi 25% HP — flash + slow-mo + banner + palette shift
     const frac = bs.hp / bs.maxHp;
@@ -2985,8 +3036,9 @@ function update(dt) {
     if (bs.spawnT <= 0) { bs.spawnT = 6; bs.adds.forEach(t => spawnEnemy(t)); }
     if (bs.slamT <= 0) {
       bs.slamT = bs.shot === "spiral" ? 9 : 12;
-      addFloat(bs.x, bs.y - 70, I18N.t("combat.slam"), "#ff5470", true);
-      shrinkWindow(bs.slam, Math.round(bs.slam * 0.75));
+      // AUDIT 2026-10-02: trước đây ở đây có sẵn 1 cặp addFloat+shrinkWindow chạy vô
+      // điều kiện, rồi nhánh else lại shrink lần nữa → slam không-debris gây sát thương
+      // cửa sổ gấp đôi thiết kế. Chỉ shrink trong nhánh else; nhánh debris thay bằng mưa mảnh vỡ.
       if (G.phase !== "play") return;
       // M4: 50% đòn nện → mưa mảnh vỡ (chỉ khi multi-window bật)
       const useDebris = typeof spawnDebris === "function" && typeof SAT_MODE !== "undefined" && SAT_MODE !== "off" && !SatManager.anyRole("debris") && Math.random() < 0.5;
@@ -3010,6 +3062,9 @@ function update(dt) {
   /* gems */
   for (let i = G.gems.length - 1; i >= 0; i--) {
     const gm = G.gems[i]; gm.t += dt;
+    // AUDIT 2026-10-02: gems trước đây không có hạn dùng → tích lũy vô hạn trong
+    // session dài (tụt FPS dần). Cho hạn 30s; đồng thời dọn gem NaN (tọa độ hỏng).
+    if (gm.t > 30 || !isFinite(gm.x) || !isFinite(gm.y)) { G.gems.splice(i, 1); continue; }
     const dx = s.x - gm.x, dy = s.y - gm.y, d = hypot(dx, dy) || 1;
     const magR = s.magnetT > 0 ? 1e9 : s.magnet; // magnet pickup: hút toàn bộ gem
     if (d < magR) { gm.x += dx / d * 360 * dt; gm.y += dy / d * 360 * dt; }
@@ -3499,11 +3554,30 @@ window.G = G; window.DIFF = DIFF; window.bounds = bounds;
 window.openDraft = openDraft; window.gainXp = gainXp; window.addFloat = addFloat;
 window.WKSpawnEnemy = function (type, x, y) { return spawnEnemyAt(type, x, y); };
 window.WKSpawnPickup = function (kind, x, y) { G.pickups.push({ kind: kind, x: x, y: y, t: 0 }); };
-window.WKSpawnGems = function (n, x, y) { for (let i = 0; i < n; i++) G.gems.push({ x: x + rand(-40, 40), y: y + rand(-40, 40), v: 1 }); };
+// AUDIT 2026-10-02: trước đây WKSpawnGems chỉ đẩy {x, y, v} — thiếu vx/vy/t nên vòng
+// gems biến tọa độ thành NaN ngay frame đầu (gem vô hình, không nhặt được, không xóa được).
+window.WKSpawnGems = function (n, x, y) { for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2; G.gems.push({ x: x + rand(-40, 40), y: y + rand(-40, 40), vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, v: 1, t: 0 }); } };
+// AUDIT 2026-10-02: bosses.js/monsters.js tra cứu các hàm này qua window (doShrink/
+// doGrow/doMoveBy/winJitter + callFn) nhưng game.js chưa từng expose → đòn signature
+// của boss campaign (slam thu cửa sổ, boss 5 shrink định kỳ, đẩy cửa sổ) lặng lẽ
+// thành no-op. Expose đúng contract mà 2 module đó tài liệu hoá.
+window.shrinkWindow = shrinkWindow; window.growWindow = growWindow;
+window.pushWindow = pushWindow; window.windowJitter = windowJitter;
+window.hurtShip = hurtShip; window.burst = burst; window.jxShake = jxShake;
+window.spawnEnemyAt = spawnEnemyAt;
 window.WKFireEB = function (x, y, vx, vy, o) { G.ebullets.push(Object.assign({ x: x, y: y, vx: vx, vy: vy, r: 7, t: 0 }, o || {})); };
 window.WKHurtShip = function (dmg, x, y) { hurtShip(dmg, x, y); };
 window.WKSetBanner = function (t, s) { setBanner(t, s); };
 window.WKDie = function (reason) { die(reason); };
+// AUDIT 2026-10-02: % cửa sổ còn lại theo đúng công thức engine dùng (popup thật
+// theo outerWidth, arena ảo theo bounds) — v2glue cần cho thành tựu hạ boss.
+window.WKWinPct = function () {
+  try {
+    const b = bounds();
+    return winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
+                      : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+  } catch (e) { return 1; }
+};
 window.WKDrawBossBar = function (d) {
   // thanh boss 3 nấc (§5.4): viền sáng + 3 khấc phase + tên
   const W = canvas.width, bbw = Math.min(560, W - 120);
@@ -3513,13 +3587,17 @@ window.WKDrawBossBar = function (d) {
   ctx.fillStyle = "#00000088";
   for (let i = 1; i < 3; i++) ctx.fillRect((W - bbw) / 2 + bbw * i / 3 - 1, 12, 2, 14);
   ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText((d.nameVi || d.name || "BOSS") + (d.phase ? " — P" + d.phase : ""), W / 2, 24);
+  // AUDIT 2026-10-02: tên boss theo ngôn ngữ (barData cung cấp nameEn + isEn).
+  ctx.fillText(((d.isEn && d.nameEn) ? d.nameEn : (d.nameVi || d.name || "BOSS")) + (d.phase ? " — P" + d.phase : ""), W / 2, 24);
   ctx.textAlign = "left";
   if (d.countdown > 0) { ctx.fillStyle = "#ffd479"; ctx.font = "bold 13px sans-serif"; ctx.fillText(Math.ceil(d.countdown) + "s", W / 2 + bbw / 2 + 10, 24); ctx.textAlign = "left"; }
 };
 // v2.0: cầu nối V2 (js/v2glue.js) — boot campaign/tutorial/meta/daily
+// AUDIT 2026-10-02: boot PHẢI chạy sau resetGame() (đúng như tài liệu của v2glue) —
+// trước đây boot chạy trước, resetGame gán banner:"" ngay sau đó nên banner Daily
+// (và mọi banner boot set) bị xóa trong cùng tick, không bao giờ hiển thị.
+resetGame();
 if (window.V2) { try { V2.boot({ profileId: PROFILE_ID, diffKey: DIFF_KEY }); } catch (e) {} }
 if (bus) bus.postMessage({ type: "arena-open" });
-resetGame();
 requestAnimationFrame(loop);
 })();

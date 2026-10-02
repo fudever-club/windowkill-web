@@ -39,6 +39,10 @@
   const num = (v, dflt = 0) => { const n = Number(v); return Number.isFinite(n) ? n : dflt; };
   const int0 = (v) => Math.max(0, Math.floor(num(v)));
   let profiles = store.get("wk_profiles", []);
+  // AUDIT 2026-10-02: dữ liệu save cũ/hỏng (entry null, JSON "null", không phải mảng)
+  // từng làm renderProfiles văng TypeError và chết toàn bộ menu (lỗi crash profile cũ).
+  if (!Array.isArray(profiles)) profiles = [];
+  profiles = profiles.filter(p => p && typeof p === "object" && p.id != null);
   let activeId = store.get("wk_active_profile", null);
   const active = () => profiles.find(p => p.id === activeId) || null;
   const pkey = (base) => { const p = active(); return p ? `${base}_${p.id}` : base; };
@@ -170,7 +174,7 @@
   }
   injectAnalyticsToggle();
   $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); if (window.WKAudio) WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
-  $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
+  $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); if (window.Sfx2) { try { Sfx2.setEnabled(settings.sfx); } catch (e) {} } Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };
   const thBtn = $("tgl-haptic");
   if (thBtn) thBtn.onclick = () => { settings.haptic = !settings.haptic; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "haptic", value: settings.haptic }); };
@@ -208,7 +212,8 @@
     }
   }
   function renderStats() {
-    const raw = store.get(pkey("wk_stats"), { games: 0, kills: 0, bestWave: 0, totalScore: 0, timeSec: 0 });
+    // AUDIT 2026-10-02: "null"/không-object trong wk_stats → guard, tránh TypeError chết menu.
+    const raw = store.get(pkey("wk_stats"), { games: 0, kills: 0, bestWave: 0, totalScore: 0, timeSec: 0 }) || {};
     const s = { games: int0(raw.games), kills: int0(raw.kills), bestWave: int0(raw.bestWave), totalScore: num(raw.totalScore), timeSec: int0(raw.timeSec) };
     const mins = Math.floor(s.timeSec / 60);
     $("stat-list").innerHTML =
@@ -216,7 +221,10 @@
       `${svgIcon("i-wave")} ${I18N.t("menu.stats.best_wave")}: <b>${s.bestWave}</b> &nbsp;•&nbsp; ${svgIcon("i-gem")} ${I18N.t("menu.stats.total_score")}: <b>${I18N.fmtNum(s.totalScore)}</b><br>` +
       `${svgIcon("i-clock")} ${I18N.t("menu.stats.time")}: <b>${I18N.t("menu.stats.minutes", { n: mins })}</b>`;
   }
-  function renderAll() { renderProfiles(); renderScores(); renderStats(); }
+  function renderAll() { renderProfiles(); renderScores(); renderStats();
+    // AUDIT 2026-10-02: panel ải v2 phải tính lại khóa/kỷ lục theo profile đang chọn
+    // (trước đây chỉ tính 1 lần lúc load — đổi profile vẫn hiện ải của profile trước).
+    try { if (window.__wkRefreshV2) window.__wkRefreshV2(); } catch (e) {} }
 
   /* ---------- game over reports from popup ---------- */
   if (bus) bus.onmessage = (ev) => {
@@ -331,7 +339,7 @@
       if (!window.I18N) return;
       const vt = (k, fb) => { try { const v = I18N.t(k); return (!v || v === k) ? fb : v; } catch (e) { return fb; } };
       const stName = (st) => { try { return (I18N.getLang() === "en" && st.nameEn) ? st.nameEn : st.nameVi; } catch (e) { return st.nameVi; } };
-      const lang = (window.I18N && I18N.lang) || "vi";
+      const lang = (window.I18N && I18N.getLang) ? I18N.getLang() : "vi"; // AUDIT 2026-10-02: trước đây đọc I18N.lang (không tồn tại) → luôn "vi", nút EN không bao giờ được highlight sau reload
 
       /* 1. Language toggle — chèn vào settings panel */
       try {
@@ -346,7 +354,7 @@
         setPanel.appendChild(row);
         row.querySelectorAll("[data-lang]").forEach(b => {
           b.classList.toggle("sel", b.dataset.lang === lang);
-          b.onclick = () => { try { I18N.setLang(b.dataset.lang); } catch (e) {} setTimeout(() => location.reload(), 80); };
+          b.onclick = () => { try { I18N.setLang(b.dataset.lang); } catch (e) {} try { if (window.Meta) Meta.setLang(b.dataset.lang); } catch (e2) {} setTimeout(() => location.reload(), 80); };
         });
       } catch (e) {}
 
@@ -382,35 +390,43 @@
         if (window.Campaign) {
           const wrap = document.createElement("div");
           wrap.className = "panel"; wrap.id = "v2-stages";
-          const unlocked = Campaign.getUnlockedStage(activeId);
-          const best = Campaign.getStageBest(activeId);
-          const cards = Campaign.STAGES.map(st => {
-            const lock = st.id > unlocked;
-            const b = best[String(st.id)] || {};
-            return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
-              style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
-              <div style="font-weight:800">${lock ? "🔒" : "🪟"} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
-              <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-              <div style="font-size:11.5px;color:#5f7ba3">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
-            </button>`;
-          }).join("");
-          wrap.innerHTML = `<h3><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> ${escapeHtml(vt("campaign.title", "Chiến dịch"))}</h3>
-            <div class="row" style="gap:8px;flex-wrap:wrap">
-              <button class="btn-ghost v2-stage sel" data-stage="0" style="min-width:148px;text-align:left">
-                <div style="font-weight:800">♾️ ${escapeHtml(vt("campaign.free", "Chơi tự do"))}</div>
-                <div style="font-size:12.5px">${escapeHtml(vt("campaign.free_desc", "Endless như cũ, boss mỗi 5 wave"))}</div>
-              </button>${cards}
-            </div>`;
           const playRow = document.querySelector("#btn-play").closest(".row");
           playRow.parentNode.insertBefore(wrap, playRow);
-          wrap.querySelectorAll(".v2-stage").forEach(b => {
-            b.onclick = () => {
-              wrap.querySelectorAll(".v2-stage").forEach(x => x.classList.remove("sel"));
-              b.classList.add("sel");
-              const s = b.dataset.stage;
-              v2sel = s === "0" ? { kind: "free" } : { kind: "stage", n: parseInt(s, 10) };
-            };
-          });
+          // AUDIT 2026-10-02: tách thành paintStages() để renderAll() gọi lại khi đổi
+          // profile (window.__wkRefreshV2) — khóa ải + kỷ lục là dữ liệu theo profile.
+          function paintStages() {
+            const unlocked = Campaign.getUnlockedStage(activeId);
+            const best = Campaign.getStageBest(activeId);
+            const cards = Campaign.STAGES.map(st => {
+              const lock = st.id > unlocked;
+              const b = best[String(st.id)] || {};
+              return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
+                style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
+                <div style="font-weight:800">${lock ? "🔒" : "🪟"} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
+                <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
+                <div style="font-size:11.5px;color:#5f7ba3">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
+              </button>`;
+            }).join("");
+            const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;
+            wrap.innerHTML = `<h3><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> ${escapeHtml(vt("campaign.title", "Chiến dịch"))}</h3>
+              <div class="row" style="gap:8px;flex-wrap:wrap">
+                <button class="btn-ghost v2-stage ${selStage === 0 ? "sel" : ""}" data-stage="0" style="min-width:148px;text-align:left">
+                  <div style="font-weight:800">♾️ ${escapeHtml(vt("campaign.free", "Chơi tự do"))}</div>
+                  <div style="font-size:12.5px">${escapeHtml(vt("campaign.free_desc", "Endless như cũ, boss mỗi 5 wave"))}</div>
+                </button>${cards}
+              </div>`;
+            wrap.querySelectorAll(".v2-stage").forEach(b => {
+              if (parseInt(b.dataset.stage, 10) === selStage) b.classList.add("sel");
+              b.onclick = () => {
+                wrap.querySelectorAll(".v2-stage").forEach(x => x.classList.remove("sel"));
+                b.classList.add("sel");
+                const s = b.dataset.stage;
+                v2sel = s === "0" ? { kind: "free" } : { kind: "stage", n: parseInt(s, 10) };
+              };
+            });
+          }
+          paintStages();
+          window.__wkRefreshV2 = paintStages;
         }
       } catch (e) {}
 
@@ -451,24 +467,39 @@
           const anchor = document.querySelector("#hs-list").closest(".panel");
           anchor.parentNode.insertBefore(mp, anchor.nextSibling);
           function renderMeta() {
+            // AUDIT 2026-10-02: viết lại theo đúng contract js/meta.js (trước đây dùng nhầm
+            // d.maxLevel/d.costs không tồn tại → văng TypeError, catch nuốt → panel Xưởng/Thành
+            // tựu/Daily rỗng hoàn toàn trên production). Dùng d.max/d.prices, unlock thật,
+            // modifiers hiển thị theo tên (không join object), hỗ trợ EN qua field nameEn/descEn.
+            const en = (window.I18N && I18N.getLang && I18N.getLang() === "en");
+            const pick = (d, vi) => (en && d[vi.replace("Vi", "En")]) ? d[vi.replace("Vi", "En")] : d[vi];
             const shards = Meta.getShards();
+            const ws = Meta.getWorkshop();
             const nodes = Meta.WORKSHOP.map(d => {
-              const lv = (Meta.getWorkshop()[String(d.id)] || 0);
-              const maxed = lv >= d.maxLevel;
-              const cost = maxed ? 0 : (d.costs[lv] || d.costs[d.costs.length - 1]);
-              const can = !maxed && shards >= cost;
+              const lv = ws[String(d.id)] || 0;
+              const maxed = lv >= d.max;
+              const cost = maxed ? 0 : (d.prices[lv] != null ? d.prices[lv] : d.prices[d.prices.length - 1]);
+              const unlocked = Meta.isNodeUnlocked(d.id);
+              const can = !maxed && unlocked && shards >= cost;
               return `<div style="border:1px solid #1c3d6e;border-radius:10px;padding:8px;min-width:150px;flex:1">
-                <div style="font-weight:800;font-size:13px">${escapeHtml(d.nameVi)} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(d.maxLevel - lv)}</span></div>
-                <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(d.descVi)}</div>
+                <div style="font-weight:800;font-size:13px">${escapeHtml(pick(d, "nameVi"))} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(Math.max(0, d.max - lv))}</span>${unlocked ? "" : " 🔒"}</div>
+                <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>🔒 " + escapeHtml(pick(d, "unlockVi"))}</div>
                 <button class="btn-ghost v2-buy" data-node="${d.id}" ${can ? "" : "disabled"} style="margin-top:6px;font-size:12px">
                   ${maxed ? "MAX" : ("💎 " + cost)}</button></div>`;
             }).join("");
             const achvs = Meta.getAchievements();
             const unCount = achvs.filter(a => a.unlocked).length;
-            const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${a.unlocked ? "✅" : "🔒"} <b>${escapeHtml(a.nameVi)}</b>
-              <span style="color:#5f7ba3">+${a.reward}💎</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(a.condDescVi)}</span></div>`).join("");
+            const skinName = (id) => { const s = (Meta.SKINS || []).filter(x => x.id === id)[0]; return s ? (en && s.nameEn ? s.nameEn : s.nameVi) : id; };
+            const rewardTxt = (r) => (typeof r === "number") ? ("+" + r + "💎")
+              : (String(r).indexOf("skin:") === 0 ? ("🎨 " + skinName(String(r).slice(5))) : String(r));
+            const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${a.unlocked ? "✅" : "🔒"} <b>${escapeHtml(pick(a, "nameVi"))}</b>
+              <span style="color:#5f7ba3">${escapeHtml(rewardTxt(a.reward))}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
             const d = Meta.getDaily();
-            const dMods = (d.modifiers || []).join(" · ");
+            const dMods = (d.modifiers || []).map(m => `<span title="${escapeHtml(pick(m, "descVi"))}">${escapeHtml(pick(m, "nameVi"))}</span>`).join(" · ");
+            // AUDIT 2026-10-02: bỏ nút "Sửa khẩn cấp" khỏi launcher — trước đây bấm ở menu
+            // trừ thẳng 20💎 trong khi không có cửa sổ game nào được vá (điều kiện
+            // winPct < 40% chỉ có nghĩa trong run; RunFlags là state theo trang).
+            // Tính năng thuộc về luồng in-game, không để ở menu để tránh mất mảnh oan.
             mp.innerHTML = `
               <h3><svg class="ic" aria-hidden="true"><use href="#i-anvil"/></svg> ${escapeHtml(vt("meta.workshop", "Xưởng"))}
                 <span style="float:right;font-size:14px">💎 ${I18N.fmtNum(shards)} ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}</span></h3>
@@ -476,17 +507,14 @@
               <h3 style="margin-top:14px">🏆 ${escapeHtml(vt("meta.achievements", "Thành tựu"))} (${unCount}/${achvs.length})</h3>
               <div style="max-height:220px;overflow:auto">${achHtml}</div>
               <h3 style="margin-top:14px">📅 Daily — ${escapeHtml(d.dateStr || "")}</h3>
-              <div style="font-size:13px;color:#c8dcf5">${escapeHtml(dMods)}</div>
+              <div style="font-size:13px;color:#c8dcf5">${dMods || "—"}</div>
               <div style="font-size:12.5px;color:#8fb0d8">${escapeHtml(vt("meta.daily_best", "Kỷ lục hôm nay"))}: ${I18N.fmtNum(d.bestScore || 0)} · 🔥 ${d.streak || 0}</div>
               <div class="row" style="gap:8px;margin-top:8px">
                 <button class="btn-ghost" id="v2-daily-play">📅 ${escapeHtml(vt("meta.daily_play", "Chơi Daily"))}</button>
-                ${Meta.canEmergencyRepair() ? `<button class="btn-ghost" id="v2-emg">🛠️ ${escapeHtml(vt("meta.emergency", "Sửa khẩn cấp"))} (−50💎)</button>` : ""}
               </div>`;
             mp.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => { if (Meta.buyNode(b.dataset.node).ok) renderMeta(); }; });
             const dp = mp.querySelector("#v2-daily-play");
             if (dp) dp.onclick = () => { v2sel = { kind: "daily" }; launchGame(); v2sel = { kind: "free" }; };
-            const em = mp.querySelector("#v2-emg");
-            if (em) em.onclick = () => { const r = Meta.emergencyRepair(); if (r && r.ok) { alert("✅"); renderMeta(); } };
           }
           renderMeta();
         }

@@ -563,14 +563,18 @@ const AudioEngine = (() => {
 
   /* ================= 3. Adaptive music engine ================= */
   const M2F = m => 440 * Math.pow(2, (m - 69) / 12);
-  // E minor → E Phrygian (danger/boss, thêm F) → E major lift (victory)
+  // AUDIT 2026-10-02: trước đây toàn bộ engine dự phòng này là E minor → E Phrygian —
+  // hướng nhạc user đã cấm tuyệt đối (2026-10-01: phải VUI NHỘN, thang trưởng/
+  // Mixolydian, nhịp nhanh). Mọi đường fallback (track lỗi/watchdog) đều rơi về
+  // nhạc bị cấm. Chuyển toàn bộ sang E major / E Mixolydian, BPM nhanh hơn;
+  // căng thẳng ở DANGER/BOSS tạo bằng nhịp/pump, không bằng Phrygian.
   const STATES = {
-    MENU:    { bpm: 96,  inten: 0, scale: "min", pump: 0 },
-    CALM:    { bpm: 116, inten: 1, scale: "min", pump: 2 },
-    COMBAT:  { bpm: 132, inten: 3, scale: "min", pump: 4 },
-    DANGER:  { bpm: 140, inten: 3, scale: "phr", pump: 5 },
-    BOSS:    { bpm: 150, inten: 4, scale: "phr", pump: 6 },
-    VICTORY: { bpm: 128, inten: 3, scale: "maj", pump: 3 },
+    MENU:    { bpm: 112, inten: 0, scale: "maj", pump: 0 },
+    CALM:    { bpm: 124, inten: 1, scale: "maj", pump: 2 },
+    COMBAT:  { bpm: 138, inten: 3, scale: "mix", pump: 4 },
+    DANGER:  { bpm: 146, inten: 3, scale: "mix", pump: 5 },
+    BOSS:    { bpm: 152, inten: 4, scale: "mix", pump: 6 },
+    VICTORY: { bpm: 132, inten: 3, scale: "maj", pump: 3 },
   };
   // Ưu tiên: GAMEOVER > BOSS > DANGER > VICTORY > COMBAT > CALM > MENU
   const PRIO = { MENU: 0, CALM: 1, COMBAT: 2, VICTORY: 3, DANGER: 4, BOSS: 5, GAMEOVER: 6 };
@@ -578,26 +582,25 @@ const AudioEngine = (() => {
     menu: ["MENU", 0], game: ["CALM", 1],
     act1: ["CALM", 1], act2: ["COMBAT", 3], act3: ["COMBAT", 4],
   };
-  const PROG = { // hợp âm pad theo bar (MIDI)
-    MENU:    [[40, 43, 47], [48, 52, 55], [43, 47, 50], [50, 54, 57]], // Em C G D
-    CALM:    [[40, 43, 47], [40, 43, 47], [48, 52, 55], [50, 54, 57]],
-    COMBAT:  [[40, 43, 47], [40, 43, 47], [48, 52, 55], [50, 54, 57]],
-    DANGER:  [[40, 43, 47], [40, 43, 47], [40, 43, 47], [50, 54, 57]],
-    BOSS:    [[40, 43, 47], [40, 43, 47], [41, 44, 48], [39, 43, 46]],
+  const PROG = { // hợp âm pad theo bar (MIDI) — E major: E [40,44,47] · A [45,49,52] · B [47,51,54]
+    MENU:    [[40, 44, 47], [45, 49, 52], [47, 51, 54], [45, 49, 52]], // E A B A
+    CALM:    [[40, 44, 47], [40, 44, 47], [45, 49, 52], [47, 51, 54]], // E E A B
+    COMBAT:  [[40, 44, 47], [45, 49, 52], [40, 44, 47], [47, 51, 54]], // E A E B
+    DANGER:  [[40, 44, 47], [40, 44, 47], [40, 44, 47], [47, 51, 54]], // E E E B
+    BOSS:    [[40, 44, 47], [40, 44, 47], [45, 49, 52], [47, 51, 54]], // E E A B
     VICTORY: [[40, 44, 47], [45, 49, 52], [47, 51, 54], [40, 44, 47]], // E A B E major
   };
-  const BASS_PAT = { // 16 step/bar, 0 = nghỉ (MIDI)
+  const BASS_PAT = { // 16 step/bar, 0 = nghỉ (MIDI) — nốt trong thang E major/Mixolydian (♭7 = D2 38 cho độ nảy)
     MENU:   [40,0,0,0, 0,0,0,0, 48,0,0,0, 0,0,0,0],
-    CALM:   [40,0,0,0, 0,0,43,0, 0,0,45,0, 0,0,47,0],
-    COMBAT: [40,0,40,0, 43,0,40,0, 45,0,40,0, 47,0,45,43],
-    DANGER: [40,0,40,39, 40,0,43,0, 40,0,39,0, 45,0,43,41], // D#2 tạo tension
-    BOSS:   [40,40,40,0, 40,40,43,0, 40,40,40,0, 45,43,41,39], // gallop
+    CALM:   [40,0,0,0, 0,0,44,0, 0,0,45,0, 0,0,47,0],
+    COMBAT: [40,0,40,0, 44,0,40,0, 45,0,40,0, 47,0,45,44],
+    DANGER: [40,0,40,38, 40,0,44,0, 40,0,38,0, 45,0,44,42], // D2 (♭7 Mixolydian) tạo độ nảy thay cho tension Phrygian
+    BOSS:   [40,40,40,0, 40,40,44,0, 40,40,40,0, 45,44,42,38], // gallop
     VICTORY:[40,0,0,0, 44,0,0,0, 47,0,0,0, 52,0,51,0],
   };
   const ARP_SCALE = {
-    min: [64, 67, 69, 71, 74, 76, 79],       // E minor pentatonic+
-    phr: [64, 65, 67, 69, 71, 72, 74],       // E Phrygian (thêm F4)
     maj: [64, 66, 68, 71, 73, 76, 78, 80],    // E major, up 2 octave
+    mix: [64, 66, 68, 69, 71, 73, 75, 76],    // E Mixolydian (♭7 = D) — vui, nảy, hơi rock
   };
   const ARP_PAT = [0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 4, 5, 4, 3, 2, 1];
 
@@ -605,7 +608,7 @@ const AudioEngine = (() => {
   function ensureSeq() {
     if (!seq) seq = { on: false, timer: null, step: 0, nextT: 0,
                       state: "MENU", prevState: "MENU", intensity: 0,
-                      data: STATES.MENU, bpm: 96, pending: null,
+                      data: STATES.MENU, bpm: 112, pending: null,
                       layers: { pad: 0, bass: 0, drums: 0, arp: 0, fx: 0 } };
     return seq;
   }

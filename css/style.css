@@ -155,7 +155,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   font-family: ui-monospace, Consolas, monospace;
 }
 .cin-card.cin-selected { border-color: #ffffff; background: #1a3a6e; }
-.cin-draft-hint { margin-top: 18px; font-size: 12px; color: #8fb0d8; letter-spacing: 1px; }
+.cin-draft-hint { margin-top: 18px; font-size: 13px; color: #8fb0d8; letter-spacing: 1px; }
 /* ---------- UI micro-interactions (§10) — dùng cho menu.js / index.html ---------- */
 .cin-pressable { transition: transform 0.11s ease-out, filter 0.11s ease-out; }
 .cin-pressable:hover { transform: scale(1.05); filter: brightness(1.1); }

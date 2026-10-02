@@ -43,6 +43,71 @@
 
   var int0 = function (v) { var n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(0, n) : 0; };
 
+  /* ---------------- save versioning (N8 — Season 1 DoR, Q1-A) ----------------
+   * Quy ước: MỘT key toàn cục `wk_save_version` (int), độc lập với các key wk_meta_*.
+   * - Save cũ chưa có key            → coi là v1 (ngầm định).
+   * - Code hiện tại ghi version 2 (schema baseline: chưa đổi cấu trúc, chỉ đánh dấu).
+   * - Mỗi lần đổi schema sau này: tăng SAVE_VERSION, thêm 1 bước vào MIGRATIONS.
+   * - migrateSave(from, to) chạy TUẦN TỰ từng bước (1→2, 2→3, ...), CHỈ TIẾN,
+   *   không downgrade. Chạy 1 lần duy nhất khi load, TRƯỚC mọi lần đọc meta.
+   * - Version tương lai / giá trị lạ: KHÔNG crash — giữ nguyên + cảnh báo console.
+   * - Đối xứng backend: server dùng PRAGMA user_version (xem server/src/store.js).
+   */
+  var SAVE_VERSION = 2;
+  var K_VERSION = "wk_save_version"; // key toàn cục — KHÔNG nằm trong K (Phụ lục A)
+  var MIGRATIONS = [
+    { from: 1, to: 2, run: function () {
+        // v1→v2: baseline marker. Schema v1 = toàn bộ keys wk_meta_* hiện tại;
+        // chưa có thay đổi cấu trúc nào, bước này chỉ đánh dấu điểm tựa cho các
+        // migration sau (vd Season 1) nối tiếp.
+        if (typeof console !== "undefined" && console.info)
+          console.info("[wk] save migrated 1→2 (schema baseline, no structural change)");
+    } },
+    // Bước sau thêm ở đây, vd: { from: 2, to: 3, run: function () { ... } },
+  ];
+  function readSaveVersion() {
+    var raw = lsGet(K_VERSION);
+    if (raw == null || raw === "") return 1; // save cũ: v1 ngầm định
+    var v = Math.floor(Number(raw));
+    if (!Number.isFinite(v) || v < 1) return 1; // giá trị lạ ("abc", -5...) → coi như v1 rồi migrate lên
+    return v;
+  }
+  function migrateSave(from, to) {
+    from = Math.floor(Number(from)) || 1;
+    to = Math.floor(Number(to)) || SAVE_VERSION;
+    var v = from, guard = 0;
+    while (v < to && guard++ < 100) {
+      var step = null, i;
+      for (i = 0; i < MIGRATIONS.length; i++)
+        if (MIGRATIONS[i].from === v) { step = MIGRATIONS[i]; break; }
+      if (!step) { // thiếu định nghĩa bước: bỏ qua, vẫn tiến version để không kẹt
+        if (typeof console !== "undefined" && console.warn)
+          console.warn("[wk] save: missing migration step " + v + "→" + (v + 1) + ", skipping");
+        v++;
+        continue;
+      }
+      try { step.run(); }
+      catch (e) { // bước lỗi: DỪNG, không ghi version mới → lần load sau thử lại, không mất data
+        if (typeof console !== "undefined" && console.error)
+          console.error("[wk] save: migration " + v + "→" + step.to + " failed:", e);
+        break;
+      }
+      v = step.to;
+    }
+    return v;
+  }
+  (function ensureSaveVersion() { // chạy 1 lần lúc khởi động, trước mọi lần đọc meta
+    var v = readSaveVersion();
+    if (v > SAVE_VERSION) { // save từ tương lai: giữ nguyên, không crash, không downgrade
+      if (typeof console !== "undefined" && console.warn)
+        console.warn("[wk] save: version " + v + " newer than code (" + SAVE_VERSION + "), keeping as-is");
+      return;
+    }
+    var done = migrateSave(v, SAVE_VERSION);
+    if (done >= SAVE_VERSION) lsSet(K_VERSION, String(SAVE_VERSION));
+    // done < SAVE_VERSION: có bước lỗi → giữ nguyên key cũ, lần sau thử lại
+  })();
+
   /* ================= 1. MẢNH KÍNH (§10.1) ================= */
   var Shards = {
     get: function () { return int0(lsGet(K.SHARDS)); },
@@ -652,6 +717,10 @@
     // internal (test)
     _int0: int0, _mulberry32: mulberry32, _todayKey: todayKey, _addDays: addDays,
     _keys: K, _storageOk: LS_OK,
+    // save versioning N8 (test + debug)
+    SAVE_VERSION: SAVE_VERSION,
+    saveVersion: function () { return readSaveVersion(); },
+    _migrateSave: migrateSave, _readSaveVersion: readSaveVersion,
   };
 
   if (typeof window !== "undefined") window.Meta = Meta;

@@ -8,10 +8,11 @@
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0a0618;
     font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;cursor:crosshair}
-  canvas{display:block;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
   #hp{position:fixed;top:6px;left:8px;right:8px;height:6px;background:#ffffff18;border-radius:3px;overflow:hidden}
   #hpfill{height:100%;width:100%;background:#c084fc;border-radius:3px;transition:width .15s}
-  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:11px;letter-spacing:2px}
+  #hppct{position:fixed;top:14px;left:0;right:0;text-align:center;font-size:11px;color:#ffffffaa}
+  #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:13px;letter-spacing:2px}
   .dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
 
   /* boot overlay (cinematics polish): overlay tim #7c3aed alpha .25 fade-in 200ms + logo pulse */
@@ -28,6 +29,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hp"><div id="hpfill"></div></div>
+  <div id="hppct"></div>
 <div id="lbl"></div>
 <div id="boot" aria-hidden="true"><div id="boot-logo">◈</div><div id="boot-txt">VỆ TINH</div></div>
 <script>
@@ -324,7 +326,7 @@ function floatDmg(x, y) {
   const iv = setInterval(() => { o -= 0.06; yy -= 2; d.style.opacity = o; d.style.top = yy + "px"; if (o <= 0) { clearInterval(iv); d.remove(); } }, 30);
 }
 
-canvas.addEventListener("mousedown", (e) => {
+canvas.addEventListener("pointerdown", (e) => {
   if (dying) return;
   post({ type: "sat-hit", id: ID, x: Math.round(e.clientX), y: Math.round(e.clientY) });
 });

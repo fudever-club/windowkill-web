@@ -108,6 +108,7 @@
     ["⚠", "i-alert"], ["❄", "i-snow"], ["✨", "i-sparkles"],
     ["👑", "i-trophy"], ["🦷", "i-fang"], ["🩸", "i-drop"],
     ["🛡", "i-shield"], ["💎", "i-gem"], ["🪟", "i-window"],
+    ["🔦", "i-flash"],
   ];
 
   function splitFloat(text) {

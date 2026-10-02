@@ -2515,6 +2515,7 @@ function onboardSpawnMul() {
 function onboardSpdMul() {
   if (tutActive()) return 0.85;
   return (DIFF_KEY === "normal" && G.wave <= 3) ? 0.85 : 1;
+}
 function mkEnemy(type, x, y) {
   // FIX C2b (2026-10-02): id đặc biệt 'mini_boss_N' (campaign wave 5) resolve
   // thành entity mini-boss thật: base monster + hp×8, scale×2.5, gem 20
@@ -2532,6 +2533,7 @@ function mkEnemy(type, x, y) {
     type: miniSpec ? miniSpec.base : type, behavior: def.behavior, x, y, t: rand(0, 9), flash: 0, slowT: 0, dead: false,
 
    kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
+    hp: def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave),
     speed: def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul(),
          xp: def.xp,
   };
@@ -2549,7 +2551,6 @@ if (miniSpec) {
     e.r = e.r * miniSpec.scale;
     e.xp = miniSpec.gemReward;
   }
-};
   e.maxHp = e.hp;
   if (def.init) def.init(e);
   return e;

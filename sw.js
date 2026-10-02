@@ -7,7 +7,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-v6"; // bump 2026-10-02 (audit B1): 28 commits sau v5 + PR #33 đổi save format — ép client nhận bản mới
+const VERSION = "windowkill-v7"; // bump 2026-10-03: ép client nhận fix gray-veil (PR #46) — SW stale-while-revalidate giữ code cũ sau deploy
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";

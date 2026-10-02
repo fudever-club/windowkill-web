@@ -116,3 +116,27 @@
 | `fcd3d27` | fix(audit): contract diff của Bosses (M9 lớp 3) + thứ tự boot V2 (M21) |
 
 Test sau commit cuối: **67 pass / 0 fail / 1 skip** — bằng baseline, không hồi quy.
+
+---
+
+## 7. ADDENDUM 2026-10-02 — Testing Team thành lập, quality gate chính thức
+
+Theo lệnh user ("tuyển thêm thành viên testing lo chuyện hệ thống"), Testing Team
+6 vai được thành lập — chi tiết: `studio/qa/TESTING-TEAM.md`. Từ nay mọi PR phải
+có **chữ ký "QA pass" của Test Lead** mới được merge (Release Captain thực hiện).
+
+**Vị trí sign-off trong vòng đời PR:**
+```
+PR mở → CI xanh (frontend + server tests) → Automation: test mới/regression pin
+     → Matrix Owner: smoke Chromium + 1 mobile → Backend Tester (nếu chạm server/api.js)
+     → Perf Tester (nếu chạm game.js/render) → ⭐ Test Lead sign-off "QA pass" → merge
+```
+
+**Đợt system-test đầu tiên (branch `team/testing-system-2026-10`, main afa5997):**
+- 44 test mới, suite **131 pass / 0 fail / 1 skip** (+ server tests 15/15 riêng).
+- Phát hiện ghi nhận: (1) `mini_boss_*` wave 5 campaign hiện spawn thành "chaser"
+  thường (v2glue.js:220 fallback) — chờ Game Design quyết; (2) CI chưa chạy
+  `server/tests/api.test.js` — cần thêm step; (3) `Meta.getDaily()` public không
+  forward `dateKey` — không crash, ghi nhận.
+- Gaps còn lại xem `studio/qa/SYSTEM-TEST-GAPS.md` (3 P0 cần người/thiết bị thật:
+  Firefox/Safari, mobile thật, multi-window popup thật).

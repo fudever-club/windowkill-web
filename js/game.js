@@ -3474,17 +3474,20 @@ function render(now) {
   let hud = `WAVE ${Math.max(1, G.wave)}   💀 ${G.kills}   ⭐ ${G.score}`;
   if (G.combo >= 3) hud += `   🔥x${G.combo}`;
   ctx.fillText(hud, 14, 58);
-  ctx.fillStyle = "#ffffff18"; ctx.fillRect(14, 68, 220, 8);
-  ctx.fillStyle = "#7df9ff"; ctx.fillRect(14, 68, 220 * Math.min(1, G.xp / G.xpNeed), 8);
-  ctx.fillStyle = "#c9b8e0"; ctx.font = "12px sans-serif";
-  ctx.fillText(`Lv ${G.level}`, 240, 76);
-  // máu cửa sổ
-  const bw = 220;
-  ctx.fillStyle = "#ffffff18"; ctx.fillRect(W - bw - 14, 14, bw, 10);
+    const xpw = Math.max(120, Math.min(220, W * 0.45));
+   
+   ctx.fillStyle = "#ffffff18"; ctx.fillRect(14, 68, xpw, 8);
+  ctx.fillStyle = "#7df9ff"; ctx.fillRect(14, 68, xpw * Math.min(1, G.xp / G.xpNeed), 8);
+  ctx.fillStyle = "#c9b8e0"; ctx.font = "13px sans-serif";
+  ctx.fillText(`Lv ${G.level}`, 14 + xpw + 6, 76);
+  // máu cửa sổ — responsive portrait, chừa 116px mép phải cho 2 nút HUD
+  const bw = Math.max(90, Math.min(220, W - 366));
+     const rPad = 116;
+  ctx.fillStyle = "#ffffff18"; ctx.fillRect(W - bw - rPad, 14, bw, 10);
   ctx.fillStyle = winPct < 0.35 ? "#ff5470" : "#ff9df3";
-  ctx.fillRect(W - bw - 14, 14, bw * winPct, 10);
-  ctx.fillStyle = "#c9b8e0"; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
-  ctx.fillText(I18N.t("hud.window_hp"), W - 14, 40); ctx.textAlign = "left";
+  ctx.fillRect(W - bw - rPad, 14, bw * winPct, 10);
+  ctx.fillStyle = "#c9b8e0"; ctx.font = "13px sans-serif"; ctx.textAlign = "right";
+  ctx.fillText(I18N.t("hud.window_hp"), W - rPad, 40); ctx.textAlign = "left";
   // boss bar (v2.0: boss module vẽ thanh 3 nấc khi active)
   var v2bar = false;
   if (window.V2) { try { v2bar = V2.bossBar(); } catch (e) {} }
@@ -3492,14 +3495,28 @@ function render(now) {
     const bbw = Math.min(560, W - 120);
     ctx.fillStyle = "#000000aa"; ctx.fillRect((W - bbw) / 2, 12, bbw, 14);
     ctx.fillStyle = "#c084fc"; ctx.fillRect((W - bbw) / 2, 12, bbw * clamp(bs.hp / bs.maxHp, 0, 1), 14);
-    ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+    ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
     ctx.fillText(bs.name || "BOSS", W / 2, 24); ctx.textAlign = "left";
   }
-  ctx.fillStyle = "#8f7bb5"; ctx.font = "12px sans-serif";
-  ctx.fillText(touch.active ? I18N.t("hud.controls_mobile") : I18N.t("hud.controls"), 14, H - 14);
+    
+   
+   
+     // hint điều khiển chỉ hiện 6 giây đầu mỗi lượt chơi (render-local, không chạm update)
+        if (G.phase !== "play") { G._hintArmed = false; }
+           if (G.phase === "play" && !G._hintArmed) { G._hintArmed = true; G._hintUntil = now + 6000; }
+              if (typeof G._hintUntil !== "number") G._hintUntil = 0;
+                 if (now < G._hintUntil) {
+                  ctx.fillStyle = "#8f7bb5"; ctx.font = "13px sans-serif";
+    ctx.fillText(touch.active ? I18N.t("hud.controls_mobile") : I18N.t("hud.controls"), 14, H - 14); }
+                 }
+                 }
+}
+                      }
 
-  // banner
-  if (G.bannerT > 0) {
+ }
+ }
+ }
+if (G.bannerT > 0) {
     ctx.globalAlpha = Math.min(1, G.bannerT);
     ctx.fillStyle = "#ffd7f4"; ctx.font = "bold 44px sans-serif"; ctx.textAlign = "center";
     ctx.fillText(G.banner, W / 2, H / 2 - 20);

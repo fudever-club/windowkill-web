@@ -111,8 +111,12 @@ window.BGM = (() => {
     function step(now) {
       if (id !== a._fadeId) return; // fade mới hơn đã thay thế
       const t = (typeof performance !== "undefined") ? now : Date.now();
-      const k = Math.min(1, (t - t0) / Math.max(1, ms));
-      a.volume = from + (target - from) * k;
+      // AUDIT 2026-10-02: timestamp rAF có thể NHỎ HƠN t0 (thời điểm vsync của frame
+      // đi trước performance.now() trong cùng frame) → k âm → volume âm khi fade-in →
+      // IndexSizeError "volume outside [0,1]" văng ra console. Clamp k vào [0,1]
+      // và clamp cả giá trị volume cuối cho chắc.
+      const k = Math.min(1, Math.max(0, (t - t0) / Math.max(1, ms)));
+      a.volume = Math.min(1, Math.max(0, from + (target - from) * k));
       if (k < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
@@ -133,6 +137,11 @@ window.BGM = (() => {
     if (watchdogTimer) return;
     watchdogTimer = setInterval(() => {
       if (!enabled || suspended || allFailed || !started || players.length === 0) return;
+      // AUDIT 2026-10-02: trước lần tương tác đầu tiên, play() bị autoplay policy
+      // chặn — đó KHÔNG phải track lỗi. Trước đây watchdog vẫn đếm fail → sau ~48s
+      // chưa kịp bấm gì là giết hết 4 track thật, allFailed vĩnh viễn, cả phiên chỉ
+      // còn nhạc procedural. Không đếm fail khi user chưa từng tương tác.
+      if (!unlocked) { playFailCount = 0; playFailStreak = 0; lastPlayAt = Date.now(); return; }
       const a = players[cur];
       if (!a || !a.src) return;
       if (!a.paused) { playFailCount = 0; return; } // đang phát tốt

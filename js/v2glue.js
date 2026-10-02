@@ -10,9 +10,15 @@
   function safe(fn) { try { return fn(); } catch (e) { return undefined; } }
   function T(key, vars) {
     try {
-      if (window.I18N && typeof I18N.t === "function") return I18N.t(key, vars);
+      if (window.I18N && typeof I18N.t === "function") {
+        var v = I18N.t(key, vars);
+        // AUDIT 2026-10-02: I18N.t trả về chính key khi thiếu bản dịch (truthy) —
+        // phải coi là "không có" (trả "") để các fallback `||` phía sau còn chạy,
+        // tránh lộ raw key ra banner (meta.daily_banner, campaign.stage_clear).
+        return (typeof v === "string" && v !== key) ? v : "";
+      }
     } catch (e) {}
-    return key;
+    return "";
   }
   function Q() {
     try { return new URLSearchParams(location.search); }
@@ -33,8 +39,18 @@
     boot: function (opts) {
       opts = opts || {};
       var q = Q(), self = this;
+      this.diffKey = opts.diffKey || "normal";
+      this.profileId = opts.profileId || null;
       var st = parseInt(q.get("stage") || "0", 10);
-      if (st >= 1 && st <= 5 && window.Campaign) this.stageId = st;
+      if (st >= 1 && st <= 5 && window.Campaign) {
+        this.stageId = st;
+        // AUDIT 2026-10-02: trước đây boot nhận ?stage= bất kể khóa — mở thẳng
+        // game.html?stage=5 là chơi được ải chưa mở. Kẹp về ải cao nhất đã mở.
+        safe(function () {
+          var un = Campaign.getUnlockedStage(self.profileId);
+          if (self.stageId > un) self.stageId = un;
+        });
+      }
       if (q.get("endless") === "1" && window.Campaign) this.endless = true;
       if (q.get("daily") === "1" && window.Meta) this.daily = true;
 
@@ -45,7 +61,11 @@
         if (self.daily && window.Meta) {
           var d = Meta.getDaily();
           if (d && d.modifiers && d.modifiers.length && window.WKSetBanner) {
-            window.WKSetBanner(T("meta.daily_banner", { m1: d.modifiers[0], m2: d.modifiers[1] }) || ("DAILY: " + d.modifiers.join(" + ")), "");
+            // AUDIT 2026-10-02: truyền TÊN modifier theo ngôn ngữ (trước đây truyền cả
+            // object → banner ra "[object Object]"/raw key).
+            var en = (window.I18N && I18N.getLang && I18N.getLang() === "en");
+            var nm = function (m) { return m ? ((en && m.nameEn) ? m.nameEn : (m.nameVi || m.id || "")) : ""; };
+            window.WKSetBanner(T("meta.daily_banner", { m1: nm(d.modifiers[0]), m2: nm(d.modifiers[1]) }) || ("DAILY: " + d.modifiers.map(nm).join(" + ")), "");
           }
         }
       });
@@ -56,7 +76,9 @@
         if (q.get("tut") === "0") return;
         var pid = opts.profileId || null;
         if (!force && Tutorial.isDone(pid)) return;
-        Tutorial.start({ profileId: pid });
+        // AUDIT 2026-10-02: truyền lang hiện tại — trước đây thiếu nên tutorial luôn
+        // chạy tiếng Việt kể cả khi người chơi chọn EN (COPY của tutorial có đủ EN).
+        Tutorial.start({ profileId: pid, lang: (window.I18N && I18N.getLang) ? I18N.getLang() : "vi" });
       });
       // Juice2: áp setting hiệu ứng từ ?fx=
       safe(function () {
@@ -76,22 +98,21 @@
       safe(function () {
         if (V2.bossActive && window.Bosses && window.G) Bosses.update(dt, window.G);
       });
+      // AUDIT 2026-10-02: StageFX KHÔNG có activeModule() — glue cũ gọi qua ternary
+      // guard nên luôn nhận null → module mechanic ải không bao giờ update (gai không
+      // chu kỳ, cúp điện không tắt, arena không thu). API thật: StageFX.update(dt, G)
+      // tự xử lý khi không có module active.
       safe(function () {
-        if (V2.stageId && !V2.stageDone && window.StageFX && window.G) {
-          var m = StageFX.activeModule ? StageFX.activeModule() : null;
-          if (m && m.update) m.update(dt, window.G);
-        }
+        if (V2.stageId && !V2.stageDone && window.StageFX && window.G) StageFX.update(dt, window.G);
       });
       // Tutorial nhịp chill được xử lý trong game.js qua tutActive()
     },
     drawOver: function (ctx, W, H) {
       safe(function () { if (window.Juice2) Juice2.drawOverlays(ctx, W, H); });
       safe(function () { if (V2.bossActive && window.Bosses && window.G) Bosses.draw(ctx, window.G); });
+      // AUDIT 2026-10-02: như frame() — vẽ qua API thật StageFX.draw(ctx, G).
       safe(function () {
-        if (V2.stageId && !V2.stageDone && window.StageFX && window.G) {
-          var m = StageFX.activeModule ? StageFX.activeModule() : null;
-          if (m && m.draw) m.draw(ctx, window.G);
-        }
+        if (V2.stageId && !V2.stageDone && window.StageFX && window.G) StageFX.draw(ctx, window.G);
       });
       safe(function () { if (window.Tutorial) Tutorial.draw(ctx); });
     },
@@ -107,13 +128,17 @@
     },
     onWaveClear: function (n) {
       safe(function () { if (window.Juice2) Juice2.onWaveClear(); });
-      safe(function () { if (window.Meta) Meta.check("waveClear", { wave: n, windowDamagePx: window.G ? (window.G.windowDamagePx || 0) : 0 }); });
+      // AUDIT 2026-10-02: truyền difficulty — thiếu thì meta mặc định "normal" khiến
+      // thành tựu theo độ khó (wave 3 Chill, wave 10 Thường, qua Khắc nghiệt) sai/không mở.
+      safe(function () { if (window.Meta) Meta.check("waveClear", { wave: n, difficulty: V2.diffKey || "normal", windowDamagePx: window.G ? (window.G.windowDamagePx || 0) : 0 }); });
       safe(function () { if (window.Tutorial) Tutorial.onEvent("waveClear", { wave: n }); });
       safe(function () { if (window.Campaign && V2.stageId) Campaign.onWaveClear(V2.stageId, n); });
       // StageFX: thoát mechanic cũ (mechanic theo ải, không theo wave)
     },
     onBossKill: function () {
-      safe(function () { if (window.Meta) Meta.check("bossKill", { stage: V2.stageId, wave: window.G ? window.G.wave : 0 }); });
+      // AUDIT 2026-10-02: truyền winPct — thiếu thì thành tựu "hạ boss khi cửa sổ
+      // còn < 15%" không bao giờ mở được.
+      safe(function () { if (window.Meta) Meta.check("bossKill", { stage: V2.stageId, wave: window.G ? window.G.wave : 0, winPct: (typeof window.WKWinPct === "function") ? window.WKWinPct() : undefined }); });
       safe(function () { if (window.Tutorial) Tutorial.onEvent("bossKill", {}); });
     },
     // Boss ải (module Bosses) chết → thưởng + mở ải kế
@@ -121,8 +146,8 @@
       var self = this;
       safe(function () { if (window.Bosses) Bosses.stop(); });
       self.bossActive = false;
-      safe(function () { if (window.StageFX) StageFX.exitAll ? StageFX.exitAll() : null; });
-      safe(function () { if (window.Meta) Meta.check("bossKill", { stage: self.stageId }); });
+      safe(function () { if (window.StageFX) StageFX.exit(); }); // AUDIT 2026-10-02: API thật là exit() (exitAll không tồn tại → trước đây mechanic không bao giờ được thoát khi hạ boss)
+      safe(function () { if (window.Meta) Meta.check("bossKill", { stage: self.stageId, winPct: (typeof window.WKWinPct === "function") ? window.WKWinPct() : undefined }); });
       var nx = self.stageId + 1;
       safe(function () {
         if (window.Campaign) {
@@ -145,14 +170,20 @@
       safe(function () { if (window.Juice2 && window.G && window.G.ship) Juice2.onNuke(window.G.ship.x, window.G.ship.y); });
     },
     onGameOver: function (reason) {
-      var sc = 0, wv = 0;
-      safe(function () { if (window.G) { sc = window.G.score | 0; wv = window.G.wave | 0; } });
+      var sc = 0, wv = 0, dur = 0;
+      safe(function () { if (window.G) { sc = window.G.score | 0; wv = window.G.wave | 0; dur = Math.round(window.G.time || 0); } });
       safe(function () {
         if (window.Meta) {
-          Meta.check("runEnd", { score: sc, wave: wv, reason: reason });
-          var rw = Meta.rewardsForRun({ waveCleared: wv, bossKilled: 0, score: sc });
-          if (rw > 0) Meta.addShards(rw, "run");
-          if (V2.daily) Meta.submitScore(Math.round(sc * 1.21), wv);
+          // AUDIT 2026-10-02: truyền difficulty + durationSec (thiếu → thành tựu
+          // "run 15 phút" không bao giờ mở, thành tựu Thường+ lại mở được ở Chill).
+          Meta.check("runEnd", { score: sc, wave: wv, reason: reason, difficulty: V2.diffKey || "normal", durationSec: dur });
+          // rewardsForRun() TỰ cộng mảnh bên trong và trả {breakdown, total} —
+          // trước đây có nhánh `if (rw > 0) Meta.addShards(rw)` là dead code
+          // (object > 0 luôn false); "sửa" nó thành cộng rw.total sẽ thành cộng đôi.
+          Meta.rewardsForRun({ waveCleared: wv, bossKilled: 0, score: sc });
+          // AUDIT 2026-10-02: truyền điểm THÔ — Meta.submitScore tự nhân ×1.21
+          // (2 modifier). Trước đây glue nhân 1.21 trước rồi meta nhân tiếp → ×1.4641.
+          if (V2.daily) Meta.submitScore(sc, wv);
         }
       });
       safe(function () { if (window.Tutorial) Tutorial.onEvent("death", {}); });
@@ -164,7 +195,9 @@
       if (!this.stageId || this.stageDone || !window.Campaign) return null;
       try {
         if (n === 10) return { queue: [], boss: true };
-        var comp = Campaign.getWaveComp(this.stageId, n, "normal");
+        // AUDIT 2026-10-02: dùng độ khó người chơi đã chọn — trước đây hardcode
+        // "normal" nên chọn Chill/Khắc nghiệt ở menu vào campaign vẫn là Normal.
+        var comp = Campaign.getWaveComp(this.stageId, n, this.diffKey || "normal");
         if (!comp || !comp.length) return null;
         var q = [];
         comp.forEach(function (c) {
@@ -178,11 +211,23 @@
       var self = this, G = window.G;
       if (!window.Bosses || !G) return false;
       try {
-        var diff = { hpM: 1, spM: 1, bossHpMult: 1, telegraphMult: 1 };
+        // AUDIT 2026-10-02: diff phải theo đúng contract của Bosses.resolveDiff
+        // ({bossHpMul, telegraphMul, boss5Timer, enemySpdMul}) — trước đây glue
+        // truyền {hpM, spM, bossHpMult, telegraphMult} nên KHÔNG key nào khớp,
+        // Bosses luôn dùng DIFF_DEFAULTS (Normal) bất kể độ khó/run params.
+        var diff = { bossHpMul: 1, telegraphMul: 1, enemySpdMul: 1 };
         try {
           if (window.Campaign) {
-            var rp = Campaign.getRunParams ? Campaign.getRunParams(this.stageId, "normal") : null;
-            if (rp) diff = { hpM: rp.hpM || 1, spM: rp.spM || 1, bossHpMult: rp.bossHpMult || 1, telegraphMult: rp.telegraphMult || 1 };
+            // getRunParams chỉ nhận (diffKey) và trả monsterHpMult/monsterSpeedMult/
+            // bossHpMult/telegraphMult — map sang tên field của Bosses ở đây.
+            var rp = Campaign.getRunParams ? Campaign.getRunParams(this.diffKey || "normal") : null;
+            if (rp) {
+              diff.bossHpMul = rp.bossHpMult || 1;
+              diff.telegraphMul = rp.telegraphMult || 1;
+              diff.enemySpdMul = rp.monsterSpeedMult || 1;
+            }
+            var mech = Campaign.getStageMechanic ? Campaign.getStageMechanic(this.stageId, this.diffKey || "normal") : null;
+            if (mech && mech.boss5P3CountdownS) diff.boss5Timer = mech.boss5P3CountdownS;
           }
         } catch (e) {}
         Bosses.setHooks({
@@ -214,7 +259,24 @@
     },
     stageFxEnter: function () {
       if (!this.stageId || this.stageDone || !window.StageFX || !window.G) return;
-      safe(function () { StageFX.enter(V2.stageId, window.G, {}); });
+      var self = this;
+      safe(function () {
+        // AUDIT 2026-10-02: truyền diff mechanic theo độ khó đã chọn — trước đây
+        // truyền {} nên mọi độ khó đều dùng DIFF_DEFAULTS (thông số Thường).
+        var diff = {};
+        try {
+          if (window.Campaign && Campaign.getStageMechanic) {
+            var m = Campaign.getStageMechanic(self.stageId, self.diffKey || "normal");
+            if (m) {
+              if (m.spikes) { diff.spikesOn = m.spikes.onS; diff.spikesOff = m.spikes.offS; }
+              if (m.blackout) { diff.blackoutDark = m.blackout.darkS; diff.blackoutCycle = m.blackout.cycleS; }
+              if (m.shrinkingArena) diff.shrinkPx = m.shrinkingArena.pxPer10s;
+              if (m.lowFriction) diff.friction = m.lowFriction.friction;
+            }
+          }
+        } catch (e) {}
+        StageFX.enter(self.stageId, window.G, diff);
+      });
     },
     bossBar: function () {
       // Vẽ thanh boss 3 nấc (đè lên thanh boss cũ khi boss module active)

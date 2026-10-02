@@ -1337,7 +1337,7 @@ function countUp(el, to, opts) {
   }
   el.classList.add("cin-num");
   function tick(now) {
-    var t = clamp((now - t0) / (dur * 1000), 0, 1);
+    var t = clamp((now - t0) / dur, 0, 1); // AUDIT 2026-10-02: dur đã là ms — trước đây chia thêm 1000 → countUp chạy ~900 giây, rAF sống 15 phút mỗi lần gọi
     el.textContent = fmt(target * e.easeOutCubic(t));
     if (t < 1) requestAnimationFrame(tick);
     else el.textContent = fmt(target);

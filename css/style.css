@@ -150,6 +150,11 @@ button { font-family: inherit; }
 }
 .hud-btn .ic { width: 22px; height: 22px; }
 .hud-btn:active { background: #1a3a6e; transform: scale(0.94); }
+/* AUDIT 2026-10-02: trước đây cả 2 nút .hud-btn cùng fixed top/right 10px nên nút
+   fullscreen đè khít lên nút pause — click/tap thật luôn trúng fullscreen, pause
+   không bấm được bằng tay/chuột (chỉ .click() lập trình mới qua). Tách vị trí:
+   fullscreen ở góc, pause lùi sang trái 1 nút + khoảng hở. */
+#btn-hud-pause { right: calc(62px + env(safe-area-inset-right, 0px)); }
 /* nút bấm: bỏ delay/zoom khi double-tap */
 button { touch-action: manipulation; }
 /* draft/overlay vừa màn hình nhỏ */

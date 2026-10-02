@@ -1064,7 +1064,8 @@ function reset() {
   for (i = 0; i < _warnings.length; i++) { try { _warnings[i].resolve(false); } catch (e) {} }
   _warnings.length = 0;
   // Fire death onDone đang treo trước khi xóa entity
-  for (i = 0; i < _ents.length; i++) { try { if (typeof _ents[i].onDone === "function") _ents[i].onDone(); } catch (e) {} }
+  // AUDIT 2026-10-02: callback thật nằm ở e.jfDeath.onDone (không phải e.onDone) — trước đây đọc sai field nên onDone không bao giờ chạy khi reset giữa death-anim.
+  for (i = 0; i < _ents.length; i++) { try { if (_ents[i].jfDeath && typeof _ents[i].jfDeath.onDone === "function") _ents[i].jfDeath.onDone(); } catch (e) {} }
   _ents.length = 0;
   _hitStopMs = 0; _slowMoMs = 0; _timeScale = 1;
   _aliveParts = 0; _shardAlive = 0;

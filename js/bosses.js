@@ -13,6 +13,8 @@
  * ===================================================================== */
 (function () {
   "use strict";
+  /* AUDIT 2026-10-02: chọn chuỗi EN cho tên/banner boss khi ngôn ngữ hiện tại là EN. */
+  function isEn() { try { return typeof I18N !== "undefined" && I18N.getLang && I18N.getLang() === "en"; } catch (e) { return false; } }
   var W = (typeof window !== "undefined") ? window : globalThis;
 
   /* ---------------- hooks (coordinator có thể override) ---------------- */
@@ -33,7 +35,7 @@
       for (var i = 0; i < n; i++) {
         var a = Math.random() * Math.PI * 2;
         G.gems.push({ x: x + Math.cos(a) * 20, y: y + Math.sin(a) * 20,
-          vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, t: 0 });
+          vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, v: 1, t: 0 });
       }
     }
   }
@@ -189,9 +191,9 @@
   var BOSSES = [
     /* ---------------- BOSS 1 — GÃ GẶM KHỔNG LỒ (ải 1) ---------------- */
     {
-      id: "gnawer", stage: 1, nameVi: "GÃ GẶM KHỔNG LỒ",
-      bannerTitle: "⚠ BOSS: GÃ GẶM KHỔNG LỒ",
-      bannerSub: "Nó nện cửa sổ — giữ 🪟 sống sót!",
+      id: "gnawer", stage: 1, nameVi: "GÃ GẶM KHỔNG LỒ", nameEn: "THE COLOSSAL GNAWER",
+      bannerTitle: "⚠ BOSS: GÃ GẶM KHỔNG LỒ", bannerTitleEn: "⚠ BOSS: THE COLOSSAL GNAWER",
+      bannerSub: "Nó nện cửa sổ — giữ 🪟 sống sót!", bannerSubEn: "It slams the window — keep 🪟 alive!",
       expDps: 10, color: "#8b2fc9", r: 54,
       hpAt: function (d) { return Math.round(10 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["fan", "adds"],
@@ -344,9 +346,9 @@
 
     /* ---------------- BOSS 2 — TƯỜNG LỬA SỐNG (ải 2) ---------------- */
     {
-      id: "firewall", stage: 2, nameVi: "TƯỜNG LỬA SỐNG",
-      bannerTitle: "⚠ BOSS: TƯỜNG LỬA SỐNG",
-      bannerSub: "Gai tắt 2.5s sau mỗi đợt quét — áp sát!",
+      id: "firewall", stage: 2, nameVi: "TƯỜNG LỬA SỐNG", nameEn: "THE LIVING FIREWALL",
+      bannerTitle: "⚠ BOSS: TƯỜNG LỬA SỐNG", bannerTitleEn: "⚠ BOSS: THE LIVING FIREWALL",
+      bannerSub: "Gai tắt 2.5s sau mỗi đợt quét — áp sát!", bannerSubEn: "Spikes drop 2.5s after each sweep — get close!",
       expDps: 14, color: "#ff6a00", r: 40,
       hpAt: function (d) { return Math.round(14 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["rain", "sweep"],
@@ -475,9 +477,9 @@
 
     /* ---------------- BOSS 3 — TRỌNG TÂM HỖN LOẠN (ải 3) ---------------- */
     {
-      id: "chaos", stage: 3, nameVi: "TRỌNG TÂM HỖN LOẠN",
-      bannerTitle: "⚠ BOSS: TRỌNG TÂM HỖN LOẠN",
-      bannerSub: "Ngừng bắn lúc hút — dồn đạn lúc quá tải!",
+      id: "chaos", stage: 3, nameVi: "TRỌNG TÂM HỖN LOẠN", nameEn: "CHAOS CORE",
+      bannerTitle: "⚠ BOSS: TRỌNG TÂM HỖN LOẠN", bannerTitleEn: "⚠ BOSS: CHAOS CORE",
+      bannerSub: "Ngừng bắn lúc hút — dồn đạn lúc quá tải!", bannerSubEn: "Hold fire while it sucks — burst when it overloads!",
       expDps: 18, color: "#9D4EDD", r: 46,
       hpAt: function (d) { return Math.round(18 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["pull", "mines"],
@@ -599,9 +601,9 @@
 
     /* ---------------- BOSS 4 — MÀN ĐÊM VÔ TẬN (ải 4) ---------------- */
     {
-      id: "night", stage: 4, nameVi: "MÀN ĐÊM VÔ TẬN",
-      bannerTitle: "⚠ BOSS: MÀN ĐÊM VÔ TẬN",
-      bannerSub: "Bắn vào con ngươi lúc nó sáng rực!",
+      id: "night", stage: 4, nameVi: "MÀN ĐÊM VÔ TẬN", nameEn: "ENDLESS NIGHT",
+      bannerTitle: "⚠ BOSS: MÀN ĐÊM VÔ TẬN", bannerTitleEn: "⚠ BOSS: ENDLESS NIGHT",
+      bannerSub: "Bắn vào con ngươi lúc nó sáng rực!", bannerSubEn: "Shoot the pupil when it blazes!",
       expDps: 22, color: "#1a0533", r: 60,
       hpAt: function (d) { return Math.round(22 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["sweepLaser", "phantoms"],
@@ -761,9 +763,9 @@
 
     /* ---------------- BOSS 5 — NULL POINTER (ải 5, boss cuối) ---------------- */
     {
-      id: "null", stage: 5, nameVi: "NULL POINTER",
-      bannerTitle: "⚠ BOSS CUỐI: NULL POINTER",
-      bannerSub: "20 giây. Giết nó trước khi cửa sổ về 0!",
+      id: "null", stage: 5, nameVi: "NULL POINTER", nameEn: "NULL POINTER",
+      bannerTitle: "⚠ BOSS CUỐI: NULL POINTER", bannerTitleEn: "⚠ FINAL BOSS: NULL POINTER",
+      bannerSub: "20 giây. Giết nó trước khi cửa sổ về 0!", bannerSubEn: "20 seconds. Kill it before the window hits 0!",
       expDps: 26, color: "#f43f5e", r: 52,
       hpAt: function (d) { return Math.round(26 * 150 * resolveDiff(d).bossHpMul); },
       attacksP1: ["sysChew", "ghostSpikes"],
@@ -1039,7 +1041,18 @@
   }
   function updateBoss(dt, G) {
     var b = Bosses.active;
-    if (!b || b.dead || !G) return;
+    if (!b || !G) return;
+    // AUDIT 2026-10-02 (CRITICAL): trước đây guard có `b.dead` → boss chết bằng đạn
+    // (hit() set dead ngoài update) không bao giờ tới được hooks.onBossDead ở cuối hàm
+    // → campaign soft-lock: boss biến mất nhưng wave/ải không bao giờ clear.
+    // Xả hook đúng 1 lần ngay khi thấy dead, rồi dừng.
+    if (b.dead) {
+      if (Bosses.active === b && !b._deadFired) {
+        b._deadFired = true;
+        try { hooks.onBossDead(b, G); } catch (e) {}
+      }
+      return;
+    }
     var def = b.def;
     b.t += dt;
     if (b.flash > 0) b.flash -= dt;
@@ -1069,7 +1082,7 @@
     }
     tickTelegraphs(b, dt);
     updateZigzag(dt, G);
-    if (b.dead && Bosses.active === b) { try { hooks.onBossDead(b, G); } catch (e) {} }
+    if (b.dead && Bosses.active === b && !b._deadFired) { b._deadFired = true; try { hooks.onBossDead(b, G); } catch (e) {} }
   }
   // Đạn zigzag (boss 5 mưa con trỏ): cập nhật vận tốc mỗi frame
   function updateZigzag(dt, G) {
@@ -1185,7 +1198,8 @@
       try { slowmo(0.5, 0.8); } catch (e) {}
       shake(10, 600, 9);
       sfx("boss_roar", "boss");
-      hooks.banner(def.bannerTitle, def.bannerSub);
+      hooks.banner((isEn() && def.bannerTitleEn) ? def.bannerTitleEn : def.bannerTitle,
+                   (isEn() && def.bannerSubEn) ? def.bannerSubEn : def.bannerSub);
       return b;
     },
 
@@ -1228,7 +1242,7 @@
       if (!b) return null;
       return { hp: b.hp, maxHp: b.maxHp, phase: b.phase,
                countdown: b.countdown > 0 ? b.countdown : null,
-               nameVi: b.def.nameVi, bannerTitle: b.def.bannerTitle };
+               nameVi: b.def.nameVi, nameEn: b.def.nameEn, bannerTitle: b.def.bannerTitle, isEn: isEn() };
     },
 
     isDark: function (b) { b = b || this.active; return !!(b && b.isDark); },

@@ -51,12 +51,14 @@
   .diff-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
   .setrow { display: flex; align-items: center; justify-content: space-between; padding: 9px 2px; font-size: 15px; }
   .tgl { width: 52px; height: 28px; border-radius: 999px; border: none; cursor: pointer; background: #33415c; position: relative; transition: background .15s; }
+  /* QW5: vùng chạm 64×44px trong khi hình vẫn 52×28px */
+  .tgl::before { content:''; position: absolute; inset: -8px -6px; }
   .tgl::after { content:''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
   .tgl.on { background: #0080FF; } .tgl.on::after { left: 27px; }
   #hs-list { font-size: 14.5px; color: #c8dcf5; line-height: 2; }
   #new-profile-box { display: none; gap: 8px; margin-top: 10px; }
   #new-profile-box input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff2e; background: #0c1f3a; color: #fff; font-size: 15px; }
-  footer { text-align: center; color: #5f7ba3; font-size: 13px; margin-top: 34px; line-height: 1.8; }
+  footer { text-align: center; color: #8fb0d8; font-size: 13px; margin-top: 34px; line-height: 1.8; }
   footer b { color: #8fc3ff; }
 </style>
 </head>
@@ -237,7 +239,7 @@
     <p class="sub" data-i18n-html="menu.hero_sub">Twin-stick shooter trong <b>một popup trình duyệt</b> &mdash; và <b>cửa sổ chính là thanh máu</b> của bạn. Quái tím gặm nhỏ cửa sổ, đạn bắn vào viền hất văng cả cửa sổ. Sống sót. Đừng để bị "đóng cửa sổ".</p>
   </header>
 
-  <div class="warn-box" id="popup-warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> <span data-i18n-html="error.popup_blocked">Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</span></div>
+  <div class="warn-box" id="popup-warn" role="alert" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> <span data-i18n-html="error.popup_blocked">Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</span></div>
 
   <div class="panel">
     <h3><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> <span data-i18n="menu.profile.title">Tài khoản người dùng</span></h3>
@@ -246,7 +248,7 @@
       <input id="new-profile-name" maxlength="16" data-i18n-ph="menu.profile.name_ph" placeholder="Tên hiển thị, ví dụ: NhatPro...">
       <button class="btn-ghost" id="btn-create-profile" data-i18n="menu.profile.create">Tạo</button>
     </div>
-    <div style="font-size:12.5px;color:#5f7ba3;margin-top:8px"><span data-i18n-html="menu.profile.note">Mỗi tài khoản lưu riêng kỷ lục &amp; thống kê trên máy này.</span> <span id="backend-badge" title="Backend online đồng bộ điểm số & bảng xếp hạng (không bắt buộc)"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> Offline</span></div>
+    <div style="font-size:12.5px;color:#8fb0d8;margin-top:8px"><span data-i18n-html="menu.profile.note">Mỗi tài khoản lưu riêng kỷ lục &amp; thống kê trên máy này.</span> <span id="backend-badge" title="Backend online đồng bộ điểm số & bảng xếp hạng (không bắt buộc)"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg> Đang kiểm tra…</span></div>
   </div>
 
   <div class="panel">
@@ -290,19 +292,19 @@
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> <span data-i18n="menu.scores.title">Kỷ lục</span> <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="hs-who"></span></h3>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> <span data-i18n="menu.scores.title">Kỷ lục</span> <span style="font-weight:400;font-size:12.5px;color:#8fb0d8" id="hs-who"></span></h3>
     <div id="hs-list" data-i18n="menu.scores.empty_default">Chưa có dữ liệu — vào game lập kỷ lục đi!</div>
   </div>
 
   <div class="panel">
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg> <span data-i18n="menu.stats.title">Thống kê</span> <span style="font-weight:400;font-size:12.5px;color:#5f7ba3" id="st-who"></span></h3>
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg> <span data-i18n="menu.stats.title">Thống kê</span> <span style="font-weight:400;font-size:12.5px;color:#8fb0d8" id="st-who"></span></h3>
     <div id="stat-list" style="font-size:14.5px;color:#c8dcf5;line-height:2">—</div>
   </div>
 
-  <div class="row" style="justify-content:center;margin:10px 0 6px">
+  <div class="row" style="justify-content:center;margin:10px 0 6px;position:sticky;bottom:10px;z-index:10">
     <button class="btn-big" id="btn-play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="common.play">CHƠI NGAY</span></button>
   </div>
-  <div style="text-align:center;color:#5f7ba3;font-size:13px" data-i18n-html="menu.popup_note">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</div>
+  <div style="text-align:center;color:#8fb0d8;font-size:13px" data-i18n-html="menu.popup_note">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</div>
 
   <footer>
     <span data-i18n-html="menu.footer_made">Fan-made game lấy cảm hứng từ <b>Windowkill</b> (Steam) &mdash; không liên quan tới nhà phát triển gốc.</span><br>

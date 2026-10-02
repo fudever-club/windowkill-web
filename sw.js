@@ -7,7 +7,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-v4"; // bump 2026-10-02 (audit): ép tải mới bộ v2.0 (campaign/meta/tutorial/i18n...)
+const VERSION = "windowkill-v5"; // bump 2026-10-02 (perf): precache bỏ og-banner/icon-512 + bgm.js trì hoãn nạp nhạc + mp3 128k/PNG quantize — ép client nhận bản mới
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";
@@ -46,10 +46,11 @@ const STATIC_ASSETS = [
   "assets/favicon.png",
   "assets/hero.jpg",
   "assets/logo-lockup.webp",
-  "assets/og-banner.jpg",
+  // PERF 2026-10-02: bỏ og-banner.jpg (chỉ bot og:image cần) + icon-512.png (chỉ
+  // cần khi cài PWA) khỏi precache — file vẫn trên đĩa, SWR runtime cache sẽ tự
+  // lưu khi thực sự được request. Tiết kiệm ~136KB (theo số gốc) tải lần đầu.
   "assets/brand/dever-logo.png",
   "assets/icons/icon-192.png",
-  "assets/icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {

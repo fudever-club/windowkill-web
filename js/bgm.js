@@ -82,7 +82,9 @@ window.BGM = (() => {
     if (players.length) return;
     for (let i = 0; i < 2; i++) {
       const a = new Audio();
-      a.preload = "auto";
+      // PERF 2026-10-02: preload "none" — không tải byte nhạc nào trước tương tác
+      // đầu tiên của user (xem gate `unlocked` trong ensurePlaying).
+      a.preload = "none";
       a.volume = 0;
       a._fadeId = 0;
       a._xarmed = false;
@@ -218,6 +220,11 @@ window.BGM = (() => {
 
   function ensurePlaying() {
     if (!enabled || allFailed || !started || players.length === 0) return;
+    // PERF 2026-10-02: trì hoãn nạp BGM tới tương tác đầu tiên — trước unlock
+    // không gán src / không load() track nào (trước đây menu cold đã stream
+    // ~1MB mp3 khi user chưa hề click). Sau unlock, luồng unlock handler /
+    // setEnabled / resume gọi lại ensurePlaying và phát như cũ.
+    if (!unlocked) return;
     const a = players[cur];
     if (!a.getAttribute("src") && !a.src) playAt(cur, order[pos], 1200);
     else if (a.paused) { fadeTo(a, VOLUME, 800); tryPlay(a); }
@@ -236,7 +243,8 @@ window.BGM = (() => {
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
-    if (enabled) ensurePlaying();
+    window.addEventListener("touchstart", unlock, { passive: true });
+    if (enabled) ensurePlaying(); // trước unlock ensurePlaying tự no-op (gate ở trên) — nhạc chỉ bắt đầu sau tương tác đầu
     scheduleWatchdog();
   }
 

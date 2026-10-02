@@ -1973,6 +1973,13 @@ window.addEventListener("keydown", e => {
     } catch (e2) {}
   }
   if (e.code === "KeyR" && G.phase === "over") resetGame();
+  // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn ải 3 qua module slippery đã export)
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && G.phase === "play" && window.Upgrades2) {
+    try {
+      if (Upgrades2.tryAnchor(G.ship) && window.StageFX && StageFX.modules && StageFX.modules.slippery &&
+          typeof StageFX.modules.slippery.stabilize === "function") StageFX.modules.slippery.stabilize();
+    } catch (er) {}
+  }
 });
 window.addEventListener("keyup", e => keys[e.code] = false);
 canvas.addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
@@ -2077,7 +2084,7 @@ function newShip() {
     hp: DIFF.shipHp + (mods.maxHpBonus | 0), maxHp: DIFF.shipHp + (mods.maxHpBonus | 0),
     speed: 275 * (mods.speedMul || 1), fireInt: 0.21 / (mods.fireRateMul || 1), fireT: 0, streams: 1,
     dmg: 1 + (mods.dmgBonus || 0), pierce: 0,
-    magnet: 125 * (mods.magnetMul || 1), thorns: 0, bulletSpd: 560, slow: 0, dropMul: 1,
+    magnet: 125 * (mods.magnetMul || 1), thorns: mods.thornsDmg || 0, bulletSpd: 560, slow: 0, dropMul: mods.pickupMul || 1, // Phụ lục A: node 7 Giáp gai + node 8 Mồi thơm
     kbvx: 0, kbvy: 0,
     iframes: 0, ang: 0, shieldT: 0, regenT: 0, magnetT: 0, overdriveT: 0,
   };
@@ -2108,10 +2115,47 @@ const UPS = [
   { ico: "i-clover", t: I18N.t("upg.luck.name"), d: I18N.t("upg.luck.desc"), apply: s => s.dropMul *= 1.5 },
   { ico: "i-snow", t: I18N.t("upg.ice.name"), d: I18N.t("upg.ice.desc"), apply: s => s.slow = 1.5 },
 ];
+/* M22: icon cho 6 nâng cấp v2 (sprite sẵn có trong game.html) + số slot draft bảo đảm */
+const U2_ICON = { gai_phan: "i-shield", neo_quan_tinh: "i-bolt", mat_cu: "i-ghost",
+                  dan_no: "i-bomb", dan_xich: "i-split", keo_tu_va: "i-heart-plus" };
+const U2_DRAFT_SLOTS = 1;
+/* M22: callback sát thương dùng chung cho các hiệu ứng lan/gai của v2 — truyền
+   bl=null để không knockback; hook đặt tại call-site va chạm, KHÔNG đặt trong
+   damageEnemy để tránh đệ quy nổ→nổ / xích→xích (spec §5.3.2). */
+const u2DealDamage = (e, dmg) => damageEnemy(e, dmg, null);
+/* D-03: đếm nâng cấp khác nhau đã chọn trong run → achievement #15 "Full Build" */
+function noteUpgradeTaken(key) {
+  try {
+    if (!G.upgTaken) G.upgTaken = {};
+    if (key) G.upgTaken[key] = true;
+    if (window.Meta && typeof Meta.check === "function")
+      Meta.check("upgrade", { distinct: Object.keys(G.upgTaken).length });
+  } catch (e) {}
+}
+function applyDraftPick(u) {
+  if (!u) return;
+  const res = u.apply(G.ship);
+  if (u._u2 && res === null) return; // món v2 bị khóa/trùng tại thời điểm áp → không tính đã nhận
+  noteUpgradeTaken(u._draftId || u.t || u.ico);
+}
 function openDraft() {
   G.phase = "draft";
   const pool = UPS.filter(u => !u.can || u.can(G.ship));
   const picks = [];
+  // M22: slot bảo đảm cho nâng cấp v2 — pool v2 tự loại món đã lấy / chưa mở khóa ải
+  if (window.Upgrades2) {
+    try {
+      const u2 = Upgrades2.rollDraft(U2_DRAFT_SLOTS);
+      if (u2.length) {
+        const u = u2[0];
+        const pick = { t: u.nameVi, d: u.descVi,
+                       _draftId: "u2:" + u.id, _u2: true,
+                       apply: s => Upgrades2.applyUpgrade(u.id, s) };
+        pick["ico"] = U2_ICON[u.id] || "i-sparkles"; // gán động: giữ nguyên dạng pick cho 2 đường draft
+        picks.push(pick);
+      }
+    } catch (er) {}
+  }
   while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   if (!picks.length) { G.phase = "play"; return; }
   // WOW: draft qua Cinema (DOM overlay + phím 1/2/3); fallback overlay cũ
@@ -2122,7 +2166,7 @@ function openDraft() {
       Cinema.showDraft(ups, (idx) => {
         const u = picks[idx];
         if (u) {
-          u.apply(G.ship); AudioEngine.sfx.up();
+          applyDraftPick(u); AudioEngine.sfx.up();
           addFloat(G.ship.x, G.ship.y - 32, u.t, "#9df3ff", true);
         }
         G.phase = "play"; lastT = performance.now();
@@ -2140,7 +2184,7 @@ function openDraftLegacy(picks) {
     const d = document.createElement("div"); d.className = "card";
     d.innerHTML = `<div class="ico"><svg class="ic" aria-hidden="true"><use href="#${u.ico}"/></svg></div><div class="t">${u.t}</div><div class="d">${u.d}</div>`;
     d.onclick = () => {
-      u.apply(G.ship); AudioEngine.sfx.up();
+      applyDraftPick(u); AudioEngine.sfx.up();
       addFloat(G.ship.x, G.ship.y - 32, u.t, "#9df3ff", true);
       $("ov-draft").classList.remove("show");
       G.phase = "play"; lastT = performance.now();
@@ -2601,7 +2645,16 @@ function hurtShip(dmg, srcx, srcy) {
   // WOW: damage number đỏ thay float -dmg cũ
   if (window.Juice) { try { Juice.damageNumber(s.x, s.y - 20, dmg, "playerHurt", null); } catch (e) {} }
   else addFloat(s.x, s.y - 26, `-${dmg} ❤️`, "#ff8f8f", true);
-  if (s.hp <= 0) die("ship");
+  if (s.hp <= 0) {
+    // Phụ lục A node 10 — Túi cứu sinh: 1 lần/run, hồi 1 HP + 2s bất tử thay vì chết
+    let slMods = null;
+    try { slMods = G.runMods || (window.V2 ? V2.runMods : null); } catch (e) {}
+    if (slMods && slMods.secondLife && !s._secondLifeUsed) {
+      s._secondLifeUsed = true; s.hp = 1; s.iframes = 2;
+      addFloat(s.x, s.y - 40, "Túi cứu sinh!", "#9df3ff", true);
+      burst(s.x, s.y, 20, ["#9df3ff", "#ffffff"], 260);
+    } else die("ship");
+  }
 }
 function die(reason) {
   if (G.phase === "over") return;
@@ -2639,6 +2692,10 @@ function resetGame() {
     bombWave: 0, giantWave: 0, motherWave: 0,
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
   });
+  // F-02 + Phụ lục A: chụp modifiers của Xưởng cho run này (runMods đã được
+  // preboot của V2 gán trước lần reset đầu; các lần restart đọc lại cùng nguồn)
+  try { G.runMods = (window.V2 && V2.runMods) ? V2.runMods : null; } catch (e) {}
+  G.upgTaken = {}; // D-03: đếm distinct upgrade theo run
   G.ship = newShip();
   // AUDIT 2026-10-02: resetGame() trước đây không dọn vệ tinh/boss module/Juice2 —
   // restart từ pause hoặc sau game-over để sót bomb/mother/nest và boss ma của run cũ
@@ -2647,6 +2704,7 @@ function resetGame() {
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
   try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
+  try { if (window.Upgrades2) Upgrades2.resetRun(); } catch (e) {} // M22: mở lại pool draft v2 (giữ unlock boss ải trong phiên)
   G.cracks = []; G.windowDamagePx = 0;
   // Khôi phục kích thước: arena ảo về null (tự tính lại full-size), cửa sổ thật
   // grow về cỡ ban đầu (growWindow tự cap ở START_W × 720).
@@ -2806,6 +2864,26 @@ function update(dt) {
   s.overdriveT = Math.max(0, s.overdriveT - dt);
   if (s.regenT > 0) { /* dành cho nâng cấp sau */ }
 
+  /* M22: tick theo thời gian cho nâng cấp v2 — Keo Tự Vá + hồi chiêu Neo,
+     và Gai Phản có throttle 0,5s (helper gốc không có cooldown) */
+  if (window.Upgrades2 && s) {
+    try {
+      const ev = Upgrades2.tick(s, dt);
+      if (ev && ev.glue) {
+        growWindow(ev.glue, Math.round(ev.glue * 0.75));
+        addFloat(s.x, s.y - 40, `+${ev.glue}px`, "#9df3ff");
+      }
+      if (s.thornBorder) {
+        s._thornCd = Math.max(0, (s._thornCd || 0) - dt);
+        if (s._thornCd <= 0) {
+          const hits = Upgrades2.checkThornBorder(s, G.enemies,
+            { l: b.x, t: b.y, r: b.x + b.w, b: b.y + b.h }, u2DealDamage);
+          if (hits > 0) s._thornCd = 0.5;
+        }
+      }
+    } catch (er) {}
+  }
+
   /* di chuyển */
   let mx = 0, my = 0;
   if (keys.KeyW || keys.ArrowUp) my -= 1;
@@ -2851,7 +2929,9 @@ function update(dt) {
     if (G.waveBreak <= 0) {
       G.waveBreak = 2.6;
       s.hp = Math.min(s.maxHp, s.hp + 1);
-      growWindow(40, 30);
+      // Phụ lục A node 6 — Keo siêu dính: vá cuối wave theo modifiers Xưởng (mặc định 40px)
+      const wrPx = (G.runMods && G.runMods.waveRepairPx) || 40;
+      growWindow(wrPx, Math.round(wrPx * 0.75));
       addFloat(s.x, s.y - 40, I18N.t("banner.patch"), "#9df3ff", true);
       startWave(G.wave + 1);
     }
@@ -2889,6 +2969,13 @@ function update(dt) {
         if (e.dead) continue;
         if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
           damageEnemy(e, bl.dmg, bl);
+          /* M22: Đạn Nổ + Đạn Xích — hook tại call-site va chạm đạn (chống đệ quy, §5.3.2) */
+          if (window.Upgrades2 && (s.explosive || s.chain)) {
+            try {
+              if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
+              if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
+            } catch (er) {}
+          }
           if (bl.pierce > 0) bl.pierce--; else dead = true;
           break;
         }
@@ -3447,6 +3534,17 @@ function render(now) {
   }
   // v2.0: Juice2 overlays + Bosses/StageFX draw + Tutorial coach-marks
   if (window.V2) { try { V2.drawOver(ctx, W, H); } catch (e) {} }
+  /* M22: Mắt Cú — outline quái quanh tàu, CHỈ khi mất điện, vẽ SAU lớp blackout ở trên */
+  if (window.Upgrades2 && s && s.owlEye && window.StageFX && StageFX.isDark()) {
+    try {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1.5;
+      for (const e of Upgrades2.owlTargets(s, G.enemies)) {
+        ctx.beginPath(); ctx.arc(e.x, e.y, (e.r || 12) + 3, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    } catch (er) {}
+  }
 }
 
 /* ---------------- loop & boot ---------------- */
@@ -3596,8 +3694,14 @@ window.WKDrawBossBar = function (d) {
 // AUDIT 2026-10-02: boot PHẢI chạy sau resetGame() (đúng như tài liệu của v2glue) —
 // trước đây boot chạy trước, resetGame gán banner:"" ngay sau đó nên banner Daily
 // (và mọi banner boot set) bị xóa trong cùng tick, không bao giờ hiển thị.
+// F-02: preboot gán runMods TRƯỚC resetGame() đầu tiên → run đầu mỗi lần tải trang cũng hưởng Xưởng
+if (window.V2) { try { V2.preboot(); } catch (e) {} }
 resetGame();
 if (window.V2) { try { V2.boot({ profileId: PROFILE_ID, diffKey: DIFF_KEY }); } catch (e) {} }
+// Phụ lục A node 9 — Trợ lý kỹ thuật: mở 1 draft ngay đầu run cho người đã mua
+if (window.V2 && V2.runMods && V2.runMods.freeUpgrade && G.phase === "play") {
+  try { openDraft(); } catch (e) {}
+}
 if (bus) bus.postMessage({ type: "arena-open" });
 requestAnimationFrame(loop);
 })();

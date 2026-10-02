@@ -7,6 +7,10 @@ body {
   color: #eaf3ff; min-height: 100vh;
 }
 button { font-family: inherit; }
+/* QW3 (UI/UX audit): focus ring thống nhất brand cho mọi điều hướng bàn phím */
+button:focus-visible, a:focus-visible, input:focus-visible, .pchip:focus-visible { outline: 2px solid #7DD3FC; outline-offset: 2px; }
+/* QW9: trạng thái disabled đọc được bằng mắt ngay */
+button:disabled { opacity: .55; cursor: not-allowed; }
 .btn-big {
   font-size: 19px; font-weight: 800; padding: 15px 38px; border: none; border-radius: 14px; cursor: pointer;
   background: linear-gradient(135deg, #0080FF, #0066CC); color: #fff;
@@ -17,8 +21,11 @@ button { font-family: inherit; }
 .btn-ghost {
   font-size: 15px; padding: 13px 22px; border-radius: 14px; cursor: pointer;
   background: transparent; color: #cfe6ff; border: 1px solid #ffffff2e;
+  /* QW9: hover/bấm mượt đồng bộ với .btn-big */
+  transition: background .12s ease, border-color .12s ease, transform .12s ease;
 }
 .btn-ghost:hover { background: #0080FF18; }
+.btn-ghost:active { transform: scale(.97); }
 .panel {
   background: #0a1a3066; border: 1px solid #0080FF2a; border-radius: 16px;
   padding: 20px 22px; margin-bottom: 22px; backdrop-filter: blur(4px);
@@ -34,7 +41,9 @@ button { font-family: inherit; }
   position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
   background: #020610d9; z-index: 20; flex-direction: column; gap: 18px; text-align: center; padding: 20px;
 }
-.overlay.show { display: flex; }
+.overlay.show { display: flex; animation: ovIn .18s ease-out; }
+/* QW10: overlay mở có nhịp fade/scale nhẹ thay vì bật thô */
+@keyframes ovIn { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
 .overlay h2 { font-size: 34px; }
 .cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
 .card {
@@ -50,10 +59,13 @@ button { font-family: inherit; }
 .pchip {
   display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
   border: 1px solid #ffffff22; background: #ffffff08; color: #dbe9ff; cursor: pointer; font-size: 14px;
+  /* QW5: touch target ≥44px; QW9: transition hover mượt */
+  min-height: 44px; transition: background .12s ease;
 }
 .pchip:hover { background: #0080FF22; }
 .pchip.on { background: linear-gradient(135deg, #0080FF, #0066CC); border-color: transparent; font-weight: 700; color: #fff; }
-.pchip .x { opacity: .6; font-size: 12px; padding: 0 2px; }
+/* QW6: nút xóa profile là <button> thật — nới vùng chạm mà không đổi hình */
+.pchip .x { opacity: .6; font-size: 12px; padding: 8px 6px; margin: -8px -4px; background: none; border: none; cursor: pointer; color: inherit; font: inherit; }
 .pchip .x:hover { opacity: 1; color: #ff8f8f; }
 
 /* ---------- SVG icon system (assets/icons/*.svg, sprite inlined in HTML) ---------- */
@@ -118,12 +130,12 @@ button { font-family: inherit; }
 .cin-card-name { font-weight: 800; font-size: 16px; margin-bottom: 6px; color: #cfe6ff; }
 .cin-card-desc { font-size: 13px; color: #9db8d9; line-height: 1.5; min-height: 40px; }
 .cin-card-key {
-  position: absolute; top: 8px; right: 10px; font-size: 11px; color: #5B7191;
+  position: absolute; top: 8px; right: 10px; font-size: 11px; color: #8fb0d8;
   border: 1px solid #ffffff22; border-radius: 6px; padding: 1px 7px;
   font-family: ui-monospace, Consolas, monospace;
 }
 .cin-card.cin-selected { border-color: #ffffff; background: #1a3a6e; }
-.cin-draft-hint { margin-top: 18px; font-size: 12px; color: #5B7191; letter-spacing: 1px; }
+.cin-draft-hint { margin-top: 18px; font-size: 12px; color: #8fb0d8; letter-spacing: 1px; }
 /* ---------- UI micro-interactions (§10) — dùng cho menu.js / index.html ---------- */
 .cin-pressable { transition: transform 0.11s ease-out, filter 0.11s ease-out; }
 .cin-pressable:hover { transform: scale(1.05); filter: brightness(1.1); }
@@ -138,6 +150,9 @@ button { font-family: inherit; }
   .cin-card { transition: border-color 0.12s ease-out, background 0.12s ease-out; }
   .cin-card:hover { transform: none; }
   .cin-card:hover .cin-card-ico { transform: none; }
+  /* QW4: phủ nốt transition DOM còn sót; QW10: tắt animation mở overlay */
+  .btn-big, .card, .tgl, .tgl::after { transition: none; }
+  .overlay.show { animation: none; }
 }
 
 /* ---------- Mobile HUD (feat/mobile-round2) ---------- */
@@ -167,4 +182,9 @@ button { touch-action: manipulation; }
   .cin-draft-panel { padding: 18px 14px; }
   .cin-card { width: 158px; padding: 14px 10px 12px; }
   .cin-draft-title { font-size: 22px; letter-spacing: 3px; }
+  /* QW12: hàng cài đặt hết bị ép ở màn ~360px + thêm target ≥44px trên mobile */
+  .setrow { flex-wrap: wrap; row-gap: 8px; }
+  #new-profile-box input { min-height: 44px; }
+  .v2-buy { min-height: 44px; }
+  .footer-links a { padding: 10px 4px; }
 }

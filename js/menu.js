@@ -57,13 +57,18 @@
   const Backend = {
     online: false,
     init() {
-      if (!window.WKApi) return;
-      WKApi.isOnline().then(on => {
-        this.online = !!on;
+      // QW13: badge khởi tạo là "Đang kiểm tra…" (index.html) — chỉ chốt
+      // Online/Offline sau khi kiểm tra xong, kể cả khi không có WKApi/lỗi.
+      const setBadge = (on) => {
         const badge = $("backend-badge");
         if (badge) badge.innerHTML = on ? svgIcon("i-globe") + " " + I18N.t("common.online") : svgIcon("i-close") + " " + I18N.t("common.offline");
+      };
+      if (!window.WKApi) { setBadge(false); return; }
+      WKApi.isOnline().then(on => {
+        this.online = !!on;
+        setBadge(on);
         if (on) renderScores(); // refresh once to include the online leaderboard
-      }).catch(() => { this.online = false; });
+      }).catch(() => { this.online = false; setBadge(false); });
     },
     fire(p) { if (p && p.catch) p.catch(() => {}); },
     syncCreate(p) { if (this.online && window.WKApi) this.fire(WKApi.createProfile({ id: p.id, name: p.name, avatar: p.avatar })); },
@@ -83,13 +88,18 @@
       if (!p.avatar) { p.avatar = AVATARS[i % AVATARS.length]; }
       const chip = document.createElement("button");
       chip.className = "pchip" + (p.id === activeId ? " on" : "");
+      chip.setAttribute("aria-pressed", p.id === activeId ? "true" : "false"); // QW7: trạng thái chọn cho screen reader
       chip.innerHTML = `<svg class="av" aria-hidden="true"><use href="#${avatarOf(p, i)}"/></svg><span></span>`;
       const nameSpan = chip.querySelector("span");
       if (nameSpan) nameSpan.textContent = p.name; // guard: markup đổi vẫn không crash
       chip.title = I18N.t("menu.profile.play_as");
       chip.onclick = () => { activeId = p.id; saveProfiles(); Analytics.setProfile(p.id); renderAll(); };
-      const del = document.createElement("span");
+      /* QW6: nút xóa là <button> thật (focus được bằng bàn phím, có aria-label
+         kèm tên) thay cho <span> không focus được trước đây. */
+      const del = document.createElement("button");
+      del.type = "button";
       del.className = "x"; del.innerHTML = svgIcon("i-close"); del.title = I18N.t("menu.profile.delete");
+      del.setAttribute("aria-label", `${I18N.t("menu.profile.delete")}: ${p.name}`);
       del.onclick = (e) => {
         e.stopPropagation();
         if (!confirm(I18N.t("menu.profile.delete_confirm", { name: p.name }))) return;
@@ -126,23 +136,26 @@
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   const saveSettings = () => store.set("wk_settings", settings);
   function paintToggles() {
-    $("tgl-music").classList.toggle("on", settings.music);
-    $("tgl-sfx").classList.toggle("on", settings.sfx);
-    $("tgl-shake").classList.toggle("on", settings.shake);
+    // QW7: aria-pressed đồng bộ với class on/sel cho mọi toggle & segmented control
+    const press = (el, on) => { if (el) el.setAttribute("aria-pressed", on ? "true" : "false"); };
+    $("tgl-music").classList.toggle("on", settings.music); press($("tgl-music"), settings.music);
+    $("tgl-sfx").classList.toggle("on", settings.sfx); press($("tgl-sfx"), settings.sfx);
+    $("tgl-shake").classList.toggle("on", settings.shake); press($("tgl-shake"), settings.shake);
     const th = $("tgl-haptic");
-    if (th) th.classList.toggle("on", settings.haptic);
+    if (th) { th.classList.toggle("on", settings.haptic); press(th, settings.haptic); }
     const ta = $("tgl-analytics");
-    if (ta) ta.classList.toggle("on", settings.analytics);
-    document.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("sel", b.dataset.diff === settings.diff));
-    document.querySelectorAll("[data-fx]").forEach(b => b.classList.toggle("sel", b.dataset.fx === settings.fx));
+    if (ta) { ta.classList.toggle("on", settings.analytics); press(ta, settings.analytics); }
+    document.querySelectorAll("[data-diff]").forEach(b => { const sel = b.dataset.diff === settings.diff; b.classList.toggle("sel", sel); press(b, sel); });
+    document.querySelectorAll("[data-fx]").forEach(b => { const sel = b.dataset.fx === settings.fx; b.classList.toggle("sel", sel); press(b, sel); });
+    document.querySelectorAll("[data-sat]").forEach(b => { press(b, b.dataset.sat === settings.sat); });
   }
   document.querySelectorAll("[data-fx]").forEach(b => b.onclick = () => {
     settings.fx = b.dataset.fx; saveSettings(); paintToggles();
   });
-  document.querySelectorAll("[data-sat]").forEach(b => b.classList.toggle("sel", b.dataset.sat === settings.sat));
+  document.querySelectorAll("[data-sat]").forEach(b => { const sel = b.dataset.sat === settings.sat; b.classList.toggle("sel", sel); b.setAttribute("aria-pressed", sel ? "true" : "false"); });
   document.querySelectorAll("[data-sat]").forEach(b => b.onclick = () => {
     settings.sat = b.dataset.sat; saveSettings();
-    document.querySelectorAll("[data-sat]").forEach(x => x.classList.toggle("sel", x === b));
+    document.querySelectorAll("[data-sat]").forEach(x => { const sel = x === b; x.classList.toggle("sel", sel); x.setAttribute("aria-pressed", sel ? "true" : "false"); });
   });
   /* Analytics opt-out toggle — injected via DOM because index.html is frozen.
      Reuses the existing .setrow/.tgl styles. */
@@ -159,10 +172,12 @@
     btn.className = "tgl" + (settings.analytics ? " on" : "");
     btn.id = "tgl-analytics";
     btn.setAttribute("aria-label", I18N.t("settings.analytics_aria"));
+    btn.setAttribute("aria-pressed", settings.analytics ? "true" : "false"); // QW7
     btn.title = I18N.t("settings.analytics_title");
     btn.onclick = () => {
       settings.analytics = !settings.analytics; saveSettings();
       btn.classList.toggle("on", settings.analytics);
+      btn.setAttribute("aria-pressed", settings.analytics ? "true" : "false");
       try {
         if (window.WKAnalytics && window.WKAnalytics.ready) window.WKAnalytics.setEnabled(settings.analytics);
       } catch {}
@@ -201,14 +216,19 @@
       const t = ++lbToken;
       const box = document.createElement("div");
       box.style.marginTop = "10px";
-      box.innerHTML = `<div style="font-size:12.5px;color:#5f7ba3">${svgIcon("i-globe")} ${I18N.t("menu.scores.loading")}</div>`;
+      box.innerHTML = `<div style="font-size:12.5px;color:#8fb0d8">${svgIcon("i-globe")} ${I18N.t("menu.scores.loading")}</div>`;
       el.appendChild(box);
       WKApi.leaderboard(settings.diff, 5).then(lb => {
         if (t !== lbToken || !lb) { box.remove(); return; }
-        if (!lb.length) { box.innerHTML = `<div style="font-size:12.5px;color:#5f7ba3">${svgIcon("i-globe")} ${I18N.t("menu.scores.empty_online")}</div>`; return; }
-        box.innerHTML = `<div style="font-size:12.5px;color:#5f7ba3;margin-bottom:4px">${svgIcon("i-globe")} ${I18N.t("menu.scores.online_title", { diff: DIFF_LABEL[settings.diff] })}</div>` +
-          lb.map((r, i) => `<div><span class="rank r${i + 1}">${i + 1}</span> ${escapeHtml(r.profileName)} — <b style="color:#fde68a">${I18N.fmtNum(num(r.score))}</b> <span style="color:#5f7ba3">· wave ${int0(r.wave)}</span></div>`).join("");
-      }).catch(() => box.remove());
+        if (!lb.length) { box.innerHTML = `<div style="font-size:12.5px;color:#8fb0d8">${svgIcon("i-globe")} ${I18N.t("menu.scores.empty_online")}</div>`; return; }
+        box.innerHTML = `<div style="font-size:12.5px;color:#8fb0d8;margin-bottom:4px">${svgIcon("i-globe")} ${I18N.t("menu.scores.online_title", { diff: DIFF_LABEL[settings.diff] })}</div>` +
+          lb.map((r, i) => `<div><span class="rank r${i + 1}">${i + 1}</span> ${escapeHtml(r.profileName)} — <b style="color:#fde68a">${I18N.fmtNum(num(r.score))}</b> <span style="color:#8fb0d8">· wave ${int0(r.wave)}</span></div>`).join("");
+      }).catch(() => {
+        /* QW13: lỗi mạng phải hiện thành dòng lỗi (role=alert) thay vì biến mất
+           im lặng — phân biệt được "lỗi" với "BXH trống". */
+        if (t !== lbToken) { box.remove(); return; }
+        box.innerHTML = `<div style="font-size:12.5px;color:#8fb0d8" role="alert">${svgIcon("i-globe")} ${I18N.t("common.offline")} — không tải được bảng xếp hạng</div>`;
+      });
     }
   }
   function renderStats() {
@@ -247,6 +267,15 @@
   };
 
   /* ---------- launch game ---------- */
+  /* QW2: cảnh báo popup bị chặn phải hiện TRƯỚC MẮT người vừa bấm Chơi —
+     cuộn tới giữa màn + focus (role="alert" ở index.html lo phần screen reader). */
+  function showPopupWarn() {
+    const warn = $("popup-warn");
+    if (!warn) return;
+    warn.style.display = "block";
+    try { warn.scrollIntoView({ block: "center" }); } catch (e) {}
+    try { warn.focus({ preventScroll: true }); } catch (e) { try { warn.focus(); } catch (e2) {} }
+  }
   function ensureProfile() {
     if (!active()) {
       const box = $("new-profile-box");
@@ -274,7 +303,7 @@
       return;
     }
     const w = window.open("game.html?" + q.toString(), "windowkill_arena", "width=980,height=700,left=120,top=60,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
-    if (!w) $("popup-warn").style.display = "block";
+    if (!w) showPopupWarn();
     else { $("popup-warn").style.display = "none"; w.focus(); }
   };
 
@@ -353,7 +382,9 @@
           </div>`;
         setPanel.appendChild(row);
         row.querySelectorAll("[data-lang]").forEach(b => {
-          b.classList.toggle("sel", b.dataset.lang === lang);
+          const sel = b.dataset.lang === lang;
+          b.classList.toggle("sel", sel);
+          b.setAttribute("aria-pressed", sel ? "true" : "false"); // QW7
           b.onclick = () => { try { I18N.setLang(b.dataset.lang); } catch (e) {} try { if (window.Meta) Meta.setLang(b.dataset.lang); } catch (e2) {} setTimeout(() => location.reload(), 80); };
         });
       } catch (e) {}
@@ -381,7 +412,7 @@
           return;
         }
         const w = window.open("game.html?" + q.toString(), "windowkill_arena", "width=980,height=700,left=120,top=60,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
-        if (!w) $("popup-warn").style.display = "block";
+        if (!w) showPopupWarn();
         else { $("popup-warn").style.display = "none"; w.focus(); }
       }
 
@@ -404,7 +435,7 @@
                 style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
                 <div style="font-weight:800">${lock ? "🔒" : "🪟"} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
                 <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-                <div style="font-size:11.5px;color:#5f7ba3">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
+                <div style="font-size:11.5px;color:#8fb0d8">${b.score ? ("🏆 " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
               </button>`;
             }).join("");
             const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;
@@ -416,10 +447,11 @@
                 </button>${cards}
               </div>`;
             wrap.querySelectorAll(".v2-stage").forEach(b => {
-              if (parseInt(b.dataset.stage, 10) === selStage) b.classList.add("sel");
+              const sel = parseInt(b.dataset.stage, 10) === selStage;
+              if (sel) b.classList.add("sel");
+              b.setAttribute("aria-pressed", sel ? "true" : "false"); // QW7
               b.onclick = () => {
-                wrap.querySelectorAll(".v2-stage").forEach(x => x.classList.remove("sel"));
-                b.classList.add("sel");
+                wrap.querySelectorAll(".v2-stage").forEach(x => { const s = x === b; x.classList.toggle("sel", s); x.setAttribute("aria-pressed", s ? "true" : "false"); });
                 const s = b.dataset.stage;
                 v2sel = s === "0" ? { kind: "free" } : { kind: "stage", n: parseInt(s, 10) };
               };
@@ -481,10 +513,13 @@
               const cost = maxed ? 0 : (d.prices[lv] != null ? d.prices[lv] : d.prices[d.prices.length - 1]);
               const unlocked = Meta.isNodeUnlocked(d.id);
               const can = !maxed && unlocked && shards >= cost;
+              /* QW14: không đủ mảnh thì title nói rõ còn thiếu bao nhiêu */
+              const needTitle = (!maxed && unlocked && shards < cost)
+                ? ` title="${escapeHtml(en ? `Need ${cost - shards} more shards` : `Còn thiếu ${cost - shards} Mảnh Kính`)}"` : "";
               return `<div style="border:1px solid #1c3d6e;border-radius:10px;padding:8px;min-width:150px;flex:1">
                 <div style="font-weight:800;font-size:13px">${escapeHtml(pick(d, "nameVi"))} <span style="color:#ffd479">${"●".repeat(lv)}${"○".repeat(Math.max(0, d.max - lv))}</span>${unlocked ? "" : " 🔒"}</div>
                 <div style="font-size:11.5px;color:#8fb0d8">${escapeHtml(pick(d, "descVi"))}${unlocked ? "" : "<br>🔒 " + escapeHtml(pick(d, "unlockVi"))}</div>
-                <button class="btn-ghost v2-buy" data-node="${d.id}" ${can ? "" : "disabled"} style="margin-top:6px;font-size:12px">
+                <button class="btn-ghost v2-buy" data-node="${d.id}" ${can ? "" : "disabled"}${needTitle} style="margin-top:6px;font-size:12px">
                   ${maxed ? "MAX" : ("💎 " + cost)}</button></div>`;
             }).join("");
             const achvs = Meta.getAchievements();
@@ -493,7 +528,7 @@
             const rewardTxt = (r) => (typeof r === "number") ? ("+" + r + "💎")
               : (String(r).indexOf("skin:") === 0 ? ("🎨 " + skinName(String(r).slice(5))) : String(r));
             const achHtml = achvs.map(a => `<div style="font-size:12.5px;padding:3px 0">${a.unlocked ? "✅" : "🔒"} <b>${escapeHtml(pick(a, "nameVi"))}</b>
-              <span style="color:#5f7ba3">${escapeHtml(rewardTxt(a.reward))}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
+              <span style="color:#8fb0d8">${escapeHtml(rewardTxt(a.reward))}</span><br><span style="color:#8fb0d8;font-size:11.5px">${escapeHtml(pick(a, "condDescVi"))}</span></div>`).join("");
             const d = Meta.getDaily();
             const dMods = (d.modifiers || []).map(m => `<span title="${escapeHtml(pick(m, "descVi"))}">${escapeHtml(pick(m, "nameVi"))}</span>`).join(" · ");
             // AUDIT 2026-10-02: bỏ nút "Sửa khẩn cấp" khỏi launcher — trước đây bấm ở menu
@@ -502,7 +537,7 @@
             // Tính năng thuộc về luồng in-game, không để ở menu để tránh mất mảnh oan.
             mp.innerHTML = `
               <h3><svg class="ic" aria-hidden="true"><use href="#i-anvil"/></svg> ${escapeHtml(vt("meta.workshop", "Xưởng"))}
-                <span style="float:right;font-size:14px">💎 ${I18N.fmtNum(shards)} ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}</span></h3>
+                <span style="float:right;font-size:14px">💎 <span class="v2-shard-num" data-v="${shards}">${I18N.fmtNum(shards)}</span> ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}</span></h3>
               <div class="row" style="gap:8px;flex-wrap:wrap">${nodes}</div>
               <h3 style="margin-top:14px">🏆 ${escapeHtml(vt("meta.achievements", "Thành tựu"))} (${unCount}/${achvs.length})</h3>
               <div style="max-height:220px;overflow:auto">${achHtml}</div>
@@ -512,7 +547,18 @@
               <div class="row" style="gap:8px;margin-top:8px">
                 <button class="btn-ghost" id="v2-daily-play">📅 ${escapeHtml(vt("meta.daily_play", "Chơi Daily"))}</button>
               </div>`;
-            mp.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => { if (Meta.buyNode(b.dataset.node).ok) renderMeta(); }; });
+            mp.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => {
+              const r = Meta.buyNode(b.dataset.node);
+              if (r && r.ok) {
+                renderMeta();
+                /* QW14: mua thành công → số dư Mảnh Kính chạy count-up ăn mừng
+                   (cùng mẫu Cinema.countUp đã dùng cho kỷ lục ở wowUI()). */
+                try {
+                  const numEl = mp.querySelector(".v2-shard-num");
+                  if (numEl && window.Cinema && Cinema.countUp) Cinema.countUp(numEl, Meta.getShards(), { format: (x) => I18N.fmtNum(Math.round(x)) });
+                } catch (e) {}
+              }
+            }; });
             const dp = mp.querySelector("#v2-daily-play");
             if (dp) dp.onclick = () => { v2sel = { kind: "daily" }; launchGame(); v2sel = { kind: "free" }; };
           }

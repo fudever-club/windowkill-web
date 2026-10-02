@@ -651,7 +651,10 @@ function drawSkipPill(c, W) {
   var label = T("tut.skip");
   c.font = "600 13px system-ui, sans-serif";
   var w = c.measureText(label).width + 26, h = 30;
-  var x = 12, y = 12;
+  // MOBILE 2026-10-03: trước đây (12,12) đè lên dãy tim HUD (vẽ ở 14,32) trên mọi
+  // màn hình. Chuyển sang góc phải, dưới 2 nút HUD DOM (cao ~54px) để không
+  // chồng bất cứ thứ gì: tim/WAVE bên trái, thanh máu cửa sổ ở giữa-trên.
+  var x = W - w - 12, y = 62;
   c.save();
   rr(c, x, y, w, h, 15);
   c.fillStyle = "rgba(6,14,28,0.72)"; c.fill();
@@ -732,7 +735,10 @@ function draw(ctx) {
   if (!S || !S.active || !ctx) return;
   try {
     var c = ctx;
-    var W = c.canvas ? c.canvas.width : 960, H = c.canvas ? c.canvas.height : 640;
+    // MOBILE 2026-10-03: canvas.width/height giờ là device px (DPR) — coach-mark
+    // cần CSS px → dùng clientWidth/clientHeight
+    var W = c.canvas ? (c.canvas.clientWidth || window.innerWidth || 960) : 960,
+        H = c.canvas ? (c.canvas.clientHeight || window.innerHeight || 640) : 640;
     var id = cur().id;
     // dim nhẹ khi cần tập trung (beat 6/7)
     if (id === "chewer" || id === "edgeshot") {

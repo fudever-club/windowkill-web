@@ -136,6 +136,7 @@
       "pause.retry": "Chơi lại",
       "pause.quit": "Về menu",
       "pause.hint": "P / Esc: tiếp tục · M: bật/tắt nhạc",
+      "pause.hint_mobile": "Chạm nút ⏸ để tiếp tục", // MOBILE 2026-10-03
       "pause.aria": "Tạm dừng",
       "pause.full_aria": "Toàn màn hình",
       /* ----- draft ----- */
@@ -143,6 +144,8 @@
       "draft.cine_title": "LEVEL UP",
       "draft.pick_one": "Chọn 1 nâng cấp",
       "draft.hint": "Phím 1 / 2 / 3 để chọn nhanh",
+      "draft.hint_mobile": "Tap to pick", // MOBILE 2026-10-03
+      "draft.hint_mobile": "Chạm để chọn", // MOBILE 2026-10-03
       "draft.aria": "Nâng cấp: {name}",
       "draft.fallback_name": "Nâng cấp {n}",
       /* ----- game over ----- */
@@ -264,6 +267,7 @@
       "pause.retry": "Restart",
       "pause.quit": "Quit to menu",
       "pause.hint": "P / Esc: resume · M: toggle music",
+      "pause.hint_mobile": "Tap ⏸ to resume", // MOBILE 2026-10-03
       "pause.aria": "Pause",
       "pause.full_aria": "Fullscreen",
       /* ----- draft ----- */

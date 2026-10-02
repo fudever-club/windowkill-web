@@ -2446,17 +2446,41 @@ function onboardSpawnMul() {
 function onboardSpdMul() {
   if (tutActive()) return 0.85;
   return (DIFF_KEY === "normal" && G.wave <= 3) ? 0.85 : 1;
-}
 function mkEnemy(type, x, y) {
-  const def = MONSTER_REGISTRY[type];
+  // FIX C2b (2026-10-02): id đặc biệt 'mini_boss_N' (campaign wave 5) resolve
+  // thành entity mini-boss thật: base monster + hp×8, scale×2.5, gem 20
+  // (DIFFICULTY.campaign.miniboss) và bossHpMult theo độ khó đã chọn.
+  // e.type giữ = base id để mọi behavior/effect/render theo type cũ nguyên vẹn;
+  // đánh dấu e.miniBoss để banner/kill-track nhận diện. Không có Campaign
+  // (endless) thì id lạ vẫn trả null như cũ — không đổi hành vi cũ.
+  var miniSpec = null;
+  if (typeof type === "string" && window.Campaign && Campaign.getMinibossSpec) {
+    try { miniSpec = Campaign.getMinibossSpec(type); } catch (e0) { miniSpec = null; }
+  }
+  var def = MONSTER_REGISTRY[miniSpec ? miniSpec.base : type];
   if (!def) return null;
-  const e = {
-    type, behavior: def.behavior, x, y, t: rand(0, 9), flash: 0, slowT: 0, dead: false,
-    kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
-    hp: def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave),
+  var e = {
+    type: miniSpec ? miniSpec.base : type, behavior: def.behavior, x, y, t: rand(0, 9), flash: 0, slowT: 0, dead: false,
+
+   kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
     speed: def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul(),
-    xp: def.xp,
+         xp: def.xp,
   };
+if (miniSpec) {
+    var bossHpM = 1;
+    try {
+      if (window.V2 && V2.diffKey && Campaign.getRunParams) {
+        var rp = Campaign.getRunParams(V2.diffKey);
+        if (rp && rp.bossHpMult) bossHpM = rp.bossHpMult;
+      }
+    } catch (e1) {}
+    e.miniBoss = miniSpec.id;
+    e.miniName = miniSpec.nameVi;
+    e.hp = Math.round(e.hp * miniSpec.hpMult * bossHpM);
+    e.r = e.r * miniSpec.scale;
+    e.xp = miniSpec.gemReward;
+  }
+};
   e.maxHp = e.hp;
   if (def.init) def.init(e);
   return e;

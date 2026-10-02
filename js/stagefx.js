@@ -172,7 +172,9 @@
         ctx.save();
         ctx.fillStyle = on ? "#ff9a3c" : "#9df3ff";
         ctx.font = "12px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText(on ? "⚠ GAI BẬT " + left.toFixed(0) + "s" : "Gai tắt " + left.toFixed(0) + "s", w / 2, m + 18);
+        var spikeLbl = (on ? "GAI BẬT " : "Gai tắt ") + left.toFixed(0) + "s";
+        if (window.HUDIcons) HUDIcons.drawTextIcon(ctx, on ? "i-alert" : null, 14, "#ff9a3c", spikeLbl, w / 2, m + 18);
+        else ctx.fillText(spikeLbl, w / 2, m + 18);
         ctx.restore();
       }
     },
@@ -351,7 +353,9 @@
           ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.fill();
           // Viền pin còn lại
           ctx.fillStyle = "#fef08a"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
-          ctx.fillText("🔦 " + Math.ceil(st.pinT) + "s", s.x, s.y - r - 8);
+          var pinLbl = Math.ceil(st.pinT) + "s";
+          if (window.HUDIcons) HUDIcons.drawTextIcon(ctx, "i-flash", 14, "#fef08a", pinLbl, s.x, s.y - r - 8);
+          else ctx.fillText(pinLbl, s.x, s.y - r - 8);
         }
         // Outline neon tàu (coordinator vẽ tàu thật; đây là vầng hào quang gợi ý)
         if (G && G.ship) {
@@ -369,7 +373,9 @@
         var left = st.light - st.t;
         if (left < 5) {
           ctx.fillStyle = "#ffd479"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
-          ctx.fillText("⚠ Mất điện sau " + left.toFixed(0) + "s", w / 2, 24);
+          var blackLbl = "Mất điện sau " + left.toFixed(0) + "s";
+          if (window.HUDIcons) HUDIcons.drawTextIcon(ctx, "i-alert", 14, "#ffd479", blackLbl, w / 2, 24);
+          else ctx.fillText(blackLbl, w / 2, 24);
         }
       }
       ctx.restore();

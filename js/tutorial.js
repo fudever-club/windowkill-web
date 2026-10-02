@@ -45,7 +45,7 @@ var COPY = {
                  men: "Drag the right joystick to aim and shoot." },
   "tut.beat3":  { vi: "Hạ con quái đầu tiên nào!",
                  en: "Take down your first monster!" },
-  "tut.beat4":  { vi: "Nhặt 💎 để nạp đầy thanh XP.",
+  "tut.beat4":  { vi: "Nhặt mảnh kính để nạp đầy thanh XP.",
                  en: "Grab the gem to fill the XP bar." },
   "tut.beat5":  { vi: "Lên cấp! Chọn 1 trong 3 nâng cấp.",
                  en: "Level up! Pick 1 of 3 upgrades." },

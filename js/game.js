@@ -62,6 +62,7 @@ function toggleFullscreen() {
     else document.documentElement.requestFullscreen();
   } catch (e) {}
 }
+window.toggleFullscreen = toggleFullscreen; // H3: radial mobile gọi
 document.addEventListener("fullscreenchange", () => {
   const b = document.getElementById("btn-hud-full");
   if (b) b.classList.toggle("on", !!document.fullscreenElement);
@@ -497,8 +498,15 @@ const SatManager = (() => {
       ctx.strokeStyle = "#7dd3fc"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x + Math.cos(a) * 24, y + Math.sin(a) * 24, 5, 0, Math.PI * 2); ctx.stroke();
     }
-    ctx.font = "13px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("💙".repeat(Math.max(0, s.hearts ?? 5)) || "💔", x, y - 28);
+    if (window.HUDIcons) {
+      const nh = Math.max(0, s.hearts ?? 5);
+      if (nh > 0) {
+        const hw = nh * 12 + (nh - 1) * 4;
+        for (let hi = 0; hi < nh; hi++) HUDIcons.draw(ctx, "i-heart", 12, "#38bdf8", x - hw / 2 + 6 + hi * 16, y - 33, true);
+      } else {
+        HUDIcons.draw(ctx, "i-heart-crack", 14, "#ff6b81", x, y - 33);
+      }
+    }
     ctx.fillStyle = "#38bdf8"; ctx.font = "600 10px system-ui";
     ctx.fillText(I18N.t("sat.shield_label"), x, y + 34);
     ctx.restore();
@@ -2029,6 +2037,7 @@ window.addEventListener("pagehide", () => SatManager.closeAll());
 // touch: nửa trái = di chuyển, nửa phải = ngắm+bắn
 canvas.addEventListener("touchstart", e => {
   e.preventDefault(); touch.active = true;
+  document.body.classList.add("wk-coarse"); // H3: bật radial menu khi touch
   AudioEngine.resume();
   for (const t of e.changedTouches) {
     // v2.0: tutorial — tap vào nút Bỏ qua / beat 10 thì không gán joystick
@@ -2198,7 +2207,7 @@ function openDraft() {
           addFloat(G.ship.x, G.ship.y - 32, u.t, "#9df3ff", true);
         }
         G.phase = "play"; lastT = performance.now();
-      }, { x: G.ship.x, y: G.ship.y });
+      }, { x: G.ship.x, y: G.ship.y, theme: "patch" }); // H1/B4: reframe "VÁ CỬA SỔ"
       ok = true;
     } catch (err) {}
     if (ok) return;
@@ -2707,7 +2716,7 @@ async function spawnBoss() {
     if (tok !== bossSpawnTok) return; // restart giữa intro → bỏ
     try { Cinema.bgState("boss"); } catch (err) {}
   } else {
-    setBanner(`⚠ BOSS: ${v.name}`, I18N.t("banner.boss_sub"));
+    setBanner(`BOSS: ${v.name}`, I18N.t("banner.boss_sub"));
     AudioEngine.sfx.boss();
   }
   try { AudioEngine.setMusicState("BOSS"); } catch (err) {}
@@ -2750,6 +2759,7 @@ function pauseGame(on) {
     G.phase = "play"; $("ov-pause").classList.remove("show"); lastT = performance.now();
   }
 }
+window.pauseGame = pauseGame; // H3: radial mobile gọi
 function hurtShip(dmg, srcx, srcy) {
   const s = G.ship;
   if (G.phase !== "play") return;
@@ -2783,6 +2793,10 @@ function die(reason) {
   if (window.V2) { try { V2.onGameOver(reason); } catch (er) {} }
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
   AudioEngine.sfx.over();
+  // H1/B4: cửa sổ vỡ → shatter vui nhộn (mảnh kính bay tại vị trí tàu)
+  if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
+    try { Cinema.shatterBurst(G.ship ? G.ship.x : undefined, G.ship ? G.ship.y : undefined); } catch (e) {}
+  }
   try { AudioEngine.setMusicState("GAMEOVER"); } catch (e) {} // WOW: downlifter + pad
   AudioEngine.stopMusic();
   const reasonTxt = reason === "window" ? I18N.t("gameover.title_window") : I18N.t("gameover.title_ship");
@@ -2850,8 +2864,11 @@ function resetGame() {
 $("btn-again").onclick = () => { AudioEngine.sfx.click(); resetGame(); };
 $("btn-restart").onclick = () => { AudioEngine.sfx.click(); resetGame(); };
 $("btn-resume").onclick = () => { AudioEngine.sfx.click(); pauseGame(false); };
-$("btn-quit").onclick = () => window.close();
-$("btn-quit2").onclick = () => window.close();
+// H3: tách hàm đặt tên để radial mobile gọi được
+function quitToMenu() { try { window.close(); } catch (e) {} }
+window.quitToMenu = quitToMenu;
+$("btn-quit").onclick = quitToMenu;
+$("btn-quit2").onclick = quitToMenu;
 
 /* ---------------- update ---------------- */
 function killEnemy(e) {
@@ -3094,6 +3111,7 @@ function update(dt) {
       const sp = hypot(bl.vx, bl.vy);
       pushWindow(bl.vx / sp * 300, bl.vy / sp * 300);
       AudioEngine.sfx.thud();
+      G._borderFlash = { t: performance.now(), edge }; // H1/B2.4: flash viền xanh #0080FF (chiêu signature)
       burst(clamp(bl.x, b.x, b.x + b.w), clamp(bl.y, b.y, b.y + b.h), 8, ["#9df3ff", "#fff"], 200);
       G.enemies.forEach(e => {
         if (e.type === "chewer" && e.latched === edge && !e.dead) {
@@ -3375,14 +3393,12 @@ function render(now) {
     ctx.strokeStyle = "#ffd479"; ctx.lineWidth = 3; ctx.setLineDash([12, 8]);
     ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.setLineDash([]);
   }
-  // viền máu cửa sổ
+  // H1/B3: % nguyên vẹn cửa sổ — viền diegetic vẽ ở cuối frame (trước HUD)
   const winPct = winCtrl.ok
     ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
     : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
-  const pulse = (Math.sin(now / 280) + 1) / 2;
-  ctx.strokeStyle = winPct < 0.35 ? `rgba(255,60,90,${0.45 + 0.5 * pulse})` : "rgba(255,110,196,0.28)";
-  ctx.lineWidth = winPct < 0.35 ? 6 : 3;
-  ctx.strokeRect(b.x + 3, b.y + 3, b.w - 6, b.h - 6);
+  // H3: font HUD dùng chung — khai báo ở đầu render để mọi section (kể cả floats) dùng được (tránh TDZ)
+  const HUDFONT = (window.HUDIcons && HUDIcons.FONT) || '"Segoe UI", system-ui, -apple-system, sans-serif';
 
   // WOW: Cinema background layers (desat low-HP / boss arena ring / breather) — sau nền, trước entities
   if (window.Cinema) { try { Cinema.drawBack(ctx, W, H); } catch (e) {} }
@@ -3391,12 +3407,11 @@ function render(now) {
   if (typeof drawSatFields === "function") drawSatFields(); // M10/M9: vùng hiệu lực popup thật
   if (typeof drawCracks === "function") drawCracks(); // M4: vết nứt viền arena
 
-  // gems (OPT: set font 1 lần, không set lại mỗi gem)
-  ctx.font = "17px sans-serif"; ctx.textAlign = "center";
+  // gems: icon i-gem (SVG cache) — không emoji
   G.gems.forEach(gm => {
-    ctx.fillText("💎", gm.x, gm.y + Math.sin(gm.t * 5) * 3);
+    if (window.HUDIcons) HUDIcons.draw(ctx, "i-gem", 17, "#7df9ff", gm.x, gm.y + Math.sin(gm.t * 5) * 3);
   });
-  // pickups (heart/shield/nuke dùng emoji cũ; magnet/overdrive vẽ tay — không emoji mới)
+  // pickups: icon SVG cache (heart/shield/nuke); magnet/overdrive vẽ tay — không emoji
   G.pickups.forEach(p => {
     const bob = Math.sin(p.t * 4) * 4, blink = p.t > 9 ? (Math.sin(p.t * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
@@ -3413,8 +3428,8 @@ function render(now) {
       ctx.lineTo(p.x - 4, p.y + 13 + bob); ctx.lineTo(p.x + 7, p.y - 2 + bob); ctx.lineTo(p.x + 1, p.y - 2 + bob);
       ctx.closePath(); ctx.fill();
     } else {
-      ctx.font = "24px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(p.kind === "heart" ? "❤️" : p.kind === "shield" ? "🛡" : "💣", p.x, p.y + bob);
+      const pkIcon = p.kind === "heart" ? ["i-heart", "#ff5470", true] : p.kind === "shield" ? ["i-shield", "#38bdf8", false] : ["i-bomb", "#ff9d3f", false];
+      if (window.HUDIcons) HUDIcons.draw(ctx, pkIcon[0], 24, pkIcon[1], p.x, p.y + bob, pkIcon[2]);
     }
     ctx.globalAlpha = 1;
   });
@@ -3464,7 +3479,7 @@ function render(now) {
       ctx.fillRect(-q, -q, q * 2, q * 2);
       ctx.fillStyle = "#2a0a3a";
       ctx.fillRect(-5, -5 + (e.latched ? Math.sin(e.t * 10) * 2 : 0), 10, 10);
-      if (e.latched) { ctx.fillStyle = "#ff5470"; ctx.font = "13px sans-serif"; ctx.textAlign = "center"; ctx.fillText("⚠", 0, -q - 6); }
+      if (e.latched && window.HUDIcons) { HUDIcons.draw(ctx, "i-alert", 14, "#ffd23f", 0, -q - 11); }
     } else if (e.type === "tank") {
       ctx.rotate(e.t * 0.8);
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;
@@ -3567,9 +3582,8 @@ function render(now) {
       ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
     }
     // CEO §9-Q2: quái "say nắng" vẽ 💘 trên đầu
-    if (e.sayNangT > 0) {
-      ctx.fillStyle = "#ff8fab"; ctx.font = "15px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("💘", 0, -e.r - 12);
+    if (e.sayNangT > 0 && window.HUDIcons) {
+      HUDIcons.draw(ctx, "i-heart", 16, "#c084fc", 0, -e.r - 15, true);
     }
     ctx.restore(); ctx.globalAlpha = 1;
     if (e.hp > 4) {
@@ -3625,9 +3639,26 @@ function render(now) {
   ctx.globalAlpha = 1; ctx.textAlign = "center";
   G.floats.forEach(f => {
     ctx.globalAlpha = Math.max(0, 1 - f.t / f.life);
-    ctx.font = f.big ? "bold 19px sans-serif" : "bold 15px sans-serif";
+    ctx.font = f.big ? "bold 19px " + HUDFONT : "bold 15px " + HUDFONT;
     ctx.fillStyle = f.color;
-    ctx.fillText(f.text, f.x, f.y - f.t * 46);
+    const fy = f.y - f.t * 46;
+    let fDone = false;
+    if (window.HUDIcons) {
+      if (f._fi === undefined) f._fi = HUDIcons.splitFloat(f.text); // cache 1 lần/float
+      const fi = f._fi;
+      if (fi && fi.icons.length) {
+        if (fi.text === "" && fi.icons.length === 1) {
+          HUDIcons.draw(ctx, fi.icons[0], 16, f.color, f.x, fy - 8);
+        } else {
+          const ftw = ctx.measureText(fi.text).width;
+          let fix = f.x - ftw / 2 - 4 - 8;
+          for (let ii = fi.icons.length - 1; ii >= 0; ii--) { HUDIcons.draw(ctx, fi.icons[ii], 16, f.color, fix, fy - 8); fix -= 20; }
+          ctx.fillText(fi.text, f.x, fy);
+        }
+        fDone = true;
+      }
+    }
+    if (!fDone) ctx.fillText(f.text, f.x, fy);
   });
   ctx.globalAlpha = 1;
   // WOW: Juice FX layers (particles / rings / ghosts / floats / damage numbers / warnings)
@@ -3645,56 +3676,133 @@ function render(now) {
   if (window.Cinema) { try { Cinema.drawFront(ctx, W, H, cineInfo().player); } catch (e) {} }
   ctx.restore();
 
-  /* ---------- HUD ---------- */
+  // H1/B2: viền màn hình = thanh máu — decal notch cache (borderfx.js), flash xanh khi bắn vào viền
+  if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now, (Math.sin(now / 280) + 1) / 2);
+
+  /* ---------- HUD (H3: 2 cụm — pill trái + % nguyên vẹn phải) ---------- */
   ctx.textAlign = "left";
-  let hearts = "";
-  for (let i = 0; i < s.maxHp; i++) hearts += i < s.hp ? "❤️" : "🖤";
-  ctx.font = "20px sans-serif"; ctx.fillText(hearts, 14, 32);
-  if (s.shieldT > 0) { ctx.font = "16px sans-serif"; ctx.fillText(`🛡${Math.ceil(s.shieldT)}s`, 14 + s.maxHp * 24, 30); }
-  { // M3: trạng thái cửa sổ khiên
-    const sh = typeof shieldSat === "function" ? shieldSat() : null;
-    if (sh) {
-      ctx.font = "16px sans-serif"; ctx.fillStyle = "#38bdf8";
-      const txt = sh.sim ? I18N.t("hud.shield_sim", { hearts: "💙".repeat(Math.max(0, sh.hearts ?? 5)) }) : I18N.t("hud.shield_popup", { px: Math.ceil(sh.shieldPx ?? 60) });
-      ctx.fillText(txt, 14 + s.maxHp * 24 + (s.shieldT > 0 ? 64 : 0), 30);
-      ctx.fillStyle = "#fff";
+  const hudIcon = (id, px, color, x, y, fill) => { try { HUDIcons.draw(ctx, id, px, color, x, y, fill); } catch (e) {} };
+  const coarseHUD = (touch && touch.active) || (window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
+  const hsc = W < 560 ? 0.85 : 1; // mobile: cả cụm trái scale 0.85
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+
+  /* ---- chip pickup (A2): thứ tự cố định Shield -> Khiên cửa sổ -> Magnet -> Overdrive ---- */
+  const shState = (typeof shieldSat === "function") ? shieldSat() : null;
+  const chips = [];
+  if (s.shieldT > 0) chips.push({ icon: "i-shield", ic: "#38bdf8", text: Math.ceil(s.shieldT) + "s", tc: "#38bdf8", bg: "rgba(56,189,248,0.14)" });
+  if (shState) {
+    if (shState.sim) {
+      const simLabel = I18N.t("hud.shield_sim", { hearts: "" }).replace(/\s*[×x]\s*$/, "");
+      chips.push({ icon: "i-window", ic: "#38bdf8", text: simLabel, tc: "#38bdf8", bg: "rgba(56,189,248,0.14)", hearts: Math.max(0, shState.hearts ?? 5) });
+    } else {
+      chips.push({ icon: "i-window", ic: "#38bdf8", text: I18N.t("hud.shield_popup", { px: Math.ceil(shState.shieldPx ?? 60) }), tc: "#38bdf8", bg: "rgba(56,189,248,0.14)" });
     }
   }
-  if (s.magnetT > 0 || s.overdriveT > 0) { // timer pickup mới
-    ctx.font = "16px sans-serif"; ctx.fillStyle = "#7df9ff";
-    let pt = "";
-    if (s.magnetT > 0) pt += I18N.t("hud.magnet", { s: Math.ceil(s.magnetT) }) + " ";
-    if (s.overdriveT > 0) pt += `OD ${Math.ceil(s.overdriveT)}s`;
-    ctx.fillText(pt, 14 + s.maxHp * 24 + (s.shieldT > 0 ? 64 : 0), 30);
-    ctx.fillStyle = "#fff";
+  if (s.magnetT > 0) chips.push({ icon: "i-magnet", ic: "#ff7ad9", text: Math.ceil(s.magnetT) + "s", tc: "#ff7ad9", bg: "rgba(255,122,217,0.14)" });
+  if (s.overdriveT > 0) chips.push({ icon: "i-bolt", ic: "#ffe14d", text: Math.ceil(s.overdriveT) + "s", tc: "#ffe14d", bg: "rgba(255,225,77,0.14)" });
+
+  const CHIP_FONT = "700 13px " + HUDFONT;
+  const chipW = (c) => {
+    ctx.font = CHIP_FONT;
+    let w = 8 + 14 + 5 + ctx.measureText(c.text).width + 8;
+    if (c.hearts) w += 5 + c.hearts * 12 + (c.hearts - 1) * 4; // N tim 12px sau text
+    return w;
+  };
+
+  /* ---- cụm TRÁI: 1 pill duy nhất (tọa độ local, gốc tại 14,10) ---- */
+  ctx.save();
+  ctx.translate(14, 10);
+  ctx.scale(hsc, hsc);
+  const padX = 12, padY = 8, baseA = 24, baseB = 50; // local (global y: 34/60)
+  // đo hàng A
+  const heartsW = s.maxHp * 18 + Math.max(0, s.maxHp - 1) * 5;
+  const chipsW = chips.reduce((a, c, i) => a + chipW(c) + (i ? 6 : 0), 0);
+  const rowAW = heartsW + (chips.length ? 12 + chipsW : 0);
+  // đo hàng B
+  ctx.font = "700 15px " + HUDFONT;
+  const waveTxt = "WAVE " + Math.max(1, G.wave);
+  ctx.font = "600 15px " + HUDFONT;
+  const killsTxt = String(Math.floor(G.kills)), scoreTxt = String(Math.floor(G.score));
+  const comboTxt = "x" + Math.floor(G.combo);
+  const wWave = ctx.measureText(waveTxt).width, wKills = ctx.measureText(killsTxt).width,
+        wScore = ctx.measureText(scoreTxt).width, wCombo = ctx.measureText(comboTxt).width;
+  let rowBW = 16 + 6 + wWave + 16 + 15 + 6 + wKills + 16 + 15 + 6 + wScore;
+  if (G.combo >= 3) rowBW += 16 + 15 + 6 + wCombo;
+  // XP bar (giữ công thức cũ)
+  const xpw = Math.max(120, Math.min(220, W * 0.45));
+  ctx.font = "13px " + HUDFONT;
+  const lvTxt = "Lv " + G.level;
+  const xpRowW = xpw + 8 + ctx.measureText(lvTxt).width;
+  const pillW = padX * 2 + Math.max(rowAW, rowBW, xpRowW), pillH = 74;
+  // vẽ pill
+  rr(0, 0, pillW, pillH, 12);
+  ctx.fillStyle = "rgba(5,11,23,0.62)"; ctx.fill();
+  ctx.strokeStyle = "rgba(0,128,255,0.30)"; ctx.lineWidth = 1; ctx.stroke();
+  // hàng A: tim HP + chip
+  let ax = padX;
+  for (let i = 0; i < s.maxHp; i++) {
+    const full = i < s.hp;
+    hudIcon("i-heart", 18, full ? "#ff5470" : "#42557a", ax + 9, baseA - 5, full);
+    ax += 18 + 5;
   }
-  ctx.fillStyle = "#fff"; ctx.font = "bold 15px sans-serif";
-  let hud = `WAVE ${Math.max(1, G.wave)}   💀 ${G.kills}   ⭐ ${G.score}`;
-  if (G.combo >= 3) hud += `   🔥x${G.combo}`;
-  ctx.fillText(hud, 14, 58);
-    const xpw = Math.max(120, Math.min(220, W * 0.45));
-   
-   ctx.fillStyle = "#ffffff18"; ctx.fillRect(14, 68, xpw, 8);
-  ctx.fillStyle = "#7df9ff"; ctx.fillRect(14, 68, xpw * Math.min(1, G.xp / G.xpNeed), 8);
-  ctx.fillStyle = "#c9b8e0"; ctx.font = "13px sans-serif";
-  ctx.fillText(`Lv ${G.level}`, 14 + xpw + 6, 76);
-  // máu cửa sổ — responsive portrait, chừa 116px mép phải cho 2 nút HUD
-  const bw = Math.max(90, Math.min(220, W - 366));
-     const rPad = 116;
-  ctx.fillStyle = "#ffffff18"; ctx.fillRect(W - bw - rPad, 14, bw, 10);
-  ctx.fillStyle = winPct < 0.35 ? "#ff5470" : "#ff9df3";
-  ctx.fillRect(W - bw - rPad, 14, bw * winPct, 10);
-  ctx.fillStyle = "#c9b8e0"; ctx.font = "13px sans-serif"; ctx.textAlign = "right";
-  ctx.fillText(I18N.t("hud.window_hp"), W - rPad, 40); ctx.textAlign = "left";
+  ax += 12 - 5; // gap 12 sau tim (đã cộng 5 ở vòng cuối)
+  for (const c of chips) {
+    const cw = chipW(c), cy = baseA - 5 - 12; // chip cao 24, tâm theo baseline-5
+    rr(ax, cy, cw, 24, 8);
+    ctx.fillStyle = c.bg; ctx.fill();
+    hudIcon(c.icon, 14, c.ic, ax + 8 + 7, baseA - 5);
+    ctx.font = CHIP_FONT; ctx.fillStyle = c.tc; ctx.textAlign = "left";
+    const tx = ax + 8 + 14 + 5;
+    ctx.fillText(c.text, tx, baseA);
+    if (c.hearts) {
+      let hx = tx + ctx.measureText(c.text).width + 5 + 6;
+      for (let hi = 0; hi < c.hearts; hi++) { hudIcon("i-heart", 12, "#38bdf8", hx, baseA - 5, true); hx += 12 + 4; }
+    }
+    ax += cw + 6;
+  }
+  // hàng B: wave / kills / score / combo
+  let bx = padX;
+  const segB = (icon, px, ic, txt, font, tc, fill) => {
+    hudIcon(icon, px, ic, bx + px / 2, baseB - 5, fill);
+    bx += px + 6;
+    ctx.font = font; ctx.fillStyle = tc; ctx.textAlign = "left";
+    ctx.fillText(txt, bx, baseB);
+    bx += ctx.measureText(txt).width + 16;
+  };
+  hudIcon("i-wave", 16, "#0080FF", bx + 8, baseB - 5);
+  bx += 16 + 6;
+  ctx.font = "700 15px " + HUDFONT; ctx.fillStyle = "#F2F7FF"; ctx.textAlign = "left";
+  ctx.fillText(waveTxt, bx, baseB); bx += wWave + 16;
+  segB("i-skull", 15, "#c9b8e0", killsTxt, "600 15px " + HUDFONT, "#F2F7FF");
+  segB("i-star", 15, "#ffd23f", scoreTxt, "600 15px " + HUDFONT, "#F2F7FF", true);
+  if (G.combo >= 3) segB("i-fire", 15, "#ff9d3f", comboTxt, "700 15px " + HUDFONT, "#ff9d3f", true);
+  // thanh XP
+  rr(padX, 60, xpw, 8, 4);
+  ctx.fillStyle = "rgba(255,255,255,0.09)"; ctx.fill();
+  const xpf = xpw * Math.min(1, G.xp / G.xpNeed);
+  if (xpf > 0.5) { rr(padX, 60, xpf, 8, 4); ctx.fillStyle = "#7df9ff"; ctx.fill(); }
+  ctx.font = "13px " + HUDFONT; ctx.fillStyle = "#c9b8e0"; ctx.textAlign = "left";
+  ctx.fillText(lvTxt, padX + xpw + 8, 68);
+  ctx.restore();
+
+  /* ---- cụm PHẢI: % nguyên vẹn cửa sổ (H1: bar cũ đã thay bằng decal viền diegetic) ---- */
+  const rPad = coarseHUD ? 64 : 116;
+  ctx.font = "600 13px " + HUDFONT; ctx.fillStyle = "#c9b8e0"; ctx.textAlign = "right";
+  const wpctTxt = I18N.t("hud.window_pct", { pct: Math.round(winPct * 100) });
+  ctx.fillText(wpctTxt, W - rPad, 40);
+  const wpctW = ctx.measureText(wpctTxt).width;
+  hudIcon("i-window", 15, "#8fb0d8", W - rPad - wpctW - 6 - 7.5, 40 - 5);
+  ctx.textAlign = "left";
   // boss bar (v2.0: boss module vẽ thanh 3 nấc khi active)
   var v2bar = false;
   if (window.V2) { try { v2bar = V2.bossBar(); } catch (e) {} }
   if (!v2bar && bs && !bs.dead) {
     const bbw = Math.min(560, W - 120);
-    ctx.fillStyle = "#000000aa"; ctx.fillRect((W - bbw) / 2, 12, bbw, 14);
-    ctx.fillStyle = "#c084fc"; ctx.fillRect((W - bbw) / 2, 12, bbw * clamp(bs.hp / bs.maxHp, 0, 1), 14);
+    const bby = W < 760 ? 92 : 12; // H3/A1: tránh đè pill trái trên màn hẹp
+    ctx.fillStyle = "#000000aa"; ctx.fillRect((W - bbw) / 2, bby, bbw, 14);
+    ctx.fillStyle = "#c084fc"; ctx.fillRect((W - bbw) / 2, bby, bbw * clamp(bs.hp / bs.maxHp, 0, 1), 14);
     ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(bs.name || "BOSS", W / 2, 24); ctx.textAlign = "left";
+    ctx.fillText(bs.name || "BOSS", W / 2, bby + 12); ctx.textAlign = "left";
   }
     
    

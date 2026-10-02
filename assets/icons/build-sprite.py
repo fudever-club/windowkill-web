@@ -17,6 +17,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ---------------- hand-drawn UI glyphs (inner SVG, 24x24) ----------------
 # filled accents use fill="currentColor" stroke="none" explicitly
 ICONS = {
+"star": '<path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.3L12 17.1l-5.7 3.1 1.2-6.3L2.8 9.5l6.4-.8L12 2.8z" fill="currentColor"/>',
+"dots": '<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>',
+"shard": '<path d="M12 2 L20 9 L16 20 L7 17 L4 8 Z" fill="rgba(125,249,255,0.12)"/><path d="M12 2 L10 10 L16 20"/>',
+"window-crack": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/><path d="M12 5l-3 6 4 4-2 4"/><path d="M9 9l8 3"/>',
+"heart-crack": '<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/><path d="M12 7l-2 3 3 2-2 3 3 2"/>',
+"fang": '<path d="M7 4l2 6 2-6z M13 4l2 6 2-6z"/>',
+"drop": '<path d="M12 3c3 4.5 6 8 6 11a6 6 0 0 1-12 0c0-3 3-6.5 6-11z"/>',
+"flash": '<path d="M9 3l6 2-2 5-6-2z"/><path d="M13 10l7 7M15 8l6 3"/>',
 "play": '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
 "pause": '<rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor" stroke="none"/>',
 "restart": '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',

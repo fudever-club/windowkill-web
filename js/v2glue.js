@@ -35,6 +35,14 @@
     runMods: null,       // Meta.getRunModifiers() — áp vào newShip
     bossActive: false,   // Bosses module đang điều khiển boss
 
+    /* ---- preboot (F-02): game.js gọi TRƯỚC resetGame() đầu tiên — chỉ gán
+       runMods từ Meta để newShip() của run đầu tiên cũng hưởng Xưởng. Phần
+       banner/tutorial vẫn ở boot() sau reset như fix M21. ---- */
+    preboot: function () {
+      var self = this;
+      safe(function () { self.runMods = (window.Meta) ? Meta.getRunModifiers() : null; });
+    },
+
     /* ---- boot: gọi 1 lần từ game.js sau resetGame() ---- */
     boot: function (opts) {
       opts = opts || {};
@@ -153,6 +161,14 @@
         if (window.Campaign) {
           Campaign.onBossKill(self.stageId);
           if (nx <= 5) { try { window.WKSetBanner(T("campaign.stage_clear", { n: nx - 1 }) || ("Hoàn thành ải " + (nx - 1) + "!"), ""); } catch (e) {} }
+        }
+      });
+      // M22: hạ boss ải 2/3/4 → mở nâng cấp độc quyền ải tương ứng vào draft pool
+      safe(function () {
+        if (window.Upgrades2 && window.G && window.G.ship) {
+          var up = Upgrades2.unlockBossStage(self.stageId);
+          if (up && typeof window.addFloat === "function")
+            window.addFloat(window.G.ship.x, window.G.ship.y - 40, "Mở nâng cấp: " + (up.nameVi || up.id), "#9df3ff", true);
         }
       });
       self.stageDone = true; // các wave sau chạy endless thường

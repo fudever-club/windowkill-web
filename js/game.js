@@ -2069,6 +2069,8 @@ const G = {
   xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
   dying: [], pendingSpawns: 0, waveKills: 0, bossCine: false, // WOW sprint
   cracks: [], // vết nứt viền arena (M4 mô phỏng)
+     globalHaste: 1, hasteT: 0, // SEASON 1: chuông Deadline Dí — buff tốc toàn sân
+     slowZones: [], // SEASON 1: vùng họp Kẻ Họp Hành — phần tử {x, y, r, slow, ttl, from}
 };
 let lastT = performance.now();
 let musicT = 0; // WOW: music/bg-state tick 500ms

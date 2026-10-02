@@ -1,44 +1,43 @@
-# Fly.io config for windowkill-backend (free tier, persistent volume)
-# Lives in the repo at server/deploy/fly.toml (finding B3). Deploy from the
-# REPO ROOT so the Dockerfile build context contains server/:
-#   fly deploy --config server/deploy/fly.toml --dockerfile server/deploy/Dockerfile
-app = "windowkill-backend"
-primary_region = "sin" # Singapore — closest to VN
+# fly.toml app configuration file generated for windowkill-web on 2026-10-02T07:23:25Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'windowkill-web'
+primary_region = 'sin'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "3001"
-  HOST = "0.0.0.0"
-  WK_DB = "/data/windowkill.db"
-  # B6: the game page origin AND the origin the game actually runs from on
-  # itch.io (HTML5 iframe host) — both are required, plus the main site.
-  WK_CORS_ORIGINS = "https://windowkill.fudever.com,https://quangnhat1504.itch.io,https://html-classic.itch.zone"
+  HOST = '0.0.0.0'
+  PORT = '3001'
+  WK_CORS_ORIGINS = 'https://windowkill.fudever.com,https://quangnhat1504.itch.io,https://html-classic.itch.zone'
+  WK_DB = '/data/windowkill.db'
+
+[[mounts]]
+  source = 'wk_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 3001
   force_https = true
-  auto_stop_machines = "suspend" # free-tier friendly: sleeps when idle
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
+
   [http_service.concurrency]
-    type = "requests"
+    type = 'requests'
     hard_limit = 100
     soft_limit = 60
-  # B13: Fly-level readiness probe against the DB-backed health endpoint.
-  [[http_service.checks]]
-    type = "http"
-    method = "GET"
-    path = "/api/health"
-    interval = "30s"
-    timeout = "5s"
-    grace_period = "10s"
 
-[[mounts]]
-  source = "wk_data"
-  destination = "/data" # SQLite lives here, persistent across deploys
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/health'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'

@@ -7,13 +7,14 @@
  */
 "use strict";
 
-const VERSION = "windowkill-v3"; // bump 2026-10-01: xóa cache v2 (PR #24: bgm suspend/resume, fullscreen, handoff), ép tải mới
+const VERSION = "windowkill-v4"; // bump 2026-10-02 (audit): ép tải mới bộ v2.0 (campaign/meta/tutorial/i18n...)
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";
 
 const STATIC_ASSETS = [
   "css/style.css",
+  "css/roles.css",
   "js/audio.js",
   "js/api.js",
   "js/menu.js",
@@ -24,6 +25,22 @@ const STATIC_ASSETS = [
   "js/bg.js",
   "js/juice.js",
   "js/cinema.js",
+  // AUDIT 2026-10-02: precache từng chỉ chứa file v1 — bổ sung toàn bộ file v2.0
+  // (campaign/meta/tutorial/i18n/monsters/bosses/juice2/sfx2/stagefx/upgrades2/v2glue/mobile/portal)
+  // để chế độ offline cài được game đầy đủ, không rớt vào offline.html thiếu JS.
+  "js/i18n.js",
+  "js/campaign.js",
+  "js/meta.js",
+  "js/tutorial.js",
+  "js/monsters.js",
+  "js/bosses.js",
+  "js/juice2.js",
+  "js/sfx2.js",
+  "js/stagefx.js",
+  "js/upgrades2.js",
+  "js/v2glue.js",
+  "js/mobile.js",
+  "js/portal.js",
   "manifest.webmanifest",
   OFFLINE_URL,
   "assets/favicon.png",
@@ -74,13 +91,15 @@ function putIfOk(cache, req, res) {
   return res;
 }
 
-// Navigation: network-first, fallback cache, cuối cùng offline.html
+// Navigation: network-first, fallback cache, cuối cùng offline.html.
+// AUDIT 2026-10-02: offline.html được precache vào STATIC_CACHE (không phải HTML_CACHE),
+// nên fallback phải dùng caches.match (tìm mọi cache), không dùng cache.match của HTML_CACHE.
 function networkFirstPage(req) {
   return caches.open(HTML_CACHE).then((cache) =>
     fetch(req)
       .then((res) => putIfOk(cache, req, res))
       .catch(() =>
-        cache.match(req).then((hit) => hit || cache.match(OFFLINE_URL))
+        cache.match(req).then((hit) => hit || caches.match(OFFLINE_URL))
       )
   );
 }
@@ -104,6 +123,11 @@ self.addEventListener("fetch", (event) => {
   if (req.headers.has("range")) return; // audio seek: để browser tự xử, không cache 206
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // cross-origin: không chạm
+  // AUDIT 2026-10-02: không nuốt /api/* và file media vào stale-while-revalidate —
+  // trước đây response API (leaderboard/health) bị cache và trả cũ 1 nhịp, còn mp3
+  // không-range bị cache nguyên file ~7.6MB/track vào static cache.
+  if (url.pathname.startsWith("/api/")) return;
+  if (/\.(mp3|ogg|wav|mp4|webm)$/i.test(url.pathname)) return;
   if (req.mode === "navigate") {
     event.respondWith(networkFirstPage(req));
     return;

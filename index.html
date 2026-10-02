@@ -328,20 +328,8 @@
 <script src="js/sfx2.js" defer></script>
 <script src="js/upgrades2.js" defer></script>
 <script src="js/i18n.js" defer></script>
-<script src="js/campaign.js" defer></script>
-<script src="js/meta.js" defer></script>
-<script src="js/tutorial.js" defer></script>
+<!-- AUDIT 2026-10-02: gỡ 3 thẻ script trùng (campaign.js/meta.js/tutorial.js bị include 2 lần,
+     chạy IIFE trùng, đăng ký listener/dịch 2 lần). -->
 <script src="js/menu.js" defer></script>
-<script>
-// PWA: đăng ký Service Worker — cache tài nguyên + màn hình offline
-// PORTAL: không đăng ký SW trong iframe portal (một số portal từ chối SW)
-if ("serviceWorker" in navigator && !window.WK_PORTAL_MODE) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {
-      /* SW không bắt buộc: game vẫn chạy online bình thường */
-    });
-  });
-}
-</script>
 </body>
 </html>

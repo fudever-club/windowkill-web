@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WINDOWKILL — Vệ tinh</title>
 <link rel="stylesheet" href="css/roles.css">
-<link rel="stylesheet" href="css/roles.css">
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0a0618;
     font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;cursor:crosshair}
@@ -13,7 +12,7 @@
   #hp{position:fixed;top:6px;left:8px;right:8px;height:6px;background:#ffffff18;border-radius:3px;overflow:hidden}
   #hpfill{height:100%;width:100%;background:#c084fc;border-radius:3px;transition:width .15s}
   #lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ffffffaa;font-size:11px;letter-spacing:2px}
-  #dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
+  .dmg{position:fixed;pointer-events:none;color:#fff;font-weight:800;font-size:18px;text-shadow:0 0 6px #c084fc}
 
   /* boot overlay (cinematics polish): overlay tim #7c3aed alpha .25 fade-in 200ms + logo pulse */
   #boot{position:fixed;inset:0;background:rgba(124,58,237,.25);display:flex;flex-direction:column;
@@ -318,7 +317,7 @@ function paintHp() {
   document.getElementById("hpfill").style.width = (100 * HP / MAXHP) + "%";
 }
 function floatDmg(x, y) {
-  const d = document.createElement("div"); d.id = "dmg"; d.textContent = "-1";
+  const d = document.createElement("div"); d.className = "dmg"; d.textContent = "-1";
   d.style.left = x + "px"; d.style.top = y + "px";
   document.body.appendChild(d);
   let o = 1, yy = y;

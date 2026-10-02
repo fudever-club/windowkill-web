@@ -217,7 +217,14 @@
         if (!comp || !comp.length) return null;
         var q = [];
         comp.forEach(function (c) {
-          var t = (window.Monsters && Monsters.MONSTER_REGISTRY[c.monster]) ? c.monster : (ADD_MAP[c.monster] || "chaser");
+          // FIX C2b (2026-10-02): id boss đặc biệt (mini_boss_N/boss_N) KHÔNG
+          // fallback thành "chaser" — giữ nguyên id để engine resolve thành
+          // entity thật (mkEnemy → Campaign.getMinibossSpec). Trước đây mini-boss
+          // wave 5 mọi ải luôn spawn thành chaser thường, bossHpMult cũng mất.
+          var t = c.monster;
+          var known = window.Monsters && Monsters.MONSTER_REGISTRY[t];
+          var bossId = window.Campaign && Campaign.isBossId ? Campaign.isBossId(t) : false;
+          if (!known && !bossId) t = ADD_MAP[t] || "chaser";
           for (var i = 0; i < (c.count || 1); i++) q.push(t);
         });
         return { queue: q, boss: false };

@@ -136,7 +136,7 @@
       mechanicVi: "Quái tím xuất hiện từ wave 2.",
       palette: { bgGradient: ["#001133", "#0066CC"], gridColor: "#004C99", particleColor: "#66B2FF", particleType: "square" },
       mechanicFlags: { spikes: false, lowFriction: false, blackout: false, shrinkingArena: false },
-      miniboss: { id: "mini_boss_1", nameVi: "Chewer Cổ Đại" },
+      miniboss: { id: "mini_boss_1", nameVi: "Chewer Cổ Đại", base: "chewer" },
       boss: { id: "boss_1", nameVi: "GÃ GẶM KHỔNG LỒ" },
       waveTable: [
         [{ monster: "chaser", count: 5, scripted: true }],
@@ -159,7 +159,7 @@
       mechanicVi: "Gai bật/tắt theo chu kỳ 6s. Đừng đứng sát viền.",
       palette: { bgGradient: ["#1A0D00", "#CC3300"], gridColor: "#FF7722", particleColor: "#FF7722", particleType: "ember" },
       mechanicFlags: { spikes: true, lowFriction: false, blackout: false, shrinkingArena: false },
-      miniboss: { id: "mini_boss_2", nameVi: "Dasher Xuyên Gai" },
+      miniboss: { id: "mini_boss_2", nameVi: "Dasher Xuyên Gai", base: "dasher" },
       boss: { id: "boss_2", nameVi: "TƯỜNG LỬA SỐNG" },
       waveTable: [
         [{ monster: "chaser", count: 6 }],
@@ -182,7 +182,7 @@
       mechanicVi: "Thả phím tàu vẫn trôi — bay ngược để phanh.",
       palette: { bgGradient: ["#0D0221", "#3A0CA3"], gridColor: "#9D4EDD", particleColor: "#9D4EDD", particleType: "orbit" },
       mechanicFlags: { spikes: false, lowFriction: true, blackout: false, shrinkingArena: false },
-      miniboss: { id: "mini_boss_3", nameVi: "Tank Từ Trường" },
+      miniboss: { id: "mini_boss_3", nameVi: "Tank Từ Trường", base: "tank" },
       boss: { id: "boss_3", nameVi: "TRỌNG TÂM HỖN LOẠN" },
       waveTable: [
         [{ monster: "chaser", count: 5 }],
@@ -205,7 +205,7 @@
       mechanicVi: "Nhìn mắt đỏ, nghe tiếng gầm để định vị.",
       palette: { bgGradient: ["#000000", "#0A0A1A"], gridColor: "#00E5FF", particleColor: "#00E5FF", particleType: "spark" },
       mechanicFlags: { spikes: false, lowFriction: false, blackout: true, shrinkingArena: false },
-      miniboss: { id: "mini_boss_4", nameVi: "Splitter Nhiễu" },
+      miniboss: { id: "mini_boss_4", nameVi: "Splitter Nhiễu", base: "splitter" },
       boss: { id: "boss_4", nameVi: "MÀN ĐÊM VÔ TẬN" },
       waveTable: [
         [{ monster: "chaser", count: 6 }],
@@ -228,7 +228,7 @@
       mechanicVi: "Nhặt patch xanh để nới vùng an toàn.",
       palette: { bgGradient: ["#0D1B00", "#2D6A00"], gridColor: "#3A6B1E", particleColor: "#8AFF5A", particleType: "hexrain" },
       mechanicFlags: { spikes: false, lowFriction: false, blackout: false, shrinkingArena: true },
-      miniboss: { id: "mini_boss_5", nameVi: "Chewer Chúa Tể" },
+      miniboss: { id: "mini_boss_5", nameVi: "Chewer Chúa Tể", base: "chewer" },
       boss: { id: "boss_5", nameVi: "NULL POINTER — KẺ XOÁ CỬA SỔ" },
       waveTable: [
         [{ monster: "chaser", count: 6 }],
@@ -266,6 +266,27 @@
            monster === "boss_4" || monster === "boss_5" ||
            monster === "mini_boss_1" || monster === "mini_boss_2" || monster === "mini_boss_3" ||
            monster === "mini_boss_4" || monster === "mini_boss_5";
+  }
+
+  /** Spec resolve id đặc biệt 'mini_boss_N' (campaign wave 5) thành entity thật.
+      FIX C2b (2026-10-02): trước đây v2glue.stageWave fallback id này thành
+      "chaser" nên mini-boss thiết kế không bao giờ xuất hiện.
+      @returns null nếu id không phải mini-boss; ngược lại
+      {id, base, nameVi, hpMult, scale, gemReward} — thông số từ
+      DIFFICULTY.campaign.miniboss (§8.1: hp_mult 8, scale 2.5, gem_reward 20). */
+  function getMinibossSpec(id) {
+    if (typeof id !== "string") return null;
+    for (var i = 0; i < STAGES.length; i++) {
+      var m = STAGES[i].miniboss;
+      if (m && m.id === id) {
+        var mb = DIFFICULTY.campaign.miniboss;
+        return {
+          id: m.id, base: m.base, nameVi: m.nameVi,
+          hpMult: mb.hp_mult, scale: mb.scale, gemReward: mb.gem_reward
+        };
+      }
+    }
+    return null;
   }
 
   /** Danh sách spawn của 1 wave trong campaign, đã áp modifier độ khó.
@@ -547,6 +568,8 @@
     getDifficulty: diffOf,
     normalizeDiffKey: normalizeDiffKey,
     getWaveComp: getWaveComp,
+    isBossId: isBossId, // FIX C2b: v2glue cần để không fallback mini_boss_N → chaser
+    getMinibossSpec: getMinibossSpec, // FIX C2b: engine resolve mini-boss entity thật
     getEndlessWave: getEndlessWave,
     getRunParams: getRunParams,
     getStageMechanic: getStageMechanic,

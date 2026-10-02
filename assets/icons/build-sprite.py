@@ -59,6 +59,20 @@ ICONS = {
 "window": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/>',
 "sparkles": '<path d="M11 4l1.6 4.2 4.2 1.6-4.2 1.6L11 15.6l-1.6-4.2-4.2-1.6 4.2-1.6L11 4z"/><path d="M17.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/>',
 "globe": '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c-5 5-5 12 0 17"/><path d="M12 3.5c5 5 5 12 0 17"/>',
+# ---- recovered 2026-10-02: glyphs that existed in index.html/game.html sprite
+# but were missing from this source file (hand-added in v1.1). Now canonical.
+"mirror": '<circle cx="12" cy="9" r="5.5"/><path d="M12 14.5V21"/><path d="M9.5 21h5"/><path d="M18.6 3.4l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/>',
+"vacuum": '<rect x="3" y="12" width="10" height="7" rx="2"/><path d="M13 15.5h3.5a4 4 0 0 0 4-4V7"/><path d="M20 7l1.5-1.5"/><circle cx="6.5" cy="19.5" r="1.4"/><circle cx="10.5" cy="19.5" r="1.4"/>',
+"expand": '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+# ---- new 2026-10-02 (Design Lead): glyphs for launcher redesign
+"flag": '<path d="M6 21V4"/><path d="M6 4.5c4-2.6 7.5 2.6 12 0v8.5c-4.5 2.6-8-2.6-12 0"/>',
+"anvil": '<path d="M3.5 7.5h11L20.5 5.8"/><path d="M20.5 5.8c.5 1.7 0 3.2-1.4 4L13.6 11.4"/><path d="M13.6 11.4 12.8 18.5"/><path d="M7 18.5h10"/><circle cx="6" cy="7.5" r="0.9" fill="currentColor" stroke="none"/>',
+"shop": '<path d="M3.5 4.5h17L22 9.5"/><path d="M5 9.5h14V20H5z"/><path d="M10 20v-5.5h4V20"/><path d="M8.6 4.5v5M12 4.5v5M15.4 4.5v5"/>',
+"calendar": '<rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><circle cx="9" cy="14.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14.5" r="1" fill="currentColor" stroke="none"/>',
+"check": '<circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.3l2.5 2.5 4.9-5.3"/>',
+"grad": '<path d="M2.5 9 12 5l9.5 4L12 13 2.5 9z"/><path d="M6.5 10.8V15c0 1.3 2.5 2.6 5.5 2.6s5.5-1.3 5.5-2.6v-4.2"/><path d="M21.5 9v4.5"/><circle cx="21.5" cy="14.8" r="1" fill="currentColor" stroke="none"/>',
+"infinity": '<circle cx="8.2" cy="12" r="3.9"/><circle cx="15.8" cy="12" r="3.9"/>',
+"palette": '<circle cx="12" cy="12" r="8.5"/><circle cx="8.8" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.8" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="15.4" r="1.2" fill="currentColor" stroke="none"/>',
 }
 
 STROKE_ATTRS = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'

@@ -4,7 +4,10 @@
    - IIFE, expose `window.I18N`. Không phụ thuộc module nào khác.
    - Giữ thuật ngữ Anh theo GAME-DESIGN-DOC §12: wave, combo, draft, DPS,
      XP, HP, boss, gem, Mảnh Kính (meta currency).
-   - Emoji có chủ đích: 💎 = gem, 🪟 = máu cửa sổ, ⚠ = nguy hiểm, 🏆 = kỷ lục.
+   - Quy ước icon DOM (bắt buộc, Design Team): emoji KHÔNG được dùng làm
+     icon trong DOM — dùng SVG `<use href="#i-..."/>` từ assets/icons (xem
+     assets/icons/MANIFEST.md). Emoji chỉ còn trong text vẽ canvas gameplay
+     (fillText) và KHÔNG chạm được bằng CSS/DOM.
    ---------------------------------------------------------------------
    API (HỢP ĐỒNG ỔN ĐỊNH — các team khác code theo API này):
      I18N.t(key, vars)      — dịch key, hỗ trợ {var} interpolation.
@@ -78,6 +81,16 @@
       "menu.diff.chill": "Chill",
       "menu.diff.normal": "Thường",
       "menu.diff.hard": "Khắc nghiệt",
+      /* ----- hub nav (landing sạch: icon mở panel) ----- */
+      "menu.hub.shop": "Cửa hàng",
+      "menu.hub.ach": "Thành tựu",
+      "menu.hub.daily": "Daily",
+      "menu.hub.stats": "Thống kê",
+      "menu.hub.settings": "Cài đặt",
+      "menu.hub.howto": "Cách chơi",
+      "menu.hub.close": "Đóng",
+      "menu.hub.nav": "Bảng điều khiển",
+      "menu.hub.difficulty": "Độ khó",
       "menu.footer_made": "Fan-made game lấy cảm hứng từ <b>Windowkill</b> (Steam) — không liên quan tới nhà phát triển gốc.",
       "menu.footer_dev": "Phát triển bởi <b>FU-DEVER</b> — CLB Lập trình, Đại học FPT Đà Nẵng &bull; WORK HARD — PLAY HARD",
       "menu.footer_vercel": "Chơi trên Vercel",
@@ -143,7 +156,7 @@
       "gameover.tip_window": "Quái tím gặm nát viền. Ưu tiên hạ chúng trước nhé.",
       "gameover.score_line": "{score} điểm · Wave {wave}",
       "gameover.stats": "{kills} quái hạ · <svg class=\"ic\" aria-hidden=\"true\"><use href=\"#i-levelup\"/></svg> cấp {level} · <svg class=\"ic\" aria-hidden=\"true\"><use href=\"#i-clock\"/></svg> {time}s · {diff}",
-      "gameover.new_record": "🏆 Kỷ lục mới!",
+      "gameover.new_record": "Kỷ lục mới!",
       "gameover.retry": "Chơi lại (R)",
       "gameover.retry_hint": "Chơi lại (R)",
       "gameover.menu": "Về menu",
@@ -196,6 +209,16 @@
       "menu.diff.chill": "Chill",
       "menu.diff.normal": "Normal",
       "menu.diff.hard": "Brutal",
+      /* ----- hub nav (clean landing: icon buttons open panels) ----- */
+      "menu.hub.shop": "Shop",
+      "menu.hub.ach": "Achievements",
+      "menu.hub.daily": "Daily",
+      "menu.hub.stats": "Stats",
+      "menu.hub.settings": "Settings",
+      "menu.hub.howto": "How to play",
+      "menu.hub.close": "Close",
+      "menu.hub.nav": "Control panel",
+      "menu.hub.difficulty": "Difficulty",
       "menu.footer_made": "A fan-made game inspired by <b>Windowkill</b> (Steam) — not affiliated with the original developer.",
       "menu.footer_dev": "Developed by <b>FU-DEVER</b> — Programming Club, FPT University Da Nang &bull; WORK HARD — PLAY HARD",
       "menu.footer_vercel": "Play on Vercel",
@@ -261,7 +284,7 @@
       "gameover.tip_window": "The purple ones chewed through the edge. Take them out first next time.",
       "gameover.score_line": "{score} pts · Wave {wave}",
       "gameover.stats": "{kills} kills · <svg class=\"ic\" aria-hidden=\"true\"><use href=\"#i-levelup\"/></svg> level {level} · <svg class=\"ic\" aria-hidden=\"true\"><use href=\"#i-clock\"/></svg> {time}s · {diff}",
-      "gameover.new_record": "🏆 New record!",
+      "gameover.new_record": "New record!",
       "gameover.retry": "Play again (R)",
       "gameover.retry_hint": "Play again (R)",
       "gameover.menu": "Back to menu",
@@ -295,7 +318,7 @@
       "upg.thorns.name": "Giáp gai",
       "upg.thorns.desc": "Va chạm hất văng quái và gây sát thương.",
       "upg.greed.name": "Tham lam",
-      "upg.greed.desc": "Mỗi 💎 cho thêm +1 XP.",
+      "upg.greed.desc": "Mỗi gem cho thêm +1 XP.",
       "upg.bulletspeed.name": "Đạn siêu tốc",
       "upg.bulletspeed.desc": "+25% tốc độ & tầm bay đạn.",
       "upg.luck.name": "May mắn",
@@ -491,7 +514,7 @@
       "upg.thorns.name": "Spiky armor",
       "upg.thorns.desc": "Collisions knock monsters back and hurt them.",
       "upg.greed.name": "Greed",
-      "upg.greed.desc": "Each 💎 gives +1 more XP.",
+      "upg.greed.desc": "Each gem gives +1 more XP.",
       "upg.bulletspeed.name": "Hyper bullets",
       "upg.bulletspeed.desc": "+25% bullet speed & range.",
       "upg.luck.name": "Luck",

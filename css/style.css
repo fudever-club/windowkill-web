@@ -18,6 +18,26 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 .btn-big:hover { transform: translateY(-2px) scale(1.02); }
 .btn-big:active { transform: scale(.97); }
+/* CTA band: nút CHƠI NGAY có không gian thở riêng — không sticky, không kẹp giữa các panel.
+   (feedback user 2026-10-02: bản sticky cũ bị kẹp giữa ô vuông, thiếu không gian) */
+.cta-band {
+  text-align: center;
+  padding: 46px 16px 40px;
+  margin: 6px 0;
+  position: relative;
+}
+.cta-band::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(420px 200px at 50% 45%, #0080FF22, transparent 70%);
+}
+.cta-band .btn-big { position: relative; font-size: 21px; padding: 17px 52px; }
+.cta-band .popup-note {
+  position: relative; margin: 16px 0 0; color: #8fb0d8; font-size: 13px;
+}
+@media (max-width: 480px) {
+  .cta-band { padding: 36px 16px 32px; }
+  .cta-band .btn-big { font-size: 19px; padding: 15px 44px; }
+}
 .btn-ghost {
   font-size: 15px; padding: 13px 22px; border-radius: 14px; cursor: pointer;
   background: transparent; color: #cfe6ff; border: 1px solid #ffffff2e;
@@ -187,4 +207,44 @@ button { touch-action: manipulation; }
   #new-profile-box input { min-height: 44px; }
   .v2-buy { min-height: 44px; }
   .footer-links a { padding: 10px 4px; }
+}
+/* ===== DESIGN 2026-10-02: Hub nav + overlay (landing sạch) ===== */
+.hub-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:0 0 14px}
+.hub-btn{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:76px;padding:12px 6px;
+  background:#0a1428cc;border:1px solid #2e6db488;border-radius:14px;color:#dbeafe;cursor:pointer;
+  font:600 12px/1.2 inherit;font-family:inherit;touch-action:manipulation}
+.hub-btn .ic{width:26px;height:26px}
+.hub-btn:hover{border-color:#0080ff;background:#10234acc}
+.hub-btn:active{transform:scale(.96)}
+#hub-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(2,6,16,.72);backdrop-filter:blur(4px)}
+#hub-overlay[hidden]{display:none}
+.hub-dialog{margin:0;width:min(640px,94vw);max-height:88vh;overflow-y:auto}
+.hub-dialog[hidden]{display:none}
+#hub-overlay.open .hub-dialog{animation:hubIn .18s ease-out}
+@keyframes hubIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.hub-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  position:sticky;top:0;background:inherit;padding:2px 0 10px;margin-bottom:6px;border-bottom:1px solid #2e6db444}
+.hub-dialog-head h3{margin:0}
+.hub-close{width:44px;height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  background:#ffffff10;border:1px solid #2e6db488;border-radius:12px;color:#dbeafe;cursor:pointer;touch-action:manipulation}
+.hub-close .ic{width:20px;height:20px}
+.hub-close:hover{background:#1a3a6e}
+.hub-badge{font-size:13px;font-weight:700;color:#ffd479;background:#ffd47918;border:1px solid #ffd47955;
+  border-radius:999px;padding:3px 10px;display:inline-flex;align-items:center;gap:5px}
+.hub-badge .ic{width:15px;height:15px}
+.hub-count{font-size:12.5px;font-weight:400;color:#8fb0d8}
+.hub-subpanel{margin:0 0 6px}
+.hub-subpanel h3{margin:10px 0 6px}
+/* tôn trọng người dùng tắt chuyển động */
+@media (prefers-reduced-motion: reduce){
+  #hub-overlay.open .hub-dialog{animation:none}
+  .hub-btn:active{transform:none}
+}
+/* mobile: hub 3 cột, nút ≥44px */
+@media (max-width: 480px){
+  #hub-overlay{padding:12px;align-items:flex-start;padding-top:6vh}
+  .hub-dialog{max-height:90vh}
+  .hub-nav{grid-template-columns:repeat(3,1fr);gap:8px}
+  .hub-btn{min-height:68px;font-size:11.5px}
 }

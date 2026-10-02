@@ -569,7 +569,7 @@ function combo(n) {
   } else if (n === 25) {
     _combo.popAmp = 0.5;
     jRing(cx, cy, { r1: 60, durMs: 350, color: "#ffd23f", alpha: 0.7, ease: 1 });
-    jHitStop(40);
+    jHitStop(25); // TUNING 2026-10-02: 40→25, mượt hơn
     sfx("combo_milestone", 25);
   } else if (n === 50) {
     _combo.popAmp = 0.5;
@@ -713,7 +713,7 @@ function bossIntro(boss, name, title, opts) {
  */
 function bossPhase(n, opts) {
   opts = opts || {};
-  if (!RM()) jHitStop(70);
+  if (!RM()) jHitStop(45); // TUNING 2026-10-02: 70→45, mượt hơn
   if (typeof opts.clearBullets === "function") { try { opts.clearBullets(); } catch (e) {} }
   var bx = opts.x, by = opts.y, br = opts.r || 60;
   jRing(bx, by, { r1: 120, durMs: 400, color: "#ffffff", alpha: 0.6, ease: 2 });
@@ -740,7 +740,7 @@ function bossDeath(boss, opts) {
   _heroStart(3);
   var bx = boss.x, by = boss.y, br = boss.r || 60;
   if (full) {
-    jHitStop(90, { exempt: true });
+    jHitStop(70, { exempt: true }); // TUNING 2026-10-02: 90→70, giữ punch cho boss chết
     jSlowMo(0.25, 700);
   }
   jShake(full ? 12 : 4, 700, 10);

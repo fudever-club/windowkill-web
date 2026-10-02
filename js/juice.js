@@ -119,7 +119,9 @@ function hitStop(ms, opts) {
   var now = performance.now();
   if (_slowMoMs > 0 && !exempt) return false;
   if (_draftOpen) return false;
-  if (!exempt && now - _lastHitStopAt < 250) return false;
+  // TUNING 2026-10-02: cooldown 250→350ms — giảm tần suất đóng băng khi giết
+   // liên tục, di chuyển mượt hơn (user feedback: dật dật khi di chuyển).
+   if (!exempt && now - _lastHitStopAt < 350) return false;
   _lastHitStopAt = now;
   _hitStopMs = Math.max(_hitStopMs, ms);
   return true;
@@ -647,8 +649,10 @@ function popScale(entity) {
  * @param {boolean} [isElite] biến thể vàng
  */
 function onKill(type, isElite) {
-  if (isElite) { hitStop(60); return; }
-  if (type === "tank" || type === "splitter") hitStop(40);
+  // TUNING 2026-10-02: elite 60→35, tank/splitter 40→25 — giữ cảm giác đã tay,
+   // giảm khựng khi vừa di chuyển vừa giết liên tục.
+   if (isElite) { hitStop(35); return; }
+  if (type === "tank" || type === "splitter") hitStop(25);
 }
 
 /* ================= 8. SPAWN WARNING (§5 spec) =================

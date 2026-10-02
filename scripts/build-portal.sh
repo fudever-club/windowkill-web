@@ -62,8 +62,13 @@ zip -T "$ZIP" >/dev/null && echo "verify: zip mở được OK"
 fail=0
 report() { if [ "$1" = "ok" ]; then echo "verify: $2 OK"; else echo "verify LỖI: $2"; fail=1; fi; }
 
+# Lấy danh sách file trong zip MỘT lần vào biến: tránh `zipinfo | grep -q`
+# (grep -q đóng pipe sớm → zipinfo ăn SIGPIPE exit 141 → pipefail biến kết quả
+# khớp thành "fail" giả, từng gây "BUILD FAILED" oan — audit 2026-10-02).
+ZIPLIST="$(zipinfo -1 "$ZIP")"
+
 # 1. sw.js absent trong zip
-if zipinfo -1 "$ZIP" | grep -Eq "(^|/)sw[.]js$"; then report bad "sw.js vẫn còn trong zip (blocker #4)"; else report ok "sw.js vắng mặt trong zip"; fi
+if grep -Eq "(^|/)sw[.]js$" <<< "$ZIPLIST"; then report bad "sw.js vẫn còn trong zip (blocker #4)"; else report ok "sw.js vắng mặt trong zip"; fi
 
 # 2. size ≤ 50MB (CrazyGames initial download limit)
 size_b=$(stat -c%s "$ZIP" 2>/dev/null || stat -f%z "$ZIP")
@@ -75,10 +80,10 @@ count=$(find "$OUT" -type f | wc -l | tr -d ' ')
 if [ "$count" -le 1500 ]; then report ok "file count $count ≤ 1500"; else report bad "file count $count vượt 1500"; fi
 
 # 4. index.html ở root của zip
-if zipinfo -1 "$ZIP" | grep -qx "index[.]html"; then report ok "index.html ở root zip"; else report bad "index.html không ở root zip"; fi
+if grep -qx "index[.]html" <<< "$ZIPLIST"; then report ok "index.html ở root zip"; else report bad "index.html không ở root zip"; fi
 
 # 5. js/portal.js tồn tại trong zip (runtime ép sat=sim)
-if zipinfo -1 "$ZIP" | grep -qx "js/portal[.]js"; then report ok "js/portal.js có trong zip (sat=sim enforcement)"; else report bad "thiếu js/portal.js trong zip"; fi
+if grep -qx "js/portal[.]js" <<< "$ZIPLIST"; then report ok "js/portal.js có trong zip (sat=sim enforcement)"; else report bad "thiếu js/portal.js trong zip"; fi
 
 # 6. manifest không còn reference sw.js (nếu có)
 if grep -rq "sw[.]js" "$OUT/manifest.webmanifest" 2>/dev/null; then report bad "manifest.webmanifest còn reference sw.js"; else report ok "manifest không reference sw.js"; fi

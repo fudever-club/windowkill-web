@@ -156,6 +156,28 @@ var MONSTER_REGISTRY = {
     hpAt: hp1(w => 14 + w * 1.8), speedAt: sp1(() => 38),
     weaknessVi: "Chậm; trứng máu 1; không lại gần viền (<100px).",
     counterVi: "Bắn trứng ngay (1 hit); knockback đẩy mẹ ra giữa map; AoE dọn trứng." },
+  /* ---- Season 1 "Mùa Deadline" — 3 quái mới ---- */
+  deadline: { id: "deadline", nameVi: "Deadline Dí", role: "đếm ngược / buff bầy", color: "#ffe14d",
+    shape: "đồng hồ báo thức", r: 13, dmg: 0, xp: 3, gems: 30, behavior: "countdownBell",
+    debutWave: 4, maxPerWave: 2,
+    debutHintVi: "Hạ nó trước khi chuông reo — đạn băng đóng băng đếm ngược 3s!",
+    hpAt: hp1(w => 5 + w * 1.8), speedAt: sp1(() => 85),
+    weaknessVi: "Không gây sát thương trực tiếp; chỉ nguy hiểm khi chuông reo.",
+    counterVi: "Ưu tiên bắn hạ trước; đạn băng kéo dài thời gian." },
+  otworker: { id: "otworker", nameVi: "Nhân Viên OT", role: "tăng nộ theo thời gian", color: "#ff5252",
+    shape: "tam giác nhọn", r: 12, dmg: 1, xp: 2, gems: 25, behavior: "rageChase",
+    debutWave: 6, maxPerWave: 2,
+    debutHintVi: "Giết nhanh, đừng để nó OT lâu — đạn băng reset stack Cáu!",
+    hpAt: hp1(w => 4 + w * 0.5), speedAt: sp1(w => 100 + w * 5),
+    weaknessVi: "Lúc mới spawn còn yếu (0 stack); càng để lâu càng mạnh.",
+    counterVi: "Dồn sát thương nhanh; đạn băng cho nó nghỉ ngơi (reset Cáu)." },
+  meeting: { id: "meeting", nameVi: "Kẻ Họp Hành", role: "vùng làm chậm / triệu tập", color: "#7dff9a",
+    shape: "tròn", r: 14, dmg: 0, xp: 4, gems: 35, behavior: "meetingAura",
+    debutWave: 8, maxPerWave: 1,
+    debutHintVi: "Đừng vào vòng họp của nó — đứng ngoài bắn từ xa!",
+    hpAt: hp1(w => 8 + w * 0.9), speedAt: sp1(() => 45),
+    weaknessVi: "Gần như đứng yên; không tấn công trực tiếp.",
+    counterVi: "Đứng ngoài vòng 160px; đạn nổ dọn cụm sau triệu tập." },
 };
 
 /* entry phụ: trứng của broodmother (entity riêng trong G.enemies) */

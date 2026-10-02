@@ -2717,6 +2717,7 @@ function resetGame() {
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     bombWave: 0, giantWave: 0, motherWave: 0,
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
+         globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
   });
   // F-02 + Phụ lục A: chụp modifiers của Xưởng cho run này (runMods đã được
   // preboot của V2 gán trước lần reset đầu; các lần restart đọc lại cùng nguồn)

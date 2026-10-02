@@ -62,8 +62,11 @@ function T(key, vi) {
   return vi;
 }
 
-/* ---------- §11.2: 4 tier hit-stop (giây) ---------- */
-var HS_TIER = { tick: 0, pop: 0.030, boom: 0.060, cinematic: 0.120 };
+/* ---------- §11.2: 4 tier hit-stop (giây) ----------
+* TUNING 2026-10-02 (user feedback: di chuyển dật dật): giảm ~1/2 so với
+* giá trị gốc (pop 30→15, boom 60→35, cinematic 120→90) để mượt hơn nhưng
+* vẫn giữ cảm giác "đã tay" khi giết quái. */
+var HS_TIER = { tick: 0, pop: 0.015, boom: 0.035, cinematic: 0.090 };
 
 /* ---------- §11.4: slow-mo triggers ---------- */
 var SLOWMO = {

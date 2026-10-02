@@ -2252,9 +2252,23 @@ const MONSTER_REGISTRY = {
     r: 10, dmg: 1, score: 18, xp: 2, minWave: 13, weight: 30, acts: [2, 3],
     hp: w => 3 + w * 0.4, spd: w => 150 + w * 8,
     init: e => { e.fuse = -1; }, desc: I18N.t("monster.kamikaze.desc") },
-};
-
-const BEHAVIORS = {
+  /* SEASON 1 "MÙA DEADLINE" — 3 quái mới. Endless: spawn tự động qua buildSpawnQueue (minWave 6+, weight ~10% tổng). */
+  "deadline": { id: "deadline", name: I18N.t("monster.deadline.name"), behavior: "countdownBell", color: "#ffe14d",
+    r: 13, dmg: 0, score: 30, xp: 3, minWave: 6, weight: 15, acts: [1, 2, 3],
+    hp: w => 5 + w * 0.6, spd: () => 85,
+    init: e => { e.countdown = 12; e.tickLast = 12; },
+    desc: I18N.t("monster.deadline.desc") },
+  "otworker": { id: "otworker", name: I18N.t("monster.otworker.name"), behavior: "rageChase", color: "#ff5252",
+    r: 12, dmg: 1, score: 25, xp: 2, minWave: 6, weight: 15, acts: [1, 2, 3],
+    hp: w => 4 + w * 0.5, spd: w => 100 + w * 5,
+    init: e => { e.rage = 0; e.rageT = 0; },
+    desc: I18N.t("monster.otworker.desc") },
+  "meeting": { id: "meeting", name: I18N.t("monster.meeting.name"), behavior: "meetingAura", color: "#7dff9a",
+    r: 14, dmg: 0, score: 35, xp: 4, minWave: 6, weight: 10, acts: [1, 2, 3],
+    hp: w => 8 + w * 0.9, spd: () => 45,
+    init: e => { e.summonT = 12; e.warnT = 0; },
+    desc: I18N.t("monster.meeting.desc") },
+};const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const wob = Math.sin(e.t * 6) * 12;

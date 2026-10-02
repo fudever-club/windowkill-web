@@ -102,6 +102,10 @@
     },
     frame: function (dt) {
       safe(function () { if (window.Tutorial) Tutorial.update(dt); });
+      // FIX 2026-10-03: Juice2.update PHẢI chạy mỗi frame — decay G.flash/flashRed,
+      // rings, multikill, near-death, gameover cine. Thiếu nó, flash trắng từ
+      // onLevelUp/onKill/onNuke kẹt vĩnh viễn → cả màn hình phủ xám (bug user báo).
+      safe(function () { if (window.Juice2) Juice2.update(dt); });
       // Boss module + StageFX (chỉ khi stage mode)
       safe(function () {
         if (V2.bossActive && window.Bosses && window.G) Bosses.update(dt, window.G);

@@ -3478,13 +3478,15 @@ function render(now) {
   ctx.fillStyle = "#7df9ff"; ctx.fillRect(14, 68, 220 * Math.min(1, G.xp / G.xpNeed), 8);
   ctx.fillStyle = "#c9b8e0"; ctx.font = "12px sans-serif";
   ctx.fillText(`Lv ${G.level}`, 240, 76);
-  // máu cửa sổ
-  const bw = 220;
-  ctx.fillStyle = "#ffffff18"; ctx.fillRect(W - bw - 14, 14, bw, 10);
+  // máu cửa sổ — chừa 116px mép phải cho 2 nút HUD (pause/fullscreen 44px),
+  // tránh thanh máu bị nút đè lên (bug report 2026-10-02)
+  const bw = Math.max(90, Math.min(220, W - 366));
+  const rPad = 116;
+  ctx.fillStyle = "#ffffff18"; ctx.fillRect(W - bw - rPad, 14, bw, 10);
   ctx.fillStyle = winPct < 0.35 ? "#ff5470" : "#ff9df3";
-  ctx.fillRect(W - bw - 14, 14, bw * winPct, 10);
+  ctx.fillRect(W - bw - rPad, 14, bw * winPct, 10);
   ctx.fillStyle = "#c9b8e0"; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
-  ctx.fillText(I18N.t("hud.window_hp"), W - 14, 40); ctx.textAlign = "left";
+  ctx.fillText(I18N.t("hud.window_hp"), W - rPad, 40); ctx.textAlign = "left";
   // boss bar (v2.0: boss module vẽ thanh 3 nấc khi active)
   var v2bar = false;
   if (window.V2) { try { v2bar = V2.bossBar(); } catch (e) {} }

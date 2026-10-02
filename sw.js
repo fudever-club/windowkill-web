@@ -7,7 +7,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-v5"; // bump 2026-10-02 (perf): precache bỏ og-banner/icon-512 + bgm.js trì hoãn nạp nhạc + mp3 128k/PNG quantize — ép client nhận bản mới
+const VERSION = "windowkill-v6"; // bump 2026-10-02 (audit B1): 28 commits sau v5 + PR #33 đổi save format — ép client nhận bản mới
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";

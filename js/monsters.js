@@ -178,6 +178,22 @@ var MONSTER_REGISTRY = {
     hpAt: hp1(w => 8 + w * 0.9), speedAt: sp1(() => 45),
     weaknessVi: "Gần như đứng yên; không tấn công trực tiếp.",
     counterVi: "Đứng ngoài vòng 160px; đạn nổ dọn cụm sau triệu tập." },
+
+  /* ---- Variety Pack 1 — 2 quái bonus ---- */
+  shipper: { id: "shipper", nameVi: "Shipper Gem", role: "bonus rượt đuổi", color: "#2dd4bf",
+    shape: "hộp carton có bánh xe + mũ bảo hiểm mini", r: 14, dmg: 0, xp: 2, gems: 15, behavior: "courier",
+    debutWave: 10, maxPerWave: 1,
+    debutHintVi: "Đón đầu nó lúc thấm mệt — hạ nhanh, ẵm 15 gem!",
+    hpAt: hp1(w => 8 + w * 0.9), speedAt: sp1(() => 165),
+    weaknessVi: "Không gây sát thương; chỉ chạy trốn. Phase 'mệt' tốc còn 90.",
+    counterVi: "Đón đầu lúc nó thấm mệt; đạn băng kéo dài phase mệt thêm 1.5s." },
+  director: { id: "director", nameVi: "Đạo Diễn Sóng", role: "roll modifier wave", color: "#f472b6",
+    shape: "loa phóng thanh có chân", r: 16, dmg: 0, xp: 5, gems: 10, behavior: "director",
+    debutWave: 12, maxPerWave: 1,
+    debutHintVi: "Hô 'ACTION!' rồi roll modifier vui cả wave. Giết được thưởng 'CẮT! +100'.",
+    hpAt: hp1(w => 12 + w * 1.0), speedAt: sp1(() => 55),
+    weaknessVi: "Chậm chạp (tốc 55), không tấn công. Modifier giữ nguyên dù bị giết.",
+    counterVi: "Tập trung bắn hạ lấy 10 gem + 100 điểm thưởng." },
 };
 
 /* entry phụ: trứng của broodmother (entity riêng trong G.enemies) */
@@ -1690,9 +1706,55 @@ function t(key, lang) {
 }
 function setLang(l) { if (STRINGS[l]) _lang = l; }
 
+/* ---------------- WAVE_MODIFIERS (Variety Pack 1) ----------------
+ * 12 modifier của Đạo Diễn Sóng: mỗi phần tử { id, apply(G), clear(G) }.
+ * QUY ƯỚC: apply()/clear() CHỈ set/reset các flag trên object G (truyền vào),
+ * không truy cập DOM, không gọi hàm game khác. game.js đọc flag để áp effect.
+ * Mặc định: gemMul/xpMul/shipSpdMul/magnetMul/pickupMul = 1; slowOpenT = 0;
+ * các flag bool = false.
+ */
+var WAVE_MODIFIERS = [
+  { id: "gemrain",
+    apply: function (G) { G.vp1_gemMul = 2; },
+    clear: function (G) { G.vp1_gemMul = 1; } },
+  { id: "tiny",
+    apply: function (G) { G.vp1_tiny = true; },
+    clear: function (G) { G.vp1_tiny = false; } },
+  { id: "xpturbo",
+    apply: function (G) { G.vp1_xpMul = 2; },
+    clear: function (G) { G.vp1_xpMul = 1; } },
+  { id: "tailwind",
+    apply: function (G) { G.vp1_shipSpdMul = 1.2; },
+    clear: function (G) { G.vp1_shipSpdMul = 1; } },
+  { id: "starbullets",
+    apply: function (G) { G.vp1_starBullets = true; },
+    clear: function (G) { G.vp1_starBullets = false; } },
+  { id: "slowopen",
+    apply: function (G) { G.vp1_slowOpenT = 12; },
+    clear: function (G) { G.vp1_slowOpenT = 0; } },
+  { id: "glowparty",
+    apply: function (G) { G.vp1_glowParty = true; },
+    clear: function (G) { G.vp1_glowParty = false; } },
+  { id: "gemmagnet",
+    apply: function (G) { G.vp1_magnetMul = 3; },
+    clear: function (G) { G.vp1_magnetMul = 1; } },
+  { id: "djparty",
+    apply: function (G) { G.vp1_dj = true; },
+    clear: function (G) { G.vp1_dj = false; } },
+  { id: "hullinsurance",
+    apply: function (G) { G.vp1_hullIns = true; },
+    clear: function (G) { G.vp1_hullIns = false; } },
+  { id: "payday",
+    apply: function (G) { G.vp1_pickupMul = 2; },
+    clear: function (G) { G.vp1_pickupMul = 1; } },
+  { id: "fireworks",
+    apply: function (G) { G.vp1_fireworks = true; },
+    clear: function (G) { G.vp1_fireworks = false; } },
+];
+
 /* ---------------- expose ---------------- */
 var Monsters = {
-  MONSTER_REGISTRY, BEHAVIORS, EGG_DEF, MINIBOSSES, SPAWN_SUGGEST,
+  MONSTER_REGISTRY, BEHAVIORS, EGG_DEF, MINIBOSSES, SPAWN_SUGGEST, WAVE_MODIFIERS,
   makeEnemy, initState, ensureEdgeState,
   crackEdge, chewAmount, canKnock, knockChew, freezeEdge, addWindowGap,
   tickEdges, tickSlow, tickShipPull, clearEdges, shrinkHook, drawEdgeFx, drawBuffed,

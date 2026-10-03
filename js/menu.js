@@ -135,6 +135,11 @@
   const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   const saveSettings = () => store.set("wk_settings", settings);
+  // FIX 2026-10-03 (2-track): web không popup thật nữa — migrate setting "auto" cũ → "sim".
+  // Desktop Electron giữ nguyên (popup thật do app quản lý).
+  if (!/Electron\//.test(navigator.userAgent || "") && settings.sat === "auto") {
+    settings.sat = "sim"; saveSettings();
+  }
   function paintToggles() {
     // QW7: aria-pressed đồng bộ với class on/sel cho mọi toggle & segmented control
     const press = (el, on) => { if (el) el.setAttribute("aria-pressed", on ? "true" : "false"); };
@@ -294,7 +299,7 @@
     const q = new URLSearchParams({
       diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
       shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
-      sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "auto", profile: activeId,
+      sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "sim", profile: activeId,
     });
     if (window.WK_PORTAL_MODE) {
       // Portal/iframe (itch.io, CrazyGames...): popup bị chặn → mở game ngay trong khung hiện tại
@@ -400,7 +405,7 @@
         const q = new URLSearchParams({
           diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
           shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
-          sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "auto", profile: activeId,
+          sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "sim", profile: activeId,
         });
         if (v2sel.kind === "stage") q.set("stage", String(v2sel.n));
         if (v2sel.kind === "daily") q.set("daily", "1");

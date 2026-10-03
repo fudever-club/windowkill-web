@@ -83,7 +83,7 @@ function buildSandbox() {
 }
 
 const SCRIPTS = ["js/portal.js", "js/pwa.js", "js/analytics.js", "js/i18n.js", "js/audio.js",
-  "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js", "js/campaign.js", "js/monsters.js",
+  "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js", "js/tuning.js", "js/campaign.js", "js/monsters.js",
   "js/bosses.js", "js/stagefx.js", "js/tutorial.js", "js/meta.js", "js/juice2.js", "js/sfx2.js",
   "js/upgrades2.js", "js/v2glue.js", "js/game.js", "js/mobile.js"];
 
@@ -139,6 +139,9 @@ describe("spawn integration (incident 2026-10-03)", () => {
     const before = src.slice(Math.max(0, i - 400), i);
     assert.match(before, /\}\s*$/,
       "ngay trước `function mkEnemy` phải là `}` đóng function trước đó (onboardSpdMul) — lỗi scope incident 2026-10-03");
-    assert.ok(src.includes("hp: def.hp(G.wave)"), "object literal của mkEnemy phải có `hp:`");
+    // Item 3 (Sprint R2): hp đi qua wkCapMult (band cap, null = giữ nguyên) nhưng
+    // vẫn phải suy từ def.hp(G.wave) — regression cho incident mất `hp:` 2026-10-03.
+    assert.match(src, /hp:\s*(wkCapMult\(G\.wave,\s*"hp",\s*)?def\.hp\(G\.wave\)/,
+      "object literal của mkEnemy phải có `hp:` suy từ def.hp(G.wave)");
   });
 });

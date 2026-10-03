@@ -59,7 +59,7 @@ describe("sw.js — precache đầy đủ game", () => {
   it("P7: mọi file JS game (kể cả v2.0) đều được precache", () => {
     const need = ["js/game.js", "js/menu.js", "js/api.js", "js/i18n.js", "js/campaign.js",
       "js/meta.js", "js/tutorial.js", "js/monsters.js", "js/bosses.js", "js/v2glue.js",
-      "js/upgrades2.js", "js/mobile.js", "js/portal.js", "js/pwa.js"];
+      "js/upgrades2.js", "js/mobile.js", "js/portal.js", "js/pwa.js", "js/tuning.js"];
     const missing = need.filter((f) => !assets.includes(f));
     assert.deepEqual(missing, [], `precache thiếu: ${missing.join(", ")}`);
   });

@@ -2241,7 +2241,7 @@ function openDraftLegacy(picks) {
   $("ov-draft").classList.add("show");
 }
 function gainXp(n) {
-  G.xp += n;
+  G.xp += n * (G.vp1_xpMul || 1); // VP1 xpturbo
   while (G.xp >= G.xpNeed) {
     G.xp -= G.xpNeed; G.level++;
     G.xpNeed = 5 + G.level * 3;
@@ -2313,6 +2313,21 @@ const MONSTER_REGISTRY = {
     hp: w => 8 + w * 0.9, spd: () => 45,
     init: e => { e.summonT = 12; e.warnT = 0; },
     desc: I18N.t("monster.meeting.desc") },
+  /* VARIETY PACK 1 (2026-10-03): Shipper Gem — bonus rượt đuổi, dmg 0, không áp lực. */
+  "shipper": { id: "shipper", name: I18N.t("monster.shipper.name"), behavior: "courier", color: "#2dd4bf",
+    r: 14, dmg: 0, score: 40, xp: 2, minWave: 10, weight: 25, acts: [1, 2, 3],
+    hp: w => 8 + w * 0.9, spd: w => 165,
+    init: e => { e.stam = 0; e.state = "cruise"; e.tauntT = 2; },
+    onDeath: e => { for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2;
+      G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) }); } },
+    desc: I18N.t("monster.shipper.desc") },
+  /* VARIETY PACK 1: Đạo Diễn Sóng — spawn scripted (weight 0), roll modifier vui. */
+  "director": { id: "director", name: I18N.t("monster.director.name"), behavior: "director", color: "#f472b6",
+    r: 16, dmg: 0, score: 100, xp: 5, minWave: 12, weight: 0, acts: [1, 2, 3],
+    hp: w => 12 + w * 1.0, spd: () => 55,
+    init: e => { e.rolled = false; },
+    onDeath: e => { addFloat(e.x, e.y - 30, I18N.t("vp1.director.cut"), "#f472b6", true); },
+    desc: I18N.t("monster.director.desc") },
 };const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
@@ -2482,6 +2497,46 @@ const MONSTER_REGISTRY = {
       try { AudioEngine.sfx.summonPulse(); } catch (err) { try { AudioEngine.sfx.wave(); } catch (e2) {} }
     }
   } },
+  /* VARIETY PACK 1: Shipper Gem — chạy TRÁNH tàu (flee) + zigzag + chu kỳ stamina.
+   * sprint 3s (205, vệt teal) → tired 2.5s (90) → cruise 1.5s (165). dmg 0. */
+  courier: { update(e, dt, s, spd) {
+    const dx = e.x - s.x, dy = e.y - s.y, d = hypot(dx, dy) || 1;
+    e.stam = (e.stam || 0) + dt;
+    const cyc = e.stam % 7;
+    let cur;
+    if (cyc < 3) { cur = 205; e.state = "sprint"; }
+    else if (cyc < 5.5) { cur = 90; e.state = "tired"; }
+    else { cur = 165; e.state = "cruise"; }
+    // đạn băng kéo dài phase tired thêm (stack đơn giản: trừ stam)
+    if (e.slowT > 0 && e.state === "tired") e.stam -= dt * 0.6;
+    let mx = dx / d, my = dy / d;
+    // tránh viền: cách viền < 60px → bẻ hướng vào trong
+    try {
+      const b = bounds();
+      if (e.x - b.x < 60) mx = Math.abs(mx) * 0.7 + 0.7;
+      if (b.x + b.w - e.x < 60) mx = -Math.abs(mx) * 0.7 - 0.7;
+      if (e.y - b.y < 60) my = Math.abs(my) * 0.7 + 0.7;
+      if (b.y + b.h - e.y < 60) my = -Math.abs(my) * 0.7 - 0.7;
+      const ml = hypot(mx, my) || 1; mx /= ml; my /= ml;
+    } catch (er) {}
+    const wob = Math.sin(e.t * 5) * 60; // zigzag vuông góc
+    e.x += (mx * cur + -my * wob) * dt;
+    e.y += (my * cur + mx * wob) * dt;
+    if (e.state === "sprint") burst(e.x, e.y, 1, ["#2dd4bf"], 60);
+    // lêu lêu mỗi 4s
+    e.tauntT = (e.tauntT == null ? 2 : e.tauntT) - dt;
+    if (e.tauntT <= 0) {
+      e.tauntT = 4;
+      const taunts = ["lêu lêu~", "bắt được tui hông?", "giao hàng thần tốc!"];
+      addFloat(e.x, e.y - 24, taunts[(Math.random() * taunts.length) | 0], "#2dd4bf", false);
+    }
+  } },
+  /* VARIETY PACK 1: Đạo Diễn Sóng — lững thững, roll modifier lúc spawn. */
+  director: { update(e, dt, s, spd) {
+    if (!e.rolled) { e.rolled = true; vp1RollModifier(e); }
+    const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
+    e.x += dx / d * spd * dt; e.y += dy / d * spd * dt;
+  } },
 };
 const ACTS = [
   { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, bgStage: 1,
@@ -2597,6 +2652,8 @@ if (miniSpec) {
     e.xp = miniSpec.gemReward;
   }
   e.maxHp = e.hp;
+  // VP1 tiny: quái nhỏ 55%, nhanh +15%, HP −30% (net dễ hơn)
+  if (G.vp1_tiny && !e.miniBoss) { e.r *= 0.55; e.hp *= 0.7; e.maxHp = e.hp; e.speed *= 1.15; }
   if (def.init) def.init(e);
   return e;
 }
@@ -2657,6 +2714,103 @@ function buildSpawnQueue(n) {
   }
   return q;
 }
+/* ================= VARIETY PACK 1 (2026-10-03) =================
+ * Triết lý CEO: variety cho VUI, không tăng khó. Mọi modifier/event đều
+ * có lợi hoặc hài — cấm tăng HP/speed/dmg quái.
+ * ===================================================================== */
+function vp1GetModifiers() {
+  try { return (window.Monsters && Monsters.WAVE_MODIFIERS) || []; } catch (e) { return []; }
+}
+/* Wave n có phải breather? n>=16 && n%6==4 → 16,22,28,34,40,46 (không trùng boss). */
+function vp1IsBreather(n) { return n >= 16 && n % 6 === 4; }
+/* Wave n có phải boss? */
+function vp1IsBossWave(n) { return n % 5 === 0; }
+/* Director spawn khi: n>=12, không boss, không breather. */
+function vp1DirectorEligible(n) { return n >= 12 && !vp1IsBossWave(n) && !vp1IsBreather(n); }
+/* Roll 1 modifier (không trùng wave trước), apply + banner. */
+function vp1RollModifier(e) {
+  const mods = vp1GetModifiers();
+  if (!mods.length) return;
+  let pool = mods.filter(m => !G.vp1_lastMod || m.id !== G.vp1_lastMod);
+  if (!pool.length) pool = mods;
+  const m = pool[(Math.random() * pool.length) | 0];
+  G.vp1_lastMod = m.id;
+  G.vp1_mod = m.id;
+  try { m.apply(G); } catch (er) {}
+  setBanner(I18N.t("vp1.mod." + m.id + ".name"), I18N.t("vp1.mod." + m.id + ".desc"));
+}
+/* Clear modifier wave trước (gọi đầu startWave). */
+function vp1ClearModifier() {
+  if (!G.vp1_mod) return;
+  const mods = vp1GetModifiers();
+  const m = mods.find(x => x.id === G.vp1_mod);
+  try { if (m) m.clear(G); } catch (e) {}
+  G.vp1_mod = null;
+}
+/* Spawn director scripted: 1 con, cách tàu > 300px. */
+function vp1SpawnDirector() {
+  const def = MONSTER_REGISTRY["director"];
+  if (!def) return;
+  const b = bounds(), s = G.ship || { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  let x = b.x + b.w / 2, y = b.y + b.h / 2;
+  for (let i = 0; i < 12; i++) {
+    x = b.x + rand(60, b.w - 60); y = b.y + rand(60, b.h - 60);
+    if (hypot(x - s.x, y - s.y) > 300) break;
+  }
+  spawnEnemyAt("director", x, y);
+  if (!G.vp1_directorDebutShown) {
+    G.vp1_directorDebutShown = true;
+    setBanner(I18N.t("vp1.director.debut"), I18N.t("monster.director.desc"));
+  }
+}
+/* Roll event theo trigger table (§3 spec). Trả về id event hoặc null. */
+function vp1RollEvent(n) {
+  if (vp1IsBossWave(n)) return null;
+  if (n >= 24 && n % 24 === 0) return "golden";      // 24, 48...
+  if (n >= 18 && n % 24 === 18) return "blackout";   // 18, 42...
+  if (n >= 14 && n % 12 === 2) return "meteor";      // 14, 26, 38...
+  return null;
+}
+/* Kích hoạt event đã roll. */
+function vp1TriggerEvent(ev, n) {
+  if (ev === "meteor") {
+    G.vp1_meteors = [5, 15, 25]; // giây trong wave sẽ có sao băng
+    setBanner(I18N.t("vp1.event.meteor.banner"), "");
+  } else if (ev === "blackout") {
+    try { if (typeof BG !== "undefined") BG.setBlackout(true); } catch (e) {}
+    G.vp1_blackoutT = 10;
+    setBanner(I18N.t("vp1.event.blackout.banner"), "");
+  } else if (ev === "golden") {
+    G.vp1_golden = true;
+    setBanner(I18N.t("vp1.event.golden.banner"), "");
+  }
+  try { AudioEngine.sfx.wave(); } catch (e) {}
+}
+/* VP1: tick sao băng — 3 vệt quét ngang, quái trúng 25 dmg, không chạm tàu. */
+function vp1TickMeteors(dt) {
+  G.vp1_meteorT = (G.vp1_meteorT || 0) + dt;
+  if (!G.vp1_meteors.length) return;
+  if (G.vp1_meteorT >= G.vp1_meteors[0]) {
+    G.vp1_meteors.shift(); G.vp1_meteorT = 0;
+    const b = bounds();
+    const y = b.y + rand(b.h * 0.2, b.h * 0.8);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    // vệt sáng quét ngang
+    for (let i = 0; i < 24; i++) {
+      G.parts.push({ x: b.x + (dir > 0 ? -i * 30 : b.w + i * 30), y: y + rand(-8, 8),
+        vx: dir * 900, vy: 0, life: 1.2, t: 0, c: ["#ffd166", "#ffffff"][i % 2], r: 5 });
+    }
+    // sát thương quái trên đường quét
+    for (const e of G.enemies) {
+      if (e.dead) continue;
+      if (Math.abs(e.y - y) < 50) {
+        damageEnemy(e, 25, null);
+        burst(e.x, e.y, 16, ["#ffd166", "#ff9d5c", "#ffffff"], 300);
+      }
+    }
+    try { AudioEngine.sfx.boom(); } catch (e) {}
+  }
+}
 function startWave(n) {
   G.wave = n; G.waveKills = 0;
   G.waveClearShown = false;
@@ -2681,9 +2835,24 @@ function startWave(n) {
     } catch (er) {}
   }
   if (n % 5 === 0) { spawnBoss(); return; }
+  vp1ClearModifier(); // VP1: xóa modifier wave trước (không stack)
+  G.vp1_golden = false; G.vp1_meteors = null; G.vp1_blackoutT = 0;
+  try { if (typeof BG !== "undefined") BG.setBlackout(false); } catch (e) {}
   G.spawnQueue = buildSpawnQueue(n);
+  // VP1 breather: spawn ×0.6
+  if (vp1IsBreather(n)) {
+    const keep = Math.max(4, Math.round(G.spawnQueue.length * 0.6));
+    G.spawnQueue.length = Math.min(G.spawnQueue.length, keep);
+    G.vp1_breather = true;
+    setBanner(I18N.t("vp1.event.breather.banner"), "");
+  } else G.vp1_breather = false;
   G.spawnQueue.sort(() => Math.random() - 0.5);
   G.spawnT = 0;
+  // VP1: director scripted (1 con đầu wave)
+  if (vp1DirectorEligible(n)) vp1SpawnDirector();
+  // VP1: roll event
+  const vp1ev = vp1RollEvent(n);
+  if (vp1ev) vp1TriggerEvent(vp1ev, n);
   maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
   maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
@@ -2754,7 +2923,8 @@ function fireBullet() {
     const a = ang + (i - (s.streams - 1) / 2) * 0.13;
     G.bullets.push({ x: s.x + Math.cos(a) * 18, y: s.y + Math.sin(a) * 18,
       vx: Math.cos(a) * s.bulletSpd, vy: Math.sin(a) * s.bulletSpd,
-      r: 4, dmg: s.dmg, pierce: s.pierce, life: 1.15 });
+      r: 4, dmg: s.dmg, pierce: s.pierce + (G.vp1_starBullets ? 1 : 0), life: 1.15,
+      star: !!G.vp1_starBullets }); // VP1 starbullets
   }
   // chớp nòng
   G.parts.push({ x: s.x + Math.cos(ang) * 22, y: s.y + Math.sin(ang) * 22,
@@ -2836,6 +3006,12 @@ function resetGame() {
     bombWave: 0, giantWave: 0, motherWave: 0,
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
+         // VARIETY PACK 1: reset modifier/event flags khi chơi lại
+         vp1_mod: null, vp1_lastMod: null, vp1_gemMul: 1, vp1_tiny: false, vp1_xpMul: 1,
+         vp1_shipSpdMul: 1, vp1_starBullets: false, vp1_slowOpenT: 0, vp1_glowParty: false,
+         vp1_magnetMul: 1, vp1_dj: false, vp1_hullIns: false, vp1_pickupMul: 1,
+         vp1_fireworks: false, vp1_golden: false, vp1_breather: false,
+         vp1_meteors: null, vp1_meteorT: 0, vp1_blackoutT: 0, vp1_directorDebutShown: false,
   });
   // F-02 + Phụ lục A: chụp modifiers của Xưởng cho run này (runMods đã được
   // preboot của V2 gán trước lần reset đầu; các lần restart đọc lại cùng nguồn)
@@ -2915,15 +3091,21 @@ function killEnemy(e) {
   if (window.Cinema) { try { Cinema.combo(G.combo); } catch (err) {} }
   else if (G.combo >= 5 && G.combo % 5 === 0) addFloat(e.x, e.y - 40, `🔥 COMBO x${G.combo}!`, "#f9a8d4", true);
   if (def && def.onDeath) def.onDeath(e); // vd splitter đẻ mini
-  const n = e.type === "tank" ? 3 : 1;
+  // VP1 fireworks: kill nổ pháo hoa lớn nhiều màu
+  if (G.vp1_fireworks) burst(e.x, e.y, 40, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
+  const n = (e.type === "tank" ? 3 : 1) * (G.vp1_gemMul || 1);
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
-    G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: e.xp, t: rand(0, 9) });
+    // VP1 golden: gem ×2 giá trị; VP1 breather: gem ×1.5 giá trị
+    const vp1GemValMul = (G.vp1_golden ? 2 : 1) * (G.vp1_breather ? 1.5 : 1);
+    G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: e.xp * vp1GemValMul, t: rand(0, 9) });
   }
+  // VP1 glowparty: mỗi kill +1 gem
+  if (G.vp1_glowParty) G.gems.push({ x: e.x, y: e.y - 10, vx: 0, vy: -60, v: 1, t: 0 });
   // rớt vật phẩm: 10% tổng, chia theo trọng số PICKUP_DEFS
   // REBALANCE v2.0: chill tăng tỉ lệ rớt heart/shield ~+50% (pickupBoost × trọng số + dropRateMul × tỉ lệ chung)
   const boost = DIFF.pickupBoost || 1;
-  const dropRate = 0.10 * (DIFF.dropRateMul || 1);
+  const dropRate = 0.10 * (DIFF.dropRateMul || 1) * (G.vp1_pickupMul || 1); // VP1 payday
   const wOf = k => ((k === "heart" || k === "shield") ? PICKUP_DEFS[k].w * boost : PICKUP_DEFS[k].w);
   const pdefs = Object.entries(PICKUP_DEFS).filter(([, d]) => !d.can || d.can(G.ship));
   const ptot = pdefs.reduce((a, [k]) => a + wOf(k), 0);
@@ -3068,7 +3250,7 @@ function update(dt) {
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
   if (ml > 0.05) {
-    const sp = s.speed * Math.min(1, ml) * shipSlowMult(); // SEASON 1: vùng họp slow 35%
+    const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
     s.moveSpeed = sp; // WOW: Cinema.playerFx tự vẽ trail khi speed > 180
   } else s.moveSpeed = 0;
@@ -3180,12 +3362,21 @@ function update(dt) {
   }
 
   seasonTick(dt, s); // SEASON 1: tick chuông haste + vùng họp (1 lần/frame)
+  // VP1: timers (slowOpen, blackout, meteors)
+  if (G.vp1_slowOpenT > 0) G.vp1_slowOpenT = Math.max(0, G.vp1_slowOpenT - dt);
+  if (G.vp1_blackoutT > 0) {
+    G.vp1_blackoutT -= dt;
+    if (G.vp1_blackoutT <= 0) { try { if (typeof BG !== "undefined") BG.setBlackout(false); } catch (e) {} }
+  }
+  if (G.vp1_meteors && G.vp1_meteors.length) vp1TickMeteors(dt);
   /* quái */
   for (const e of G.enemies) {
     if (e.dead) continue;
     e.t += dt; e.flash = Math.max(0, e.flash - dt); e.slowT = Math.max(0, e.slowT - dt);
     e.sayNangT = Math.max(0, (e.sayNangT || 0) - dt); // CEO §9-Q2: đếm ngược "say nắng"
-    const spd = e.speed * (e.slowT > 0 ? 0.45 : 1) * (G.globalHaste || 1); // SEASON 1: chuông Deadline Dí
+    // VP1 slowopen: 12s đầu wave quái chậm 0.6× · VP1 dj: zigzag theo nhịp
+    let vp1SpdMul = (G.vp1_slowOpenT > 0 ? 0.6 : 1);
+    const spd = e.speed * (e.slowT > 0 ? 0.45 : 1) * (G.globalHaste || 1) * vp1SpdMul; // SEASON 1: chuông Deadline Dí
     // knockback vật lý
     e.x += e.kbx * dt; e.y += e.kby * dt; e.kbx *= 0.9; e.kby *= 0.9;
 
@@ -3195,6 +3386,8 @@ function update(dt) {
       // data-driven: mỗi quái chạy strategy của nó (BEHAVIORS[e.behavior])
       const bh = BEHAVIORS[e.behavior] || BEHAVIORS.chase;
       bh.update(e, dt, s, spd);
+      // VP1 djparty: zigzag theo nhịp
+      if (G.vp1_dj) { e.x += Math.sin(e.t * 8) * 40 * dt; e.y += Math.cos(e.t * 6) * 40 * dt; }
     }
     if (G.phase !== "play") return;
     // chạm tàu (healer dmg=0 -> không gây sát thương; quái say nắng không cắn tàu)
@@ -3214,6 +3407,12 @@ function update(dt) {
     G.waveClearShown = true;
     // v2.0: juice2/meta/tutorial/campaign hook
     if (window.V2) { try { V2.onWaveClear(G.wave); } catch (er) {} }
+    // VP1 hullinsurance: cuối wave vá thêm +30px · VP1 breather: +1 HP
+    if (G.vp1_hullIns) { try { growWindow(30, 23); } catch (e) {} }
+    if (G.vp1_breather && G.ship) {
+      const maxHp = G.ship.maxHp || 3;
+      if (G.ship.hp < maxHp) { G.ship.hp++; addFloat(G.ship.x, G.ship.y - 40, "+1 HP", "#7dff9a", true); }
+    }
     const cfg = ACTS[(G.act || 1) - 1];
     // WOW: wave clear cinematic — slow-mo + confetti + fanfare + VICTORY + vá cửa sổ từng vết
     if (window.Cinema) {
@@ -3329,7 +3528,7 @@ function update(dt) {
     // session dài (tụt FPS dần). Cho hạn 30s; đồng thời dọn gem NaN (tọa độ hỏng).
     if (gm.t > 30 || !isFinite(gm.x) || !isFinite(gm.y)) { G.gems.splice(i, 1); continue; }
     const dx = s.x - gm.x, dy = s.y - gm.y, d = hypot(dx, dy) || 1;
-    const magR = s.magnetT > 0 ? 1e9 : s.magnet; // magnet pickup: hút toàn bộ gem
+    const magR = (s.magnetT > 0 ? 1e9 : s.magnet) * (G.vp1_magnetMul || 1); // magnet pickup: hút toàn bộ gem · VP1 gemmagnet
     if (d < magR) { gm.x += dx / d * 360 * dt; gm.y += dy / d * 360 * dt; }
     else { gm.x += gm.vx * dt; gm.y += gm.vy * dt; gm.vx *= 0.94; gm.vy *= 0.94; }
     if (d < 22) {
@@ -3449,8 +3648,18 @@ function render(now) {
   // đạn ta
   G.bullets.forEach(bl => {
     ctx.save(); ctx.translate(bl.x, bl.y); ctx.rotate(Math.atan2(bl.vy, bl.vx));
-    ctx.fillStyle = "#9df3ff"; ctx.fillRect(-9, -2.5, 18, 5);
-    ctx.fillStyle = "#fff"; ctx.fillRect(3, -1.5, 6, 3);
+    if (bl.star) { // VP1 starbullets: vẽ hình sao 5 cánh
+      ctx.fillStyle = "#ffd166";
+      ctx.beginPath();
+      for (let k = 0; k < 10; k++) {
+        const rr = k % 2 === 0 ? 9 : 4, aa = k * Math.PI / 5 - Math.PI / 2;
+        ctx[k === 0 ? "moveTo" : "lineTo"](Math.cos(aa) * rr, Math.sin(aa) * rr);
+      }
+      ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = "#9df3ff"; ctx.fillRect(-9, -2.5, 18, 5);
+      ctx.fillStyle = "#fff"; ctx.fillRect(3, -1.5, 6, 3);
+    }
     ctx.restore();
   });
   // đạn địch

@@ -30,6 +30,8 @@ window.WKAnalytics = (() => {
   const MAX_QUEUE = 500; // drop oldest beyond this (memory guard)
   const ERROR_MIN_INTERVAL_MS = 5_000; // client-side throttle for error events
   const ERROR_MAX_PER_MIN = 10;
+  const DIFFS = ["chill", "normal", "hard"];
+  const SESSION_EVENT_TYPES = new Set(["game_start", "session_start"]);
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -76,6 +78,12 @@ window.WKAnalytics = (() => {
     const force = !!(opts && opts.force);
     if (!isEnabled() && !force) return;
     const ev = { type, ts: Date.now(), ...(data && typeof data === "object" ? data : {}) };
+    // Sprint Round 2: stamp ?utm_source= (page URL) onto session events so
+    // the traffic-source metric can attribute sessions without extra calls.
+    if (SESSION_EVENT_TYPES.has(type) && !ev.utm_source) {
+      const u = utmSource();
+      if (u) ev.utm_source = u;
+    }
     if (type === "error") {
       // throttle: drop bursts, dedupe identical messages within the window
       const now = Date.now();
@@ -225,7 +233,98 @@ window.WKAnalytics = (() => {
     if (!enabled) { queue.length = 0; errorQueue.length = 0; }
   }
 
-  const api = { track, setProfile, flush, setEnabled, isEnabled, ready: true };
+  /* ---------- Sprint Round 2 telemetry helpers ----------
+     Thin, validation-safe wrappers around track() for the new event types.
+     Server ids (upgrade_id / cta_id) are sanitized to the backend's
+     [A-Za-z0-9_-]{1,64} pattern so a batch is never rejected whole.
+     The Item 5 (CTA) worker only needs: WKAnalytics.trackCtaClick(ctaId)
+     — utm is auto-filled from ?utm_source= when present. */
+  const DEATH_CAUSES = ["enemy", "chewer", "boss", "kamikaze", "window", "unknown"];
+
+  const optNum = (opts, key, dflt = 0) => {
+    const n = Number(opts && opts[key]);
+    return Number.isFinite(n) ? n : dflt;
+  };
+  const optDiff = (opts) => {
+    const d = (opts && (opts.difficulty || opts.diff)) || null;
+    return DIFFS.includes(d) ? d : null;
+  };
+
+  let cachedUtm = null, utmRead = false;
+  function utmSource() {
+    if (utmRead) return cachedUtm;
+    utmRead = true;
+    try {
+      const u = new URLSearchParams(location.search || "").get("utm_source");
+      const s = String(u || "").trim().slice(0, 64);
+      cachedUtm = /^[A-Za-z0-9_.\-]+$/.test(s) ? s : null;
+    } catch { cachedUtm = null; }
+    return cachedUtm;
+  }
+
+  const sanitizeServerId = (v) => String(v == null ? "" : v)
+    .replace(/[^A-Za-z0-9_-]/g, "-").replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 64);
+
+  /* die(reason) -> enum. Current reasons: "ship" (killed by monsters/bullets)
+   * and "window" (arena crushed); anything else is "unknown". boss/kamikaze/
+   * chewer are reserved for richer die(reason) call sites (future). */
+  function mapDeathCause(reason) {
+    if (reason === "window") return "window";
+    if (reason === "ship") return "enemy";
+    return "unknown";
+  }
+
+  function trackWaveReached(wave, opts) {
+    const w = Math.max(1, Math.floor(optNum(opts, "wave", wave)));
+    const ev = { wave: Number.isFinite(w) ? w : 1 };
+    const d = optDiff(opts);
+    if (d) ev.difficulty = d;
+    const s = optNum(opts, "score", NaN);
+    if (Number.isFinite(s)) ev.score = Math.max(0, Math.floor(s));
+    track("wave_reached", ev);
+  }
+
+  function trackDeathCause(cause, opts) {
+    track("death_cause", {
+      cause: DEATH_CAUSES.includes(cause) ? cause : "unknown",
+      wave: Math.max(0, Math.floor(optNum(opts, "wave"))),
+      ...(() => {
+        const s = optNum(opts, "score", NaN);
+        const d = optDiff(opts);
+        return { ...(Number.isFinite(s) ? { score: Math.max(0, Math.floor(s)) } : {}),
+                 ...(d ? { difficulty: d } : {}) };
+      })(),
+    });
+  }
+
+  function trackUpgradeChosen(upgradeId, opts) {
+    const id = sanitizeServerId(upgradeId);
+    if (!id) return;
+    const ev = { upgrade_id: id };
+    const w = optNum(opts, "wave", NaN);
+    if (Number.isFinite(w)) ev.wave = Math.max(0, Math.floor(w));
+    const lv = optNum(opts, "level", NaN);
+    if (Number.isFinite(lv)) ev.level = Math.max(1, Math.floor(lv));
+    track("upgrade_chosen", ev);
+  }
+
+  function trackCtaClick(ctaId, utm) {
+    const id = sanitizeServerId(ctaId);
+    if (!id) return;
+    let u = (utm !== undefined && utm !== null && String(utm) !== "")
+      ? String(utm).slice(0, 64) : utmSource();
+    track("cta_click", { cta_id: id, ...(u ? { utm: u } : {}) });
+  }
+
+  function trackSessionStart(opts) {
+    const d = optDiff(opts) || "normal";
+    track("session_start", { difficulty: d });
+  }
+
+  const api = { track, setProfile, flush, setEnabled, isEnabled, ready: true,
+    trackWaveReached, trackDeathCause, trackUpgradeChosen, trackCtaClick,
+    trackSessionStart, mapDeathCause, utmSource };
 
   // Drain anything queued before this script executed.
   setTimeout(flush, 0);

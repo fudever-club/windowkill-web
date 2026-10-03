@@ -457,3 +457,154 @@ test("B5: /api/health is exempt from rate limiting and the limiter keys on X-For
     await rlApp.close();
   }
 });
+
+/* ---------- Sprint Round 2: telemetry events + /api/metrics/summary ---------- */
+
+test("S2: new telemetry event types validate + ingest (death_cause, cta_click, session_start)", async () => {
+  const now = Date.now();
+  const h = "d".repeat(64);
+
+  const badCause = await req("POST", "/api/events", {
+    events: [{ type: "death_cause", cause: "laser", wave: 5, ts: now }],
+  });
+  assert.equal(badCause.status, 400);
+
+  const badCta = await req("POST", "/api/events", {
+    events: [{ type: "cta_click", ts: now }], // cta_id required
+  });
+  assert.equal(badCta.status, 400);
+
+  const badWave = await req("POST", "/api/events", {
+    events: [{ type: "wave_reached", wave: 0, ts: now }], // wave >= 1
+  });
+  assert.equal(badWave.status, 400);
+
+  const badUpg = await req("POST", "/api/events", {
+    events: [{ type: "upgrade_chosen", upgrade_id: "has space!", ts: now }], // fails id pattern
+  });
+  assert.equal(badUpg.status, 400);
+
+  const good = await req("POST", "/api/events", {
+    events: [
+      { type: "session_start", difficulty: "normal", utm_source: "itch.io", ts: now, profile_id_hash: h },
+      { type: "wave_reached", wave: 5, difficulty: "normal", score: 1200, ts: now, profile_id_hash: h },
+      { type: "death_cause", cause: "enemy", wave: 5, score: 1200, difficulty: "normal", ts: now, profile_id_hash: h },
+      { type: "death_cause", cause: "boss", wave: 10, ts: now, profile_id_hash: h },
+      { type: "upgrade_chosen", upgrade_id: "u2-gai_phan", wave: 4, level: 3, ts: now, profile_id_hash: h },
+      { type: "cta_click", cta_id: "launcher_card", utm: "itch.io", ts: now, profile_id_hash: h },
+      { type: "cta_click", cta_id: "gameover_banner", ts: now },
+    ],
+  });
+  assert.equal(good.status, 201);
+  assert.equal(good.json.ok, true);
+  assert.equal(good.json.data.inserted, 7);
+});
+
+test("S2: GET /api/metrics/summary returns the 5 baseline metrics", async () => {
+  // dedicated app: deterministic seed, isolated from the shared test DB
+  const dir = mkdtempSync(join(tmpdir(), "wk-s2-"));
+  const s2 = createApp({
+    dbPath: join(dir, "s2.db"), port: 0, host: "127.0.0.1",
+    rateLimitRead: 1000, rateLimitWrite: 1000, rateLimitEvents: 1000, rateLimitErrors: 1000,
+  });
+  const addr = await s2.listen();
+  const b = `http://127.0.0.1:${addr.port}`;
+  const post = (body) => fetch(b + "/api/events", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  }).then((r) => r.json());
+  try {
+    const now = Date.now();
+    const day = 24 * 3600_000;
+    const h = (c) => c.repeat(64);
+    // 3 profiles, 4 sessions in the last 7d; profile A is a 2-day-old cohort
+    // member active on D+1 (retained), profile C is fresh (<1d, not in cohort)
+    const ev = [
+      { type: "session_start", difficulty: "normal", utm_source: "itch.io", ts: now - 2 * day, profile_id_hash: h("a") },
+      { type: "session_start", difficulty: "normal", ts: now - 1 * day, profile_id_hash: h("a") },
+      { type: "session_start", difficulty: "hard", utm_source: "poki", ts: now - 3 * day, profile_id_hash: h("b") },
+      { type: "session_start", difficulty: "normal", ts: now - 3600_000, profile_id_hash: h("c") },
+      { type: "game_start", difficulty: "normal", ts: now - 3600_000, profile_id_hash: h("c") },
+      { type: "cta_click", cta_id: "launcher_card", utm: "itch.io", ts: now - 2 * day, profile_id_hash: h("a") },
+      { type: "death_cause", cause: "enemy", wave: 6, score: 800, ts: now - 2 * day, profile_id_hash: h("a") },
+      { type: "death_cause", cause: "boss", wave: 10, score: 2500, ts: now - 3 * day, profile_id_hash: h("b") },
+      { type: "death_cause", cause: "window", wave: 3, ts: now - 3600_000, profile_id_hash: h("c") },
+      { type: "upgrade_chosen", upgrade_id: "pierce_2", wave: 3, level: 2, ts: now - 3600_000, profile_id_hash: h("c") },
+    ];
+    const r = await post({ events: ev });
+    assert.equal(r.data.inserted, ev.length);
+
+    const m = await fetch(b + "/api/metrics/summary").then((x) => x.json());
+    assert.equal(m.ok, true);
+    const d = m.data;
+    assert.equal(d.windowDays, 30);
+    assert.ok(typeof d.generatedAt === "number");
+
+    // 1. conversion: 1 click / 5 sessions = 0.2 -> healthy (>= 3%)
+    assert.equal(d.conversion.ctaClicks, 1);
+    assert.equal(d.conversion.sessions, 5);
+    assert.equal(d.conversion.rate, 0.2);
+    assert.equal(d.conversion.healthy, true);
+
+    // 2. D1: cohort = {a, b} (c is <1d old), retained = {a} -> 0.5
+    assert.equal(d.d1Retention.cohort, 2);
+    assert.equal(d.d1Retention.retained, 1);
+    assert.equal(d.d1Retention.rate, 0.5);
+    assert.equal(d.d1Retention.healthy, true);
+
+    // 3. wave histogram: waves [3,6,10] -> median 6, buckets + by_cause
+    assert.equal(d.waveGameover.deaths, 3);
+    assert.equal(d.waveGameover.medianWave, 6);
+    assert.deepEqual(d.waveGameover.buckets, { "1-4": 1, "5-9": 1, "10-14": 1, "15-19": 0, "20-24": 0, "25+": 0 });
+    assert.deepEqual(d.waveGameover.byCause, { enemy: 1, boss: 1, window: 1 });
+    assert.equal(d.waveGameover.healthy, false); // median 6 < 8
+
+    // 4. runs/user/week: 5 sessions / 3 users = 1.67 -> not healthy (< 2)
+    assert.equal(d.runsPerUserWeek.sessions, 5);
+    assert.equal(d.runsPerUserWeek.users, 3);
+    assert.equal(d.runsPerUserWeek.value, 1.67);
+    assert.equal(d.runsPerUserWeek.healthy, false);
+
+    // 5. traffic: itch.io x2 (1 session utm_source + 1 click utm), poki x1
+    assert.deepEqual(d.trafficSources, { "itch.io": 2, poki: 1 });
+
+    // thresholds are documented in the payload
+    assert.deepEqual(d.thresholds, { conversion: 0.03, d1Retention: 0.15, medianWaveGameover: 8, runsPerUserWeek: 2 });
+  } finally {
+    await s2.close();
+  }
+});
+
+test("S2: /api/metrics/summary on an empty DB reports nulls, not NaN", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "wk-s2empty-"));
+  const s2 = createApp({ dbPath: join(dir, "e.db"), port: 0, host: "127.0.0.1" });
+  const addr = await s2.listen();
+  try {
+    const d = await fetch(`http://127.0.0.1:${addr.port}/api/metrics/summary`).then((r) => r.json()).then((j) => j.data);
+    assert.equal(d.conversion.rate, null);
+    assert.equal(d.conversion.healthy, null);
+    assert.equal(d.d1Retention.rate, null);
+    assert.equal(d.waveGameover.medianWave, null);
+    assert.equal(d.runsPerUserWeek.value, null);
+    assert.deepEqual(d.trafficSources, {});
+  } finally {
+    await s2.close();
+  }
+});
+
+test("S2: /api/metrics/summary is probe-exempt from rate limiting like /api/health", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "wk-s2rl-"));
+  const rlApp = createApp({
+    dbPath: join(dir, "rl.db"), port: 0, host: "127.0.0.1",
+    rateLimitRead: 2, rateLimitWrite: 1000, rateLimitEvents: 1000, rateLimitErrors: 1000,
+  });
+  const addr = await rlApp.listen();
+  const b = `http://127.0.0.1:${addr.port}`;
+  try {
+    for (let i = 0; i < 6; i++) {
+      const r = await fetch(b + "/api/metrics/summary");
+      assert.equal(r.status, 200, `summary request ${i + 1} must not be rate-limited`);
+    }
+  } finally {
+    await rlApp.close();
+  }
+});

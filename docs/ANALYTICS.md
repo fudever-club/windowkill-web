@@ -36,10 +36,12 @@ Trường chung: `type` (string), `ts` (ms, không quá khứ 2025 / tương lai
 
 | type | fields | nguồn |
 |---|---|---|
-| `game_start` | `difficulty`: chill\|normal\|hard, `profile_id_hash` | menu.js — bấm CHƠI NGAY |
+| `game_start` / `session_start` | `difficulty`: chill\|normal\|hard, `utm_source?` (từ `?utm_source=` trên URL), `profile_id_hash` | menu.js — bấm CHƠI NGAY (`game_start`); `session_start` là alias được server chấp nhận |
 | `game_over` | `score` (0–99.999.999), `wave` (0–9999), `duration_s`, `act?`, `difficulty?`, `profile_id_hash` | bus `gameover` từ game.html → analytics.js tự map, không cần sửa game.js |
-| `wave_reached` | `wave` (1–9999), `act?` | bus `wave` — **chờ team gameplay** post từ game.js (đã có listener sẵn) |
-| `upgrade_chosen` | `upgrade_id` (1–64 ký tự `[A-Za-z0-9_-]`) | bus `upgrade_chosen` — **chờ team gameplay** |
+| `wave_reached` | `wave` (1–9999), `difficulty?`, `score?`, `act?` | `startWave()` trong game.js gọi `WKAnalytics.trackWaveReached` (Sprint Round 2) |
+| `upgrade_chosen` | `upgrade_id` (1–64 ký tự `[A-Za-z0-9_-]`, client tự sanitize), `wave?`, `level?` | `applyDraftPick()` trong game.js gọi `WKAnalytics.trackUpgradeChosen` (Sprint Round 2) |
+| `death_cause` | `cause`: enemy\|chewer\|boss\|kamikaze\|window\|unknown, `wave`, `score?`, `difficulty?` | `die()` trong game.js gọi `WKAnalytics.trackDeathCause(mapDeathCause(reason))` (Sprint Round 2) |
+| `cta_click` | `cta_id` (`[A-Za-z0-9_-]`, vd `launcher_card`/`gameover_banner`/`wave10_toast`), `utm?` (tự lấy `?utm_source=` nếu không truyền) | `WKAnalytics.trackCtaClick(ctaId[, utm])` — dùng cho Item 5 CTA (Sprint Round 2) |
 | `upgrade_draft_shown` | — | bus `upgrade_draft_shown` — **chờ team gameplay** |
 | `settings_changed` | `key` (music/sfx/shake/diff/analytics), `value` | menu.js — mọi toggle |
 | `error` | `message` (≤500), `source` (≤200, dạng `game.js:42:7`) | `window.onerror` / `unhandledrejection` trong analytics.js |
@@ -47,6 +49,8 @@ Trường chung: `type` (string), `ts` (ms, không quá khứ 2025 / tương lai
 `POST /api/errors` — body `{ "errors": [...] }`, tối đa **20/batch**, rate limit **20 req/phút/IP**, bảng cap **500 rows** (tự trim dòng cũ nhất). Client còn tự throttle: tối đa 10 error/phút, dedupe message trùng trong 5 s.
 
 `GET /api/metrics` — aggregate cho dashboard nội bộ (không PII): `dau` (distinct hash / 24h), `games7d`, `avgScore7d`, `bestWave7d`, `byDifficulty7d`, `generatedAt`.
+
+`GET /api/metrics/summary` — 5 metric baseline Sprint Round 2 (public, không auth, miễn rate-limit như `/api/health`): `conversion` (cta_clicks/sessions 30d, khỏe ≥3%), `d1Retention` (cohort first-session 1–7d, khỏe ≥15%), `waveGameover` (histogram wave tại death + `medianWave` + `byCause`, khỏe median ≥8), `runsPerUserWeek` (sessions/distinct hash 7d, khỏe ≥2), `trafficSources` (phân phối utm 30d, chỉ theo dõi). Chi tiết: `server/README.md` → "Metrics Baseline (Sprint Round 2)".
 
 ## 4. Cách tắt
 
@@ -59,4 +63,4 @@ Trường chung: `type` (string), `ts` (ms, không quá khứ 2025 / tương lai
 
 - CSP `connect-src 'self'` của index.html: analytics gửi về **same-origin** (reverse proxy `/api/*`). Nếu backend chạy ở `http://localhost:3001` trong lúc dev qua `python3 -m http.server`, cần nới CSP hoặc set `localStorage.wk_api_base` + reverse proxy — ngoài phạm vi task này.
 - Error monitoring hiện phủ **launcher (index.html)**; cửa sổ game (game.html) cần team gameplay thêm `js/analytics.js` vào game.html (không được sửa trong task này).
-- `wave_reached` / `upgrade_chosen` / `upgrade_draft_shown` đã có listener + schema + test server; chỉ cần game.js post message lên bus là chạy, không cần đụng analytics.js.
+- `wave_reached` / `upgrade_chosen` / `death_cause` đã được wire trực tiếp trong game.js (Sprint Round 2: `startWave` / `applyDraftPick` / `die`); các listener bus cũ (`wave`, `upgrade_chosen`, `upgrade_draft_shown`) vẫn giữ cho tương thích.

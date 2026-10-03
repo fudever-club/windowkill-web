@@ -62,6 +62,21 @@
   .tgl::after { content:''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
   .tgl.on { background: #0080FF; } .tgl.on::after { left: 27px; }
   #hs-list { font-size: 14.5px; color: #c8dcf5; line-height: 2; }
+  /* CTA web→desktop (Sprint R2 item 5): card Desktop Edition — tone thân thiện,
+     dễ thấy nhưng không áp đảo nút CHƠI NGAY; ẩn mặc định cho tới khi menu.js bật. */
+  #desktop-cta-card[hidden] { display: none !important; }
+  .desktop-cta-card { max-width: 560px; margin: 0 auto 8px; padding: 0 20px; }
+  .desktop-cta-link {
+    display: flex; align-items: center; gap: 12px; text-decoration: none;
+    background: #0d1c34; border: 1px solid #0080FF55; border-radius: 14px;
+    padding: 12px 16px; color: #dbeafe; transition: border-color .15s, transform .15s;
+  }
+  .desktop-cta-link:hover { border-color: #0080FF; transform: translateY(-1px); }
+  .desktop-cta-link .ic { width: 26px; height: 26px; color: #8fc3ff; flex: none; }
+  .desktop-cta-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .desktop-cta-text strong { font-size: 15px; letter-spacing: 1px; color: #fff; }
+  .desktop-cta-text span { font-size: 13px; color: #9db8d9; }
+  .desktop-cta-arrow { color: #8fc3ff; }
   #new-profile-box { display: none; gap: 8px; margin-top: 10px; }
   #new-profile-box input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff2e; background: #0c1f3a; color: #fff; font-size: 15px; } /* QW12: wrap */
   footer { text-align: center; color: #8fb0d8; font-size: 13px; margin-top: 34px; line-height: 1.8; }
@@ -190,6 +205,9 @@
 <symbol id="i-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/>
 </symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 12h15M13 6l6 6-6 6"/>
+</symbol>
 <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M11 4l1.6 4.2 4.2 1.6-4.2 1.6L11 15.6l-1.6-4.2-4.2-1.6 4.2-1.6L11 4z"/><path d="M17.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/>
 </symbol>
@@ -302,6 +320,19 @@
   <section class="cta-band" aria-label="Bắt đầu chơi">
     <button class="btn-big" id="btn-play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="common.play">CHƠI NGAY</span></button>
     <p class="popup-note" data-i18n-html="menu.popup_note">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</p>
+  </section>
+  <!-- CTA web→desktop (Sprint R2 item 5): card Desktop Edition cạnh nút Play.
+       Ẩn mặc định (hidden); menu.js chỉ mở khi web non-portal, non-Electron. -->
+  <section id="desktop-cta-card" class="desktop-cta-card" hidden>
+    <a href="https://quangnhat1504.itch.io/windowkill?utm_source=game&utm_medium=cta&utm_campaign=desktop"
+       target="_blank" rel="noopener" class="desktop-cta-link" data-cta-id="launcher_card">
+      <svg class="ic" aria-hidden="true"><use href="#i-window"/></svg>
+      <span class="desktop-cta-text">
+        <strong data-i18n="cta.launcher_title">Desktop Edition</strong>
+        <span data-i18n="cta.launcher_sub">Cửa sổ thật, không mô phỏng</span>
+      </span>
+      <svg class="ic desktop-cta-arrow" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+    </a>
   </section>
 <div class="warn-box" id="popup-warn" role="alert" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> <span data-i18n-html="error.popup_blocked">Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</span></div>
 
@@ -423,6 +454,13 @@
         <button class="btn-ghost" data-sat="auto" data-i18n="settings.sat_auto">Tự động</button>
         <button class="btn-ghost" data-sat="sim" data-i18n="settings.sat_sim">Luôn mô phỏng</button>
         <button class="btn-ghost" data-sat="off" data-i18n="settings.sat_off">Tắt</button>
+      </div>
+    </div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-window"/></svg> <span data-i18n="settings.wjump">Độ Nhảy Cửa Sổ</span></span>
+      <div class="row opt-btns" style="gap:8px">
+        <button class="btn-ghost" data-wjump="calm" data-i18n="settings.wjump_calm">Êm</button>
+        <button class="btn-ghost" data-wjump="normal" data-i18n="settings.wjump_normal">Vừa</button>
+        <button class="btn-ghost" data-wjump="wild" data-i18n="settings.wjump_wild">Điên</button>
       </div>
     </div>
   

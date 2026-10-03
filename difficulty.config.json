@@ -253,6 +253,78 @@
       }
     }
   },
+  "tuning": {
+    "_note": "Sprint Round 2 - Item 3: hằng số tuning tập trung, đọc qua js/tuning.js → window.WK_TUNING (embed fallback + fetch merge nên game boot được cả offline/file://). Designer chỉ sửa SỐ trong file này, KHÔNG sửa code. Triết lý: VUI VẺ > KHÓ KHĂN — tune để giảm rối mắt / tăng cười-WOW, không tăng độ khó. Item 6 (2026-10-03) retune wave 15–30 'căng nhưng công bằng': difficulty_bands.late_game_15_30 thêm công thức interval = max(spawn_interval_min_s, spawn_interval_base_s × spawn_interval_decay^wave) = max(1.1s, 3.8s × 0.93^w). Wave 15 → ~1.28s (~47 spawn/phút); wave 16 → ~1.19s; từ wave 17 trở đi chạm sàn 1.1s → tối đa ~54.5 spawn/phút (KHÔNG vượt 55/phút — chống spam cuối game). Trong band 15–30 công thức này thay thế hoàn toàn công thức cũ (kể cả DIFF.spawnMul) để designer nắm chắc nhịp spawn; ngoài band giữ nguyên công thức cũ. concurrent_cap giữ 20 (pacing mềm: vượt trần → hoãn spawn 0.25s, không mất quái). spotlights: 6 wave điểm nhấn VUI trong band (boss wave 20/25/30 KHÔNG spotlight — giữ thuần).",
+    "spawn": {
+      "_note": "Công thức spawn endless (js/game.js: buildSpawnQueue + spawn tick): count = round((base_count + wave*per_wave) * (wave1: ×0.7) * smooth * onboard); interval = max(interval_floor_s, interval_base_s*spawnMul*onboard - wave*interval_decay). Muốn wave thưa/dày hơn: sửa interval_base_s / interval_decay (luôn giữ interval_floor_s để không thành spam 0s). concurrent_cap: trần quái cùng lúc trên sân — vượt trần thì spawn hoãn 0.25s, KHÔNG mất quái (tổng quái/wave không đổi).",
+      "base_count": 4,
+      "per_wave": 3,
+      "interval_floor_s": 0.22,
+      "interval_base_s": 0.85,
+      "interval_decay": 0.05,
+      "concurrent_cap": 20
+    },
+    "window_physics": {
+      "_note": "Độ 'nhảy' của cửa sổ khi đạn trúng viền (đọc bởi Item 4: js/game.js wjumpPreset/pushWindow/applyWindowMotion; người chơi chọn nấc trong pause menu, key wk_settings.wjump). Muốn giảm hỗn loạn theo feedback wave-24: player chuyển preset calm/normal. impulse_max: xung lực tối đa mỗi cú đá (px/s). cooldown_ms: nghỉ tối thiểu giữa 2 cú đá. velocity_max: trần tốc độ trôi của cửa sổ (px/s). Loader js/tuning.js tự thêm alias impulse/velocity/cooldown cho reader của Item 4.",
+      "calm": {
+        "impulse_max": 15,
+        "cooldown_ms": 300,
+        "velocity_max": 150
+      },
+      "normal": {
+        "impulse_max": 35,
+        "cooldown_ms": 150,
+        "velocity_max": 400
+      },
+      "wild": {
+        "impulse_max": 950,
+        "cooldown_ms": 0,
+        "velocity_max": 950
+      }
+    },
+    "difficulty_bands": {
+      "_note": "Hook cho Item 6: tune wave 15–30 bằng DATA PR (chỉ sửa file này, không sửa code). Mỗi band: waves [from, to]; spawn_interval_s_floor ghi đè floor spawn trong band (mặc định = spawn.interval_floor_s nên chưa đổi hành vi); hp_mult_cap / speed_mult_cap: trần hệ số (null = không trần = hành vi hiện tại).",
+      "late_game_15_30": {
+        "waves": [
+          15,
+          30
+        ],
+        "spawn_interval_s_floor": 0.22,
+        "hp_mult_cap": null,
+        "speed_mult_cap": null,
+        "spawn_interval_base_s": 3.8,
+        "spawn_interval_decay": 0.93,
+        "spawn_interval_min_s": 1.1
+      }
+    },
+    "spotlights": {
+      "_note": "Item 6: 6 spotlight wave trong band 15–30 — mỗi wave 1 điểm nhấn VUI, không tăng khó. Boss wave (20, 25, 30) KHÔNG spotlight. Game đọc qua WK_TUNING.spotlightFor(wave). mods: ép modifier cụ thể (id trong WAVE_MODIFIERS của js/monsters.js); \"random2\" = roll 2 modifier khác nhau cùng lúc (ngoại lệ duy nhất cho quy tắc 1 modifier — wave 29 Final Audition); elite_parade: diễu hành quái nặng đô (tank/warden/booster/splitter weight ×3), quái tinh anh rớt thêm gem — KHÔNG đổi HP/speed/dmg; event: ép event của Pack 1 (golden = Giờ Vàng, đã tự trigger ở wave 24 — ghi ở đây để khóa lại).",
+      "17": {
+        "mods": [
+          "tiny"
+        ]
+      },
+      "19": {
+        "elite_parade": true
+      },
+      "21": {
+        "mods": [
+          "payday"
+        ]
+      },
+      "24": {
+        "event": "golden"
+      },
+      "27": {
+        "mods": [
+          "djparty"
+        ]
+      },
+      "29": {
+        "mods": "random2"
+      }
+    }
+  },
   "source": "studio/game-design/GAME-DESIGN-DOC.md §8",
   "version": "2.0.0"
 }

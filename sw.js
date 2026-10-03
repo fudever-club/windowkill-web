@@ -7,7 +7,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-v7"; // bump 2026-10-03: ép client nhận fix gray-veil (PR #46) — SW stale-while-revalidate giữ code cũ sau deploy
+const VERSION = "windowkill-v8"; // bump 2026-10-03: thêm js/tuning.js (Sprint R2 Item 3) vào precache — ép client nhận loader config mới
 const STATIC_CACHE = VERSION + "-static";
 const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";
@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   "js/bg.js",
   "js/juice.js",
   "js/cinema.js",
+  "js/tuning.js", // Sprint R2 Item 3: loader tuning tập trung — precache để offline vẫn có config
   // AUDIT 2026-10-02: precache từng chỉ chứa file v1 — bổ sung toàn bộ file v2.0
   // (campaign/meta/tutorial/i18n/monsters/bosses/juice2/sfx2/stagefx/upgrades2/v2glue/mobile/portal)
   // để chế độ offline cài được game đầy đủ, không rớt vào offline.html thiếu JS.

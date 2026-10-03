@@ -58,11 +58,11 @@ describe("bg-dim-reset (bug lớp xám #2, 2026-10-03)", () => {
     assert.ok(cleaned, "cả die() và resetGame() đều không reset BG dim");
   });
 
-  it("sw.js VERSION phải là v7 — ép client bỏ cache JS cũ (stale-while-revalidate)", () => {
+  it("sw.js VERSION phải là v8 — ép client bỏ cache JS cũ (stale-while-revalidate)", () => {
     const src = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
     assert.ok(
-      /const VERSION = "windowkill-v7"/.test(src),
-      'sw.js VERSION phải là "windowkill-v7" để Service Worker cài cache mới sau deploy'
+      /const VERSION = "windowkill-v8"/.test(src),
+      'sw.js VERSION phải là "windowkill-v8" để Service Worker cài cache mới sau deploy (bump 2026-10-03: thêm js/tuning.js vào precache)'
     );
   });
 });

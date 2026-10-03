@@ -161,14 +161,99 @@ function growWindow(dw, dh) { // vá cửa sổ sau mỗi wave
   try { window.moveTo(window.screenX - (nw - window.outerWidth) / 2, window.screenY - (nh - window.outerHeight) / 2); } catch (e) {}
   try { window.resizeTo(nw, nh); } catch (e) {}
 }
+/* Item 3 — Sprint Round 2: tuning tập trung.
+ * Mọi hằng số balance dưới đọc từ difficulty.config.json qua window.WK_TUNING
+ * (js/tuning.js: embed fallback + fetch merge). Số dự phòng cuối = giá trị
+ * đang hardcode (refactor thuần túy) nên game boot được cả khi thiếu tuning.js. */
+function wkT() {
+  try { return (typeof window !== "undefined" && window.WK_TUNING) || null; } catch (e) { return null; }
+}
+function wkSpawnCfg() {
+  var t = wkT();
+  if (t) { try { var s = t.spawn(); if (s) return s; } catch (e) {} }
+  return { base_count: 4, per_wave: 3, interval_floor_s: 0.22, interval_base_s: 0.85, interval_decay: 0.05, concurrent_cap: 20 };
+}
+function wkSpawnFloor(wave) {
+  var t = wkT();
+  if (t) { try { return t.spawnIntervalFloor(wave); } catch (e) {} }
+  return 0.22;
+}
+/* Item 6 — Sprint Round 2: interval spawn theo công thức band (data-driven).
+ * Band late_game_15_30: max(1.1s, 3.8s × 0.93^w) — "căng nhưng công bằng",
+ * tối đa ~54.5 spawn/phút, chống spam cuối game. Trong band, công thức này
+ * thay thế hoàn toàn công thức cũ (kể cả DIFF.spawnMul) để designer nắm chắc
+ * nhịp spawn qua data. Ngoài band: giữ nguyên công thức cũ. */
+function wkSpawnInterval(wave) {
+  var t = wkT(), iv = null;
+  if (t && t.spawnIntervalFor) { try { iv = t.spawnIntervalFor(wave); } catch (e) {} }
+  if (!(Number.isFinite(iv) && iv > 0)) {
+    var TS = wkSpawnCfg();
+    iv = TS.interval_base_s * DIFF.spawnMul * onboardSpawnMul() - wave * TS.interval_decay;
+  }
+  return Math.max(wkSpawnFloor(wave), iv);
+}
+/* Item 6: đọc entry spotlight của wave từ tuning.spotlights (data). */
+function wkSpotlightFor(n) {
+  var t = wkT();
+  if (t && t.spotlightFor) { try { return t.spotlightFor(n); } catch (e) {} }
+  return null;
+}
+function wkCapMult(wave, kind, value) {
+  var t = wkT();
+  if (t) { try { return t.capMult(wave, kind, value); } catch (e) {} }
+  return value;
+}
+/* Item 4 — Sprint Round 2: setting "Độ Nhảy Cửa Sổ" (key `wjump` trong wk_settings).
+ * 3 nấc — Êm / Vừa (default, CEO chốt) / Điên. Phối hợp worker Item 3: presets đọc từ
+ * window.WK_TUNING.tuning.window_physics nếu có ({calm:{impulse,velocity,cooldown},...}),
+ * fallback hardcode dưới khi Item 3 chưa xong.
+ *  - calm:   impulse ≤15px/event,  cooldown 300ms, velocity ≤150px/s
+ *  - normal: impulse ≤35px/event,  cooldown 150ms, velocity ≤400px/s
+ *  - wild:   giữ nguyên hiện tại — impulse ≤300px, không cooldown, velocity ≤950px/s */
+var WJUMP_PRESETS_FALLBACK = {
+  calm:   { impulse: 15,  velocity: 150, cooldown: 300 },
+  normal: { impulse: 35,  velocity: 400, cooldown: 150 },
+  wild:   { impulse: 300, velocity: 950, cooldown: 0 }
+};
+function wjumpMode() {
+  try {
+    var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
+    if (st && ["calm", "normal", "wild"].indexOf(st.wjump) >= 0) return st.wjump;
+  } catch (e) {}
+  return "normal"; // default = Vừa
+}
+var _wjumpCache = { t: -1e9, mode: "", preset: null };
+function wjumpPreset() {
+  var mode = wjumpMode();
+  var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : 0;
+  if (_wjumpCache.mode === mode && now - _wjumpCache.t < 500) return _wjumpCache.preset;
+  var pre = WJUMP_PRESETS_FALLBACK;
+  try {
+    var tw = window.WK_TUNING && window.WK_TUNING.tuning && window.WK_TUNING.tuning.window_physics;
+    if (tw && tw.calm && tw.normal && tw.wild) pre = tw; // worker Item 3 đã migrate
+  } catch (e) {}
+  var p = pre[mode] || pre.normal;
+  _wjumpCache = { t: now, mode: mode, preset: p };
+  return p;
+}
+var _lastPushT = -1e9;
 function pushWindow(dx, dy) {
   if (!winCtrl.ok) return;
+  var P = wjumpPreset();
+  var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  if (P.cooldown > 0 && now - _lastPushT < P.cooldown) return; // cooldown: bỏ qua kick dồn dập
+  _lastPushT = now;
+  var im = hypot(dx, dy);
+  if (im > P.impulse) { dx *= P.impulse / im; dy *= P.impulse / im; } // clamp impulse mỗi event
   wvx += dx; wvy += dy;
-  const sp = hypot(wvx, wvy), MAX = 950;
-  if (sp > MAX) { wvx *= MAX / sp; wvy *= MAX / sp; }
+  const sp = hypot(wvx, wvy);
+  if (sp > P.velocity) { wvx *= P.velocity / sp; wvy *= P.velocity / sp; } // clamp velocity
 }
 function applyWindowMotion(dt) {
   if (hypot(wvx, wvy) > 2 && winCtrl.ok) {
+    var P = wjumpPreset();
+    var vsp = hypot(wvx, wvy);
+    if (vsp > P.velocity) { wvx *= P.velocity / vsp; wvy *= P.velocity / vsp; } // clamp velocity
     try { window.moveBy(wvx * dt, wvy * dt); } catch (e) {}
     try {
       const aw = window.screen.availWidth || 1920, ah = window.screen.availHeight || 1080;
@@ -199,6 +284,51 @@ function drawShipGhost(c, g) {
   c.beginPath();
   c.moveTo(g.x + 16, g.y); c.lineTo(g.x - 11, g.y - 11); c.lineTo(g.x - 6, g.y); c.lineTo(g.x - 11, g.y + 11);
   c.closePath(); c.fill();
+}
+
+/* ---------------- CTA web→desktop (Sprint R2 item 5) ----------------
+   Thân thiện, không dark pattern: chỉ hiện trên web thường —
+   KHÔNG portalMode (đang ở itch.io rồi), KHÔNG Electron (đã là desktop). */
+const DESKTOP_CTA_URL = "https://quangnhat1504.itch.io/windowkill?utm_source=game&utm_medium=cta&utm_campaign=desktop";
+const DESKTOP_CTA_UTM = "utm_source=game&utm_medium=cta&utm_campaign=desktop";
+function ctaSuppressed() {
+  try { if (window.WK_PORTAL_MODE === true) return true; } catch (e) {}
+  try { if (qp.get("portal") === "1") return true; } catch (e) {}
+  return IS_ELECTRON_APP;
+}
+function trackCtaClick(cta_id) {
+  try {
+    if (window.WKAnalytics && typeof window.WKAnalytics.track === "function") {
+      window.WKAnalytics.track("cta_click", { cta_id: cta_id, utm: DESKTOP_CTA_UTM });
+    }
+  } catch (e) {}
+}
+/* Toast sau wave 10: 1 lần/run, góc dưới phải, tự tắt sau 6s, có nút đóng. */
+function showDesktopToast() {
+  try {
+    if (document.getElementById("wk-desktop-toast")) return;
+    const el = document.createElement("div");
+    el.id = "wk-desktop-toast";
+    el.setAttribute("role", "status");
+    const ico = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ico.setAttribute("class", "ic"); ico.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#i-window");
+    ico.appendChild(use);
+    const a = document.createElement("a");
+    a.href = DESKTOP_CTA_URL; a.target = "_blank"; a.rel = "noopener";
+    a.dataset.ctaId = "wave10_toast";
+    a.textContent = (window.I18N ? I18N.t("cta.toast_text") : "Desktop build: real windows!") + " →";
+    const x = document.createElement("button");
+    x.className = "toast-x"; x.type = "button";
+    x.setAttribute("aria-label", window.I18N ? I18N.t("menu.hub.close") : "Close");
+    x.textContent = "×";
+    const dismiss = () => { try { el.remove(); } catch (e) {} };
+    x.addEventListener("click", dismiss);
+    el.appendChild(ico); el.appendChild(a); el.appendChild(x);
+    document.body.appendChild(el);
+    setTimeout(dismiss, 6000);
+  } catch (e) {}
 }
 
 // WOW: vẽ boss cho Cinema bossIntro/bossDeath — chữ ký (ctx, x, y, scale, alpha)
@@ -2111,6 +2241,7 @@ const G = {
   ship: null, bullets: [], ebullets: [], enemies: [], gems: [], pickups: [], parts: [], floats: [],
   boss: null, spawnQueue: [], spawnT: 0, waveBreak: 0, waveClearShown: false,
   banner: "", bannerT: 0, bannerSub: "",
+  _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
   xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
   dying: [], pendingSpawns: 0, waveKills: 0, bossCine: false, // WOW sprint
   cracks: [], // vết nứt viền arena (M4 mô phỏng)
@@ -2184,6 +2315,11 @@ function applyDraftPick(u) {
   const res = u.apply(G.ship);
   if (u._u2 && res === null) return; // món v2 bị khóa/trùng tại thời điểm áp → không tính đã nhận
   noteUpgradeTaken(u._draftId || u.t || u.ico);
+  // Sprint Round 2 telemetry: upgrade đã chọn trong draft (không ảnh hưởng gameplay)
+  try {
+    if (window.WKAnalytics && typeof window.WKAnalytics.trackUpgradeChosen === "function")
+      window.WKAnalytics.trackUpgradeChosen(u._draftId || u.t || u.ico, { wave: G.wave, level: G.level });
+  } catch (e) {}
 }
 function openDraft() {
   G.phase = "draft";
@@ -2633,8 +2769,8 @@ function mkEnemy(type, x, y) {
     type: miniSpec ? miniSpec.base : type, behavior: def.behavior, x, y, t: rand(0, 9), flash: 0, slowT: 0, dead: false,
 
    kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
-    hp: def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave),
-    speed: def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul(),
+    hp: wkCapMult(G.wave, "hp", def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave)),
+    speed: wkCapMult(G.wave, "speed", def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul()),
          xp: def.xp,
   };
 if (miniSpec) {
@@ -2654,6 +2790,9 @@ if (miniSpec) {
   e.maxHp = e.hp;
   // VP1 tiny: quái nhỏ 55%, nhanh +15%, HP −30% (net dễ hơn)
   if (G.vp1_tiny && !e.miniBoss) { e.r *= 0.55; e.hp *= 0.7; e.maxHp = e.hp; e.speed *= 1.15; }
+  // Item 6 — Elite Parade (wave 19): 40% quái thành "tinh anh" — vòng vàng + rớt thêm gem,
+  // KHÔNG đổi HP/speed/dmg (triết lý CEO: vui vẻ > khó khăn)
+  if (G.vp1_eliteParade && !e.miniBoss && Math.random() < 0.4) e.vp1_elite = true;
   if (def.init) def.init(e);
   return e;
 }
@@ -2704,12 +2843,17 @@ function detonateKamikaze(e) {
 function buildSpawnQueue(n) {
   const act = actOf(n);
   const pool = Object.values(MONSTER_REGISTRY).filter(d => d.acts.includes(act) && d.minWave <= n && d.weight > 0);
-  const totalW = pool.reduce((a, d) => a + d.weight, 0);
-  const count = Math.round((4 + n * 3) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n));
+  // Item 6 — Elite Parade (wave 19): quái "nặng đô" diễu hành (weight ×3).
+  // Chỉ tính trên bản sao cục bộ — KHÔNG mutate MONSTER_REGISTRY, KHÔNG đổi stat.
+  const ELITE_HEAVY = G.vp1_eliteParade ? { tank: 3, warden: 3, booster: 3, splitter: 3 } : null;
+  const wOf = d => d.weight * ((ELITE_HEAVY && ELITE_HEAVY[d.id]) || 1);
+  const totalW = pool.reduce((a, d) => a + wOf(d), 0);
+  const TS = wkSpawnCfg();
+  const count = Math.round((TS.base_count + n * TS.per_wave) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n));
   const q = [];
   for (let i = 0; i < count; i++) {
     let r = Math.random() * totalW, type = pool[0].id;
-    for (const d of pool) { r -= d.weight; if (r <= 0) { type = d.id; break; } }
+    for (const d of pool) { r -= wOf(d); if (r <= 0) { type = d.id; break; } }
     q.push(type);
   }
   return q;
@@ -2729,23 +2873,80 @@ function vp1IsBossWave(n) { return n % 5 === 0; }
 function vp1DirectorEligible(n) { return n >= 12 && !vp1IsBossWave(n) && !vp1IsBreather(n); }
 /* Roll 1 modifier (không trùng wave trước), apply + banner. */
 function vp1RollModifier(e) {
+  if (G.vp1_spotlight) return; // Item 6: spotlight wave — modifier đã ép từ data, không roll
   const mods = vp1GetModifiers();
   if (!mods.length) return;
   let pool = mods.filter(m => !G.vp1_lastMod || m.id !== G.vp1_lastMod);
   if (!pool.length) pool = mods;
   const m = pool[(Math.random() * pool.length) | 0];
+  vp1ApplyModById(m.id, false);
+}
+/* Item 6: apply 1 modifier theo id (spotlight ép từ data).
+ * silent=true → không setBanner (banner wave ở cuối startWave gánh hiển thị
+ * qua G.vp1_spotlightSub). Trả về true nếu apply được. */
+function vp1ApplyModById(id, silent) {
+  const mods = vp1GetModifiers();
+  const m = mods.find(x => x.id === id);
+  if (!m) return false;
+  try { m.apply(G); } catch (er) {}
   G.vp1_lastMod = m.id;
   G.vp1_mod = m.id;
-  try { m.apply(G); } catch (er) {}
-  setBanner(I18N.t("vp1.mod." + m.id + ".name"), I18N.t("vp1.mod." + m.id + ".desc"));
+  (G.vp1_mods = G.vp1_mods || []).push(m.id);
+  if (!silent) setBanner(I18N.t("vp1.mod." + m.id + ".name"), I18N.t("vp1.mod." + m.id + ".desc"));
+  return true;
 }
-/* Clear modifier wave trước (gọi đầu startWave). */
+/* Clear modifier wave trước (gọi đầu startWave). Item 6: hỗ trợ nhiều modifier
+ * cùng lúc (wave 29 Final Audition). */
 function vp1ClearModifier() {
-  if (!G.vp1_mod) return;
-  const mods = vp1GetModifiers();
-  const m = mods.find(x => x.id === G.vp1_mod);
-  try { if (m) m.clear(G); } catch (e) {}
+  const ids = (G.vp1_mods && G.vp1_mods.length) ? G.vp1_mods : (G.vp1_mod ? [G.vp1_mod] : []);
+  if (ids.length) {
+    const mods = vp1GetModifiers();
+    for (const id of ids) {
+      const m = mods.find(x => x.id === id);
+      try { if (m) m.clear(G); } catch (e) {}
+    }
+  }
+  G.vp1_mods = [];
   G.vp1_mod = null;
+}
+/* Item 6 — Spotlight waves 15–30 (data: tuning.spotlights trong difficulty.config.json).
+ * Ép modifier/event cụ thể thay vì random — mỗi wave 1 điểm nhấn VUI, không tăng khó.
+ * Boss wave (20, 25, 30) KHÔNG spotlight (giữ thuần). Trả về entry spotlight hoặc null. */
+function vp1ApplySpotlight(n) {
+  if (vp1IsBossWave(n)) return null;
+  const spot = wkSpotlightFor(n);
+  if (!spot) return null;
+  G.vp1_spotlight = true;
+  if (spot.event) {
+    vp1TriggerEvent(spot.event, n);
+    if (spot.event === "golden") G.vp1_spotlightSub = I18N.t("vp1.spotlight.golden.sub");
+  } else if (spot.elite_parade) {
+    // Diễu hành quái nặng đô + rớt thêm gem — KHÔNG đổi HP/speed/dmg (triết lý CEO)
+    G.vp1_eliteParade = true;
+    G.vp1_spotlightSub = I18N.t("vp1.spotlight.elite.banner") + " " + I18N.t("vp1.spotlight.elite.sub");
+  } else if (spot.mods) {
+    const isDouble = spot.mods === "random2";
+    let ids = spot.mods;
+    if (isDouble) {
+      // Wave 29 — Final Audition: roll 2 modifier vui khác nhau
+      // (ngoại lệ duy nhất cho quy tắc 1 modifier/wave)
+      const pool = vp1GetModifiers().map(m => m.id);
+      ids = [];
+      while (ids.length < 2 && pool.length) {
+        ids.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+      }
+    }
+    const names = [];
+    for (const id of ids) {
+      if (vp1ApplyModById(id, true)) names.push(I18N.t("vp1.mod." + id + ".name"));
+    }
+    if (isDouble || names.length > 1) {
+      G.vp1_spotlightSub = I18N.t("vp1.spotlight.double.banner") + " " + names.join(" + ");
+    } else if (names.length === 1) {
+      G.vp1_spotlightSub = names[0] + " — " + I18N.t("vp1.mod." + ids[0] + ".desc");
+    }
+  }
+  return spot;
 }
 /* Spawn director scripted: 1 con, cách tàu > 300px. */
 function vp1SpawnDirector() {
@@ -2814,6 +3015,11 @@ function vp1TickMeteors(dt) {
 function startWave(n) {
   G.wave = n; G.waveKills = 0;
   G.waveClearShown = false;
+  // Sprint Round 2 telemetry: wave đã tới (không ảnh hưởng gameplay)
+  try {
+    if (window.WKAnalytics && typeof window.WKAnalytics.trackWaveReached === "function")
+      window.WKAnalytics.trackWaveReached(n, { difficulty: DIFF_KEY, score: G.score });
+  } catch (e) {}
   const act = actOf(n), cfg = ACTS[act - 1];
   const changed = act !== G.act;
   G.act = act;
@@ -2837,7 +3043,10 @@ function startWave(n) {
   if (n % 5 === 0) { spawnBoss(); return; }
   vp1ClearModifier(); // VP1: xóa modifier wave trước (không stack)
   G.vp1_golden = false; G.vp1_meteors = null; G.vp1_blackoutT = 0;
+  G.vp1_spotlight = false; G.vp1_spotlightSub = ""; G.vp1_eliteParade = false; // Item 6: reset spotlight
   try { if (typeof BG !== "undefined") BG.setBlackout(false); } catch (e) {}
+  // Item 6: spotlight ép trước khi build queue (elite parade cần bias pool ngay trong buildSpawnQueue)
+  const vp1spot = vp1ApplySpotlight(n);
   G.spawnQueue = buildSpawnQueue(n);
   // VP1 breather: spawn ×0.6
   if (vp1IsBreather(n)) {
@@ -2850,23 +3059,29 @@ function startWave(n) {
   G.spawnT = 0;
   // VP1: director scripted (1 con đầu wave)
   if (vp1DirectorEligible(n)) vp1SpawnDirector();
-  // VP1: roll event
-  const vp1ev = vp1RollEvent(n);
-  if (vp1ev) vp1TriggerEvent(vp1ev, n);
+  // VP1: roll event (bỏ qua nếu spotlight đã ép event — vd wave 24 Giờ Vàng)
+  if (!vp1spot || !vp1spot.event) {
+    const vp1ev = vp1RollEvent(n);
+    if (vp1ev) vp1TriggerEvent(vp1ev, n);
+  }
   maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
   maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? I18N.t("banner.wave1") : pickSub();
+  // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)
+  const waveTitle = changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`;
+  const waveSub = changed
+    ? (G.vp1_spotlightSub ? `ACT ${act} — ${cfg.name}: ${G.vp1_spotlightSub}` : `ACT ${act} — ${cfg.name}: ${cfg.sub}`)
+    : (G.vp1_spotlightSub || sub);
   // WOW: wave banner qua Cinema (fallback setBanner cũ)
   if (window.Cinema) {
     try {
       if (changed) { try { Cinema.stageTransition(); } catch (e) {} }
-      Cinema.waveBanner(n, { boss: false, sub: changed ? `ACT ${act} — ${cfg.name}: ${cfg.sub}` : sub });
+      Cinema.waveBanner(n, { boss: false, sub: waveSub });
     } catch (err) {
-      setBanner(changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`, changed ? cfg.sub : sub);
+      setBanner(waveTitle, waveSub);
     }
-  } else if (changed) setBanner(`ACT ${act} — ${cfg.name}`, cfg.sub);
-  else setBanner(`WAVE ${n}`, sub);
+  } else setBanner(waveTitle, waveSub);
 }
 function pickSub() {
   return [I18N.t("banner.tip1"),
@@ -2934,12 +3149,33 @@ function fireBullet() {
 
 /* ---------------- pause / chết / reset ---------------- */
 function pauseGame(on) {
-  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); }
+  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); paintPauseWjump(); }
   else if (!on && G.phase === "paused") {
     G.phase = "play"; $("ov-pause").classList.remove("show"); lastT = performance.now();
   }
 }
 window.pauseGame = pauseGame; // H3: radial mobile gọi
+
+/* Item 4 — Sprint Round 2: đổi "Độ Nhảy Cửa Sổ" giữa run từ pause menu (game.html#ov-pause). */
+function paintPauseWjump() {
+  var mode = (typeof wjumpMode === "function") ? wjumpMode() : "normal";
+  document.querySelectorAll("[data-wjump]").forEach(function (b) {
+    var sel = b.dataset.wjump === mode;
+    b.classList.toggle("sel", sel);
+    b.setAttribute("aria-pressed", sel ? "true" : "false");
+  });
+}
+document.querySelectorAll("[data-wjump]").forEach(function (b) {
+  b.onclick = function () {
+    try {
+      var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
+      st.wjump = b.dataset.wjump;
+      localStorage.setItem("wk_settings", JSON.stringify(st));
+    } catch (e) {}
+    if (typeof AudioEngine !== "undefined" && AudioEngine.sfx) { try { AudioEngine.sfx.click(); } catch (e) {} }
+    paintPauseWjump();
+  };
+});
 function hurtShip(dmg, srcx, srcy) {
   const s = G.ship;
   if (G.phase !== "play") return;
@@ -2984,6 +3220,12 @@ function die(reason) {
   windowJitter(30); jxShake(12, 700, 10); // WOW tier: boss chết / player die
   if (bus) bus.postMessage({ type: "gameover", profileId: PROFILE_ID, score: G.score, wave: G.wave, act: G.act,
     kills: G.kills, time: Math.round(G.time), timeSec: Math.round(G.time), diff: DIFF_KEY, reason: reasonTxt });
+  // Sprint Round 2 telemetry: nguyên nhân chết (map reason -> enum), phục vụ histogram wave game-over
+  try {
+    if (window.WKAnalytics && typeof window.WKAnalytics.trackDeathCause === "function")
+      window.WKAnalytics.trackDeathCause(window.WKAnalytics.mapDeathCause(reason),
+        { wave: G.wave, score: G.score, difficulty: DIFF_KEY });
+  } catch (e) {}
   $("over-title").textContent = reasonTxt;
   $("over-score").textContent = I18N.t("gameover.score_line", { score: I18N.fmtNum(G.score), wave: G.wave });
   $("over-stats").innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-skull"/></svg> ` + I18N.t("gameover.stats", { kills: `<b>${G.kills}</b>`, level: `<b>${G.level}</b>`, time: `<b>${Math.round(G.time)}s</b>`, diff: `<b>${DIFF.label}</b>` });
@@ -2994,6 +3236,12 @@ function die(reason) {
     if (!prev || G.score > prev.score) recTxt = `<svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg> ${I18N.t("gameover.new_record")}`;
   } catch {}
   $("over-record").innerHTML = recTxt;
+  // CTA web→desktop (Sprint R2 item 5): banner game-over chỉ hiện khi wave≥5,
+  // và chỉ trên web thường (không portal, không Electron).
+  try {
+    const ctaEl = $("over-desktop-cta");
+    if (ctaEl) ctaEl.hidden = !(G.wave >= 5 && !ctaSuppressed());
+  } catch (e) {}
   $("ov-over").classList.add("show");
 }
 function resetGame() {
@@ -3004,14 +3252,17 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     bombWave: 0, giantWave: 0, motherWave: 0,
+    _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
          // VARIETY PACK 1: reset modifier/event flags khi chơi lại
-         vp1_mod: null, vp1_lastMod: null, vp1_gemMul: 1, vp1_tiny: false, vp1_xpMul: 1,
+         vp1_mod: null, vp1_mods: [], vp1_lastMod: null, vp1_gemMul: 1, vp1_tiny: false, vp1_xpMul: 1,
          vp1_shipSpdMul: 1, vp1_starBullets: false, vp1_slowOpenT: 0, vp1_glowParty: false,
          vp1_magnetMul: 1, vp1_dj: false, vp1_hullIns: false, vp1_pickupMul: 1,
          vp1_fireworks: false, vp1_golden: false, vp1_breather: false,
          vp1_meteors: null, vp1_meteorT: 0, vp1_blackoutT: 0, vp1_directorDebutShown: false,
+         // Item 6 (retune wave 15–30): reset spotlight flags khi chơi lại
+         vp1_spotlight: false, vp1_spotlightSub: "", vp1_eliteParade: false,
   });
   // F-02 + Phụ lục A: chụp modifiers của Xưởng cho run này (runMods đã được
   // preboot của V2 gán trước lần reset đầu; các lần restart đọc lại cùng nguồn)
@@ -3058,6 +3309,13 @@ function quitToMenu() { try { window.close(); } catch (e) {} }
 window.quitToMenu = quitToMenu;
 $("btn-quit").onclick = quitToMenu;
 $("btn-quit2").onclick = quitToMenu;
+// CTA web→desktop (Sprint R2 item 5): track click mọi CTA desktop (guard trong trackCtaClick)
+document.addEventListener("click", (e) => {
+  try {
+    const t = e.target && e.target.closest ? e.target.closest("[data-cta-id]") : null;
+    if (t) trackCtaClick(t.dataset.ctaId);
+  } catch (er) {}
+});
 
 /* ---------------- update ---------------- */
 function killEnemy(e) {
@@ -3093,7 +3351,7 @@ function killEnemy(e) {
   if (def && def.onDeath) def.onDeath(e); // vd splitter đẻ mini
   // VP1 fireworks: kill nổ pháo hoa lớn nhiều màu
   if (G.vp1_fireworks) burst(e.x, e.y, 40, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
-  const n = (e.type === "tank" ? 3 : 1) * (G.vp1_gemMul || 1);
+  const n = ((e.type === "tank" ? 3 : 1) + (e.vp1_elite ? 2 : 0)) * (G.vp1_gemMul || 1);
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
     // VP1 golden: gem ×2 giá trị; VP1 breather: gem ×1.5 giá trị
@@ -3277,8 +3535,17 @@ function update(dt) {
   if (G.spawnQueue.length) {
     G.spawnT -= dt;
     if (G.spawnT <= 0) {
-      G.spawnT = Math.max(0.22, 0.85 * DIFF.spawnMul * onboardSpawnMul() - G.wave * 0.05);
-      spawnEnemy(G.spawnQueue.pop());
+      const TS = wkSpawnCfg();
+      if (Number.isFinite(TS.concurrent_cap) && TS.concurrent_cap > 0 && G.enemies.length >= TS.concurrent_cap) {
+        // Item 3: concurrent cap — pacing mềm: hoãn spawn 0.25s, KHÔNG drop queue
+        // (tổng quái/wave không đổi). Mặc định 20.
+        G.spawnT = 0.25;
+        // Item 6: báo cho người chơi biết còn quái đang chờ spawn (throttle bằng bannerT)
+        if (G.bannerT <= 0) setBanner(I18N.t("vp1.cap.banner"), "");
+      } else {
+        G.spawnT = wkSpawnInterval(G.wave);
+        spawnEnemy(G.spawnQueue.pop());
+      }
     }
   } else if (!G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
     G.waveBreak -= dt;
@@ -3405,6 +3672,12 @@ function update(dt) {
   // WOW: đợi cả quái đang warning-spawn (pendingSpawns) rồi mới clear
   if (!G.enemies.length && !G.boss && !G.spawnQueue.length && !(G.pendingSpawns > 0) && G.phase === "play" && !G.waveClearShown && G.wave > 0) {
     G.waveClearShown = true;
+    // CTA web→desktop (Sprint R2 item 5): toast 1 lần/run khi clear wave 10
+    // (flag reset ở resetGame); không hiện trong portal/Electron.
+    if (G.wave === 10 && !G._desktopToastShown && !ctaSuppressed()) {
+      G._desktopToastShown = true;
+      showDesktopToast();
+    }
     // v2.0: juice2/meta/tutorial/campaign hook
     if (window.V2) { try { V2.onWaveClear(G.wave); } catch (er) {} }
     // VP1 hullinsurance: cuối wave vá thêm +30px · VP1 breather: +1 HP
@@ -3806,6 +4079,11 @@ function render(now) {
     // CEO §9-Q2: quái "say nắng" vẽ 💘 trên đầu
     if (e.sayNangT > 0 && window.HUDIcons) {
       HUDIcons.draw(ctx, "i-heart", 16, "#c084fc", 0, -e.r - 15, true);
+    }
+    // Item 6 — Elite Parade: vòng vàng nhấp nháy cho quái tinh anh (chỉ visual)
+    if (e.vp1_elite) {
+      ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, e.r + 5 + Math.sin((e.t || 0) * 6) * 1.5, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.restore(); ctx.globalAlpha = 1;
     if (e.hp > 4) {
@@ -4209,6 +4487,7 @@ window.WKSpawnGems = function (n, x, y) { for (let i = 0; i < n; i++) { const a 
 // thành no-op. Expose đúng contract mà 2 module đó tài liệu hoá.
 window.shrinkWindow = shrinkWindow; window.growWindow = growWindow;
 window.pushWindow = pushWindow; window.windowJitter = windowJitter;
+window.wjumpPreset = wjumpPreset; // Item 4: pause UI + test đọc preset đang áp dụng
 window.hurtShip = hurtShip; window.burst = burst; window.jxShake = jxShake;
 window.spawnEnemyAt = spawnEnemyAt;
 window.WKFireEB = function (x, y, vx, vy, o) { G.ebullets.push(Object.assign({ x: x, y: y, vx: vx, vy: vy, r: 7, t: 0 }, o || {})); };

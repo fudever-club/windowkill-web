@@ -115,6 +115,10 @@
       "settings.sat_auto": "Tự động",
       "settings.sat_sim": "Luôn mô phỏng",
       "settings.sat_off": "Tắt",
+      "settings.wjump": "Độ Nhảy Cửa Sổ",
+      "settings.wjump_calm": "Êm",
+      "settings.wjump_normal": "Vừa",
+      "settings.wjump_wild": "Điên",
       "settings.analytics": "Thống kê ẩn danh (không cookie)",
       "settings.analytics_aria": "Bật/tắt thống kê ẩn danh",
       "settings.analytics_title": "Gửi thống kê ẩn danh giúp cải thiện game. Không cookie, không định danh, tôn trọng Do-Not-Track.",
@@ -178,6 +182,12 @@
       "gameover.retry": "VÁ LẠI & CHƠI TIẾP (R)",
       "gameover.retry_hint": "Chơi lại (R)",
       "gameover.menu": "Về menu",
+      /* ----- CTA desktop (web→desktop funnel) ----- */
+      "cta.launcher_title": "Desktop Edition",
+      "cta.launcher_sub": "Cửa sổ thật, không mô phỏng",
+      "cta.gameover_text": "Cửa sổ này chỉ là mô phỏng. Trải nghiệm cửa sổ THẬT trên bản Desktop →",
+      "cta.gameover_btn": "Tải Desktop",
+      "cta.toast_text": "Bản Desktop: cửa sổ thật đấy!",
       /* ----- satellite permission ----- */
       "satperm.text": "Màn này có cửa sổ vệ tinh — cho mở nhé?",
       "satperm.allow": "Cho phép",
@@ -261,6 +271,10 @@
       "settings.sat_auto": "Auto",
       "settings.sat_sim": "Always simulate",
       "settings.sat_off": "Off",
+      "settings.wjump": "Window Jump",
+      "settings.wjump_calm": "Calm",
+      "settings.wjump_normal": "Normal",
+      "settings.wjump_wild": "Wild",
       "settings.analytics": "Anonymous stats (no cookies)",
       "settings.analytics_aria": "Toggle anonymous stats",
       "settings.analytics_title": "Send anonymous stats to help improve the game. No cookies, no fingerprinting, respects Do-Not-Track.",
@@ -322,6 +336,12 @@
       "gameover.retry": "PATCH UP & PLAY AGAIN (R)",
       "gameover.retry_hint": "Play again (R)",
       "gameover.menu": "Back to menu",
+      /* ----- desktop CTA (web→desktop funnel) ----- */
+      "cta.launcher_title": "Desktop Edition",
+      "cta.launcher_sub": "Real windows, no simulation",
+      "cta.gameover_text": "This window is just a simulation. Experience REAL windows on Desktop →",
+      "cta.gameover_btn": "Get Desktop",
+      "cta.toast_text": "Desktop build: real windows!",
       /* ----- satellite permission ----- */
       "satperm.text": "This level has satellite windows — allow them?",
       "satperm.allow": "Allow",
@@ -427,6 +447,12 @@
       "vp1.event.meteor.banner": "ƯỚC ĐI! Mưa sao băng tới!",
       "vp1.event.blackout.banner": "TẮT ĐÈN QUẨY!",
       "vp1.event.golden.banner": "GIỜ VÀNG RỰC RỠ!",
+      /* ----- Item 6: retune wave 15–30 (spotlight + cap banner) ----- */
+      "vp1.cap.banner": "SẮP CÓ THÊM QUÁI!",
+      "vp1.spotlight.elite.banner": "DIỄU HÀNH TINH ANH!",
+      "vp1.spotlight.elite.sub": "Quái nặng đô diễu hành — rớt thêm gem, không khó hơn!",
+      "vp1.spotlight.double.banner": "TỔNG DUYỆT!",
+      "vp1.spotlight.golden.sub": "GIỜ VÀNG tri ân — gem ×2 giá trị cả wave!",
       /* ----- banner wave (§12.4) ----- */
       "banner.wave1": "Bắn quái tím trước — chúng gặm cửa sổ!",
       "banner.tip1": "Quái tím gặm viền cửa sổ — bắn chúng xuống!",
@@ -670,6 +696,12 @@
       "vp1.event.meteor.banner": "MAKE A WISH! Meteor shower incoming!",
       "vp1.event.blackout.banner": "LIGHTS-OUT PARTY!",
       "vp1.event.golden.banner": "GOLDEN HOUR!",
+      /* ----- Item 6: retune wave 15-30 (spotlight + cap banner) ----- */
+      "vp1.cap.banner": "MORE MONSTERS INCOMING!",
+      "vp1.spotlight.elite.banner": "ELITE PARADE!",
+      "vp1.spotlight.elite.sub": "Heavy monsters on parade — bonus gems, no harder!",
+      "vp1.spotlight.double.banner": "FINAL AUDITION!",
+      "vp1.spotlight.golden.sub": "Golden hour — 2x gem value all wave!",
       /* ----- wave banners ----- */
       "banner.wave1": "Shoot the purple ones first — they chew the window!",
       "banner.tip1": "Purple monsters chew the window edge — shoot them down!",

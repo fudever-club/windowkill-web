@@ -317,3 +317,33 @@ button { touch-action: manipulation; }
 
 /* ---------- H1/B4: canvas shatter khi cửa sổ vỡ (dưới panel 90, trên game) ---------- */
 #fx-shatter { position: fixed; inset: 0; z-index: 89; pointer-events: none; }
+
+/* ---------- CTA web→desktop (Sprint R2 item 5) ---------- */
+/* Game-over banner: dòng thân thiện dưới nút chơi lại; ẩn mặc định. */
+#over-desktop-cta[hidden] { display: none !important; }
+.desktop-cta-line {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px; padding: 10px 16px; max-width: 520px;
+  background: #0d1c34cc; border: 1px solid #0080FF55; border-radius: 12px;
+  font-size: 13.5px; color: #c8dcf5;
+}
+.desktop-cta-line .ic { width: 22px; height: 22px; color: #8fc3ff; flex: none; }
+/* Toast sau wave 10: góc dưới phải, nhỏ, không che gameplay, tự tắt 6s. */
+#wk-desktop-toast {
+  position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 95; display: flex; align-items: center; gap: 10px;
+  background: #0d1c34f2; border: 1px solid #0080FF66; border-radius: 12px;
+  padding: 10px 12px 10px 14px; font-size: 13.5px; color: #dbeafe;
+  box-shadow: 0 8px 28px #000c; max-width: min(320px, 80vw);
+  animation: toastIn .25s ease-out;
+}
+#wk-desktop-toast .ic { width: 20px; height: 20px; color: #8fc3ff; flex: none; }
+#wk-desktop-toast a { color: #7df9ff; font-weight: 700; text-decoration: none; white-space: nowrap; }
+#wk-desktop-toast a:hover { text-decoration: underline; }
+#wk-desktop-toast .toast-x {
+  background: none; border: none; color: #9db8d9; font-size: 16px; cursor: pointer;
+  padding: 6px; line-height: 1; min-width: 32px; min-height: 32px;
+}
+#wk-desktop-toast .toast-x:hover { color: #fff; }
+@keyframes toastIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #wk-desktop-toast { animation: none; } }

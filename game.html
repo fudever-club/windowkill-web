@@ -33,6 +33,7 @@
   #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
   #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; /* MOBILE 2026-10-03: joystick cần độc quyền gesture, không để Safari cuộn/zoom */ }
   .menu-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .menu-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
   .stat-line { color: #9db8d9; font-size: 15px; line-height: 2; }
   .stat-line b { color: #fde68a; }
 </style>
@@ -270,6 +271,13 @@
       <button class="btn-ghost" id="btn-restart"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="pause.retry">Chơi lại</span></button>
       <button class="btn-ghost" id="btn-quit"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="pause.quit">Về menu</span></button>
     </div>
+    <!-- Item 4 — Sprint Round 2: đổi Độ Nhảy Cửa Sổ giữa run -->
+    <div class="menu-btns" style="margin-top:12px;align-items:center">
+      <span style="color:#9db8d9;font-size:13.5px" data-i18n="settings.wjump">Độ Nhảy Cửa Sổ</span>
+      <button class="btn-ghost" data-wjump="calm" data-i18n="settings.wjump_calm">Êm</button>
+      <button class="btn-ghost" data-wjump="normal" data-i18n="settings.wjump_normal">Vừa</button>
+      <button class="btn-ghost" data-wjump="wild" data-i18n="settings.wjump_wild">Điên</button>
+    </div>
     <div class="stat-line" data-i18n="pause.hint">P / Esc: tiếp tục · M: bật/tắt nhạc</div>
   </div>
 
@@ -282,6 +290,14 @@
     <div class="menu-btns">
       <button class="btn-big" id="btn-again" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="gameover.retry">Chơi lại (R)</span></button>
       <button class="btn-ghost" id="btn-quit2"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="gameover.menu">Về menu</span></button>
+    </div>
+    <!-- CTA web→desktop (Sprint R2 item 5): chỉ hiện khi wave≥5; ẩn mặc định,
+         game.js bật theo điều kiện (không portal, không Electron). -->
+    <div id="over-desktop-cta" class="desktop-cta-line" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-window"/></svg>
+      <span data-i18n="cta.gameover_text">Cửa sổ này chỉ là mô phỏng. Trải nghiệm cửa sổ THẬT trên bản Desktop →</span>
+      <a href="https://quangnhat1504.itch.io/windowkill?utm_source=game&utm_medium=cta&utm_campaign=desktop"
+         target="_blank" rel="noopener" class="btn-ghost" data-cta-id="gameover_banner"><span data-i18n="cta.gameover_btn">Tải Desktop</span></a>
     </div>
   </div>
 
@@ -310,6 +326,7 @@
 <script src="js/bg.js" defer></script>
 <script src="js/juice.js" defer></script>
 <script src="js/cinema.js" defer></script>
+<script src="js/tuning.js" defer></script>
 <script src="js/campaign.js" defer></script>
 <script src="js/monsters.js" defer></script>
 <script src="js/bosses.js" defer></script>

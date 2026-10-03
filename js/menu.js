@@ -132,8 +132,9 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
+  if (!["calm", "normal", "wild"].includes(settings.wjump)) settings.wjump = "normal"; // Item 4: repair corrupted wjump
   const saveSettings = () => store.set("wk_settings", settings);
   // FIX 2026-10-03 (2-track): web không popup thật nữa — migrate setting "auto" cũ → "sim".
   // Desktop Electron giữ nguyên (popup thật do app quản lý).
@@ -153,6 +154,7 @@
     document.querySelectorAll("[data-diff]").forEach(b => { const sel = b.dataset.diff === settings.diff; b.classList.toggle("sel", sel); press(b, sel); });
     document.querySelectorAll("[data-fx]").forEach(b => { const sel = b.dataset.fx === settings.fx; b.classList.toggle("sel", sel); press(b, sel); });
     document.querySelectorAll("[data-sat]").forEach(b => { press(b, b.dataset.sat === settings.sat); });
+    document.querySelectorAll("[data-wjump]").forEach(b => { press(b, b.dataset.wjump === settings.wjump); });
   }
   document.querySelectorAll("[data-fx]").forEach(b => b.onclick = () => {
     settings.fx = b.dataset.fx; saveSettings(); paintToggles();
@@ -161,6 +163,13 @@
   document.querySelectorAll("[data-sat]").forEach(b => b.onclick = () => {
     settings.sat = b.dataset.sat; saveSettings();
     document.querySelectorAll("[data-sat]").forEach(x => { const sel = x === b; x.classList.toggle("sel", sel); x.setAttribute("aria-pressed", sel ? "true" : "false"); });
+  });
+  // Item 4 — Sprint Round 2: segmented control "Độ Nhảy Cửa Sổ" (pattern data-sat)
+  document.querySelectorAll("[data-wjump]").forEach(b => { const sel = b.dataset.wjump === settings.wjump; b.classList.toggle("sel", sel); b.setAttribute("aria-pressed", sel ? "true" : "false"); });
+  document.querySelectorAll("[data-wjump]").forEach(b => b.onclick = () => {
+    settings.wjump = b.dataset.wjump; saveSettings();
+    document.querySelectorAll("[data-wjump]").forEach(x => { const sel = x === b; x.classList.toggle("sel", sel); x.setAttribute("aria-pressed", sel ? "true" : "false"); });
+    Analytics.track("settings_changed", { key: "wjump", value: settings.wjump });
   });
   /* Analytics opt-out toggle — injected via DOM because index.html is frozen.
      Reuses the existing .setrow/.tgl styles. */
@@ -626,6 +635,29 @@
       } catch (e) {}
     } catch (e) {}
   })();
+  /* ---------- CTA web→desktop (Sprint R2 item 5) ----------
+     Card Desktop Edition cạnh nút Play — chỉ hiện trên web thường:
+     KHÔNG portalMode (đang ở itch.io rồi), KHÔNG Electron (đã là desktop).
+     Thân thiện, không dark pattern: chỉ là link tab mới, dễ bỏ qua. */
+  const DESKTOP_CTA_UTM = "utm_source=game&utm_medium=cta&utm_campaign=desktop";
+  function trackCtaClick(cta_id) {
+    try {
+      if (window.WKAnalytics && typeof window.WKAnalytics.track === "function") {
+        window.WKAnalytics.track("cta_click", { cta_id, utm: DESKTOP_CTA_UTM });
+      }
+    } catch {}
+  }
+  function initDesktopCta() {
+    const card = $("desktop-cta-card");
+    if (!card) return;
+    const isElectron = /Electron\//.test(navigator.userAgent || "");
+    if (window.WK_PORTAL_MODE || isElectron) return; // portal / desktop: không CTA
+    card.hidden = false;
+    const link = card.querySelector("a[data-cta-id]");
+    if (link) link.addEventListener("click", () => trackCtaClick(link.dataset.ctaId || "launcher_card"));
+  }
+  window.__wkTrackCta = trackCtaClick; // debug console (game.html có helper riêng trong game.js)
+  initDesktopCta();
   paintToggles(); renderAll(); Backend.init();
   if (activeId) Analytics.setProfile(activeId); // warm the sha256 profile hash for analytics
 })();

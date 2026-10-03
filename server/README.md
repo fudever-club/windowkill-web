@@ -129,8 +129,9 @@ npm test   # node:test — boots the real server on an ephemeral port, 15 cases
 
 `POST /api/events` accepts batches of privacy-friendly analytics events —
 see `docs/ANALYTICS.md` for the full schema. Validation is strict per event
-type (`game_start`, `game_over`, `wave_reached`, `upgrade_chosen`,
-`upgrade_draft_shown`, `settings_changed`, `error`); one bad event rejects
+type (`game_start` / `session_start`, `game_over`, `wave_reached`,
+`upgrade_chosen`, `upgrade_draft_shown`, `settings_changed`, `cta_click`,
+`death_cause`, `error`); one bad event rejects
 the whole batch. Only `score`/`wave`/`difficulty` are extracted into columns
 for aggregation — everything else lives in an opaque JSON `payload`.
 
@@ -146,8 +147,53 @@ Clients never send raw profile ids: `js/analytics.js` hashes them with
 SHA-256 (`crypto.subtle`) before queueing, honours Do-Not-Track, and exposes
 an in-game opt-out toggle (`Cài đặt` → `Thống kê ẩn danh`).
 
-## Frontend wiring
+## Metrics Baseline (Sprint Round 2)
 
+`GET /api/metrics/summary` returns the 5 product baseline metrics as one
+public aggregate — counts, medians and distributions only, never raw events,
+so it needs no auth. It is rate-limit exempt like `/api/health` (a probe).
+With no data yet every `rate`/`value` is `null` (never `NaN`); `healthy` is
+`null` in that case. `thresholds` echoes the "healthy" cutoffs below.
+
+1. **web→desktop conversion** — `conversion.rate` = `ctaClicks / sessions`
+   over the last 30 days. Sessions = `game_start` + `session_start` events
+   (the launcher tracks `game_start` on every run; `session_start` is an
+   accepted alias). Healthy: **>= 3%**.
+2. **D1 retention** — `d1Retention.rate` = profiles active on the day after
+   their first session / profiles whose first-ever session was 1–7 days ago
+   (cohort old enough for a D+1; profiles < 1 day old are excluded because D1
+   is not observable yet). Keyed on `profile_id_hash` (SHA-256, no raw ids).
+   Healthy: **>= 15%**.
+3. **wave game-over distribution** — `waveGameover` histogram of `wave` at
+   death from `death_cause` events (30 days): buckets `1-4 / 5-9 / 10-14 /
+   15-19 / 20-24 / 25+`, plus `medianWave` and `byCause` counts
+   (`enemy | chewer | boss | kamikaze | window | unknown`).
+   Healthy: **median >= 8**.
+4. **runs per user per week** — `runsPerUserWeek.value` = sessions /
+   distinct `profile_id_hash` over the last 7 days. Healthy: **>= 2**.
+5. **traffic sources** — `trafficSources` = distribution of `utm_source`
+   (sessions) / `utm` (`cta_click`) over the last 30 days. The client stamps
+   `?utm_source=` from the page URL onto every `game_start`/`session_start`
+   and auto-fills it on `cta_click` when not passed explicitly. No health
+   threshold — tracked only.
+
+Event sources (client, `js/analytics.js` → `js/game.js` call sites):
+
+- `wave_reached {wave, difficulty, score}` — `startWave()` in `js/game.js`
+  (placed before the boss-wave early returns so boss waves count too).
+- `death_cause {cause, wave, score, difficulty}` — `die()` in `js/game.js`;
+  `WKAnalytics.mapDeathCause(reason)` maps `"ship" → "enemy"`,
+  `"window" → "window"`, anything else → `"unknown"`. `boss` / `kamikaze` /
+  `chewer` are reserved for richer `die(reason)` call sites (future).
+- `upgrade_chosen {upgrade_id, wave, level}` — `applyDraftPick()`; the id is
+  sanitized client-side to the server's `[A-Za-z0-9_-]{1,64}` pattern
+  (e.g. `"u2:gai_phan"` → `"u2-gai_phan"`).
+- `cta_click {cta_id, utm}` — `WKAnalytics.trackCtaClick(ctaId[, utm])`
+  (used by the Item 5 CTA work; known ids today: `launcher_card`,
+  `gameover_banner`, `wave10_toast`; the server accepts any id matching the
+  pattern for future CTAs).
+
+## Frontend wiring
 - `js/api.js` — `window.WKApi` client. Detects the backend via `GET /api/health`
   (1.5 s timeout, cached 60 s). Base URL: `window.WK_API_BASE`, else
   `localStorage.wk_api_base`, else same origin. Every method resolves to `null`

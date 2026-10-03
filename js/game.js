@@ -224,7 +224,14 @@ function drawBossShape(c, x, y, s, a, color) {
  * 1 cửa sổ chính + tối đa 3 popup vệ tinh. Vệ tinh là dumb renderer:
  * logic ở cửa sổ chính, vệ tinh chỉ vẽ + báo click + drift theo lệnh.
  * Không mở được popup (bị chặn/mobile/user chọn) → fallback "cửa sổ mô phỏng" vẽ trong arena. */
-const SAT_MODE = qp.get("sat") || "auto"; // "auto" | "sim" | "off" — từ launcher
+const IS_ELECTRON_APP = /Electron\//.test(navigator.userAgent || "");
+// 2-track 2026-10-03 (CEO): WEB = mô phỏng, KHÔNG popup thật.
+// Bug 2026-10-03: popup thật cướp focus bàn phím → tàu đơ (quái vẫn chạy).
+// Desktop Electron giữ popup thật (cửa sổ OS do app quản lý).
+const _satQp = qp.get("sat");
+const SAT_MODE = IS_ELECTRON_APP
+  ? (_satQp || "auto")
+  : (_satQp === "sim" || _satQp === "off" ? _satQp : "sim"); // "auto"/rỗng → "sim"
 const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
@@ -2031,6 +2038,9 @@ canvas.addEventListener("contextmenu", e => e.preventDefault());
 window.addEventListener("blur", () => {
   // không auto-pause khi đang thao tác vệ tinh (click popup = blur cửa sổ chính)
   if (G.phase === "play" && SatManager.count() === 0) pauseGame(true);
+  // FIX 2026-10-03: xóa phím kẹt — nhả phím khi tab khác đang focus thì keyup
+  // không về tới game → tàu tự trôi / đơ sau khi quay lại
+  for (const k in keys) keys[k] = false;
 });
 window.addEventListener("pagehide", () => SatManager.closeAll());
 

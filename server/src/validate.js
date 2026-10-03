@@ -71,11 +71,17 @@ export function validLeaderboardQuery(searchParams) {
 /* ---------- analytics events ---------- */
 
 const EVENT_TYPES = new Set([
-  "game_start", "game_over", "wave_reached", "upgrade_chosen",
-  "upgrade_draft_shown", "settings_changed", "error",
+  "game_start", "session_start", "game_over", "wave_reached", "upgrade_chosen",
+  "upgrade_draft_shown", "settings_changed", "cta_click", "death_cause",
+  "error",
 ]);
 const HASH_RE = /^[0-9a-f]{64}$/;
 const UPGRADE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const CTA_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/* Sprint Round 2 — death causes. The client maps die(reason) into this enum:
+ * "ship" -> "enemy", "window" -> "window"; boss/kamikaze/chewer are reserved
+ * for richer die(reason) call sites (future gameplay instrumentation). */
+const DEATH_CAUSES = new Set(["enemy", "chewer", "boss", "kamikaze", "window", "unknown"]);
 const SETTING_KEY_RE = /^[A-Za-z0-9_]{1,32}$/;
 
 function validHash(v) {
@@ -106,9 +112,18 @@ export function validEvent(e) {
   if (hash) out.profile_id_hash = hash;
 
   switch (e.type) {
-    case "game_start": {
+    /* game_start is tracked by the launcher when a run begins (menu.js);
+     * session_start is an accepted alias for the same moment so dashboards
+     * can count sessions with either name. utm_source (captured by the
+     * client from the page URL) is stored for the traffic-source metric. */
+    case "game_start":
+    case "session_start": {
       if (typeof e.difficulty !== "string" || !DIFFICULTIES.includes(e.difficulty)) return null;
       out.difficulty = e.difficulty;
+      if (e.utm_source !== undefined) {
+        if (typeof e.utm_source !== "string" || !e.utm_source.length || e.utm_source.length > 64) return null;
+        out.payload = { utm_source: e.utm_source };
+      }
       break;
     }
     case "game_over": {
@@ -134,12 +149,64 @@ export function validEvent(e) {
       const act = e.act === undefined ? null : intIn(e.act, 0, 99);
       if (e.act !== undefined && act === null) return null;
       out.payload = act !== null ? { act } : {};
+      /* Sprint Round 2: the client sends difficulty + score at wave start so
+       * the wave_gameover histogram can be sliced without extra events. */
+      if (e.difficulty !== undefined) {
+        if (typeof e.difficulty !== "string" || !DIFFICULTIES.includes(e.difficulty)) return null;
+        out.difficulty = e.difficulty;
+      }
+      if (e.score !== undefined) {
+        const score = intIn(e.score, 0, 99_999_999);
+        if (score === null) return null;
+        out.score = score;
+      }
       break;
     }
     case "upgrade_chosen": {
       const id = strCap(e.upgrade_id, 64);
       if (!id || !UPGRADE_ID_RE.test(id)) return null;
       out.payload = { upgrade_id: id };
+      /* Sprint Round 2: wave + player level at pick time (draft funnel). */
+      if (e.wave !== undefined) {
+        const wave = intIn(e.wave, 0, 9_999);
+        if (wave === null) return null;
+        out.wave = wave;
+      }
+      if (e.level !== undefined) {
+        const level = intIn(e.level, 1, 999);
+        if (level === null) return null;
+        out.payload.level = level;
+      }
+      break;
+    }
+    /* Sprint Round 2: desktop-funnel CTA clicks (launcher_card /
+     * gameover_banner / wave10_toast today; open id pattern for future CTAs).
+     * utm is auto-filled by the client from ?utm_source= when present. */
+    case "cta_click": {
+      if (typeof e.cta_id !== "string" || !CTA_ID_RE.test(e.cta_id)) return null;
+      out.payload = { cta_id: e.cta_id };
+      if (e.utm !== undefined) {
+        if (typeof e.utm !== "string" || !e.utm.length || e.utm.length > 64) return null;
+        out.payload.utm = e.utm;
+      }
+      break;
+    }
+    /* Sprint Round 2: cause-of-death for the wave_gameover histogram. */
+    case "death_cause": {
+      if (typeof e.cause !== "string" || !DEATH_CAUSES.has(e.cause)) return null;
+      const wave = intIn(e.wave, 0, 9_999);
+      if (wave === null) return null;
+      out.wave = wave;
+      out.payload = { cause: e.cause };
+      if (e.score !== undefined) {
+        const score = intIn(e.score, 0, 99_999_999);
+        if (score === null) return null;
+        out.score = score;
+      }
+      if (e.difficulty !== undefined) {
+        if (typeof e.difficulty !== "string" || !DIFFICULTIES.includes(e.difficulty)) return null;
+        out.difficulty = e.difficulty;
+      }
       break;
     }
     case "upgrade_draft_shown":

@@ -154,6 +154,31 @@ export function openDb(dbPath, opts = {}) {
     `),
     trimErrors: db.prepare("DELETE FROM errors WHERE id <= (SELECT COALESCE(MAX(id), 0) - ? FROM errors)"),
     errorCount: db.prepare("SELECT COUNT(*) AS n FROM errors"),
+    /* Sprint Round 2 — inputs for /api/metrics/summary (see metricsSummary). */
+    s2Sessions: db.prepare(`
+      SELECT COUNT(*) AS sessions, COUNT(DISTINCT profile_hash) AS users
+      FROM events WHERE (type = 'game_start' OR type = 'session_start') AND ts >= ?
+    `),
+    s2CtaClicks: db.prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'cta_click' AND ts >= ?"),
+    s2Deaths: db.prepare("SELECT wave, payload FROM events WHERE type = 'death_cause' AND ts >= ?"),
+    /* First session ever per profile, restricted to profiles active in the
+     * last 7 days (D1 cohort needs the TRUE first session, not first-in-window). */
+    s2CohortFirst: db.prepare(`
+      SELECT profile_hash, MIN(ts) AS first_ts
+      FROM events
+      WHERE (type = 'game_start' OR type = 'session_start') AND profile_hash IS NOT NULL
+      GROUP BY profile_hash
+      HAVING SUM(CASE WHEN ts >= ? THEN 1 ELSE 0 END) > 0
+    `),
+    s2SessionDays: db.prepare(`
+      SELECT profile_hash, ts FROM events
+      WHERE (type = 'game_start' OR type = 'session_start')
+        AND profile_hash IS NOT NULL AND ts >= ?
+    `),
+    s2Traffic: db.prepare(`
+      SELECT payload FROM events
+      WHERE (type = 'game_start' OR type = 'session_start' OR type = 'cta_click') AND ts >= ?
+    `),
     dau: db.prepare(`
       SELECT COUNT(DISTINCT profile_hash) AS n FROM events
       WHERE ts >= ? AND profile_hash IS NOT NULL
@@ -240,8 +265,7 @@ export function openDb(dbPath, opts = {}) {
     },
     errorCount: () => q.errorCount.get().n,
     /* Internal dashboard aggregates (privacy-friendly: counts & averages only). */
-    metrics() {
-      const t = now();
+    metrics() {      const t = now();
       const day = t - 24 * 3600_000;
       const week = t - 7 * 24 * 3600_000;
       const agg = q.gamesAgg.get(week);
@@ -260,6 +284,117 @@ export function openDb(dbPath, opts = {}) {
         bestWave7d: agg.bestWave,
         byDifficulty7d: byDiff,
         generatedAt: t,
+      };
+    },
+    /* Sprint Round 2 — the 5 baseline metrics (see server/README.md
+     * "Metrics Baseline (Sprint Round 2)"). All inputs are aggregates over
+     * the privacy-friendly events table; no PII is ever returned.
+     *
+     * Windows: 30 days for conversion/wave/traffic, 7 days for
+     * runs-per-user, 7-day D1 cohort. A metric with no data reports null
+     * (rate/value) instead of dividing by zero; `healthy` is then null. */
+    metricsSummary() {
+      const t = now();
+      const day = 24 * 3600_000;
+      const w30 = t - 30 * day;
+      const w14 = t - 14 * day;
+      const w7 = t - 7 * day;
+
+      // 1. web→desktop conversion = cta_clicks / game sessions (30d), healthy ≥3%
+      const s30 = q.s2Sessions.get(w30);
+      const clicks = q.s2CtaClicks.get(w30).n;
+      const conversionRate = s30.sessions > 0 ? clicks / s30.sessions : null;
+
+      // 2. D1 retention: cohort = profiles whose FIRST EVER session was 1–7
+      // days ago (old enough for a D+1); retained = active on day(first)+1.
+      const dayRows = q.s2SessionDays.all(w14);
+      const activeDays = new Map();
+      for (const r of dayRows) {
+        let set = activeDays.get(r.profile_hash);
+        if (!set) { set = new Set(); activeDays.set(r.profile_hash, set); }
+        set.add(Math.floor(r.ts / day));
+      }
+      let cohort = 0, retained = 0;
+      for (const r of q.s2CohortFirst.all(w7)) {
+        const firstTs = r.first_ts;
+        if (firstTs < w7 || firstTs > t - day) continue; // too old, or D1 not observable yet
+        cohort++;
+        const d1 = Math.floor(firstTs / day) + 1;
+        const set = activeDays.get(r.profile_hash);
+        if (set && set.has(d1)) retained++;
+      }
+      const d1Rate = cohort > 0 ? retained / cohort : null;
+
+      // 3. wave_gameover distribution: death_cause waves (30d).
+      const deaths = q.s2Deaths.all(w30);
+      const waves = deaths.map((d) => d.wave).filter((w) => Number.isInteger(w)).sort((a, b) => a - b);
+      const median = waves.length
+        ? (waves.length % 2 ? waves[(waves.length - 1) / 2]
+           : (waves[waves.length / 2 - 1] + waves[waves.length / 2]) / 2)
+        : null;
+      const buckets = { "1-4": 0, "5-9": 0, "10-14": 0, "15-19": 0, "20-24": 0, "25+": 0 };
+      for (const w of waves) {
+        if (w <= 4) buckets["1-4"]++;
+        else if (w <= 9) buckets["5-9"]++;
+        else if (w <= 14) buckets["10-14"]++;
+        else if (w <= 19) buckets["15-19"]++;
+        else if (w <= 24) buckets["20-24"]++;
+        else buckets["25+"]++;
+      }
+      const byCause = {};
+      for (const d of deaths) {
+        try {
+          const c = JSON.parse(d.payload || "{}").cause;
+          if (typeof c === "string") byCause[c] = (byCause[c] || 0) + 1;
+        } catch {}
+      }
+
+      // 4. runs per user per week = sessions / distinct profiles (7d), healthy ≥2
+      const s7 = q.s2Sessions.get(w7);
+      const runsPerUser = s7.users > 0 ? s7.sessions / s7.users : null;
+
+      // 5. traffic sources: utm_source/utm distribution over sessions+clicks (30d).
+      const traffic = {};
+      for (const r of q.s2Traffic.all(w30)) {
+        try {
+          const p = JSON.parse(r.payload || "{}");
+          const src = p.utm_source || p.utm;
+          if (typeof src === "string" && src) traffic[src] = (traffic[src] || 0) + 1;
+        } catch {}
+      }
+
+      const healthy = (rate, threshold) =>
+        rate === null ? null : rate >= threshold;
+
+      return {
+        windowDays: 30,
+        generatedAt: t,
+        conversion: {
+          ctaClicks: clicks, sessions: s30.sessions,
+          rate: conversionRate === null ? null : Math.round(conversionRate * 1000) / 1000,
+          healthy: healthy(conversionRate, 0.03),
+        },
+        d1Retention: {
+          cohort, retained,
+          rate: d1Rate === null ? null : Math.round(d1Rate * 1000) / 1000,
+          healthy: healthy(d1Rate, 0.15),
+        },
+        waveGameover: {
+          deaths: waves.length,
+          medianWave: median,
+          buckets, byCause,
+          healthy: healthy(median, 8),
+        },
+        runsPerUserWeek: {
+          sessions: s7.sessions, users: s7.users,
+          value: runsPerUser === null ? null : Math.round(runsPerUser * 100) / 100,
+          healthy: healthy(runsPerUser, 2),
+        },
+        trafficSources: traffic,
+        thresholds: {
+          conversion: 0.03, d1Retention: 0.15,
+          medianWaveGameover: 8, runsPerUserWeek: 2,
+        },
       };
     },
     close: () => db.close(),

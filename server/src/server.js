@@ -205,6 +205,14 @@ function compileRoutes(store, cfg) {
     ok(res, store.metrics());
   });
 
+  /* Sprint Round 2 — the 5 baseline metrics as one public aggregate
+   * (see server/README.md "Metrics Baseline (Sprint Round 2)"). No auth:
+   * it returns counts, medians and distributions only — never raw events.
+   * Rate-limited like /api/health (probe-exempt, never charged). */
+  add("GET", "/api/metrics/summary", async (_req, res) => {
+    ok(res, store.metricsSummary());
+  });
+
   return routes;
 }
 
@@ -247,9 +255,11 @@ export function createApp(overrides = {}) {
       }
 
       // B5: rate limit per REAL client IP; /api/health is a probe and is
-      // never charged against any bucket.
-      const isHealth = req.method === "GET" && url.pathname === "/api/health";
-      if (!isHealth) {
+      // never charged against any bucket. /api/metrics/summary is a cheap
+      // precomputed-shape aggregate (Sprint Round 2) and is exempt the same way.
+      const isProbe = req.method === "GET" &&
+        (url.pathname === "/api/health" || url.pathname === "/api/metrics/summary");
+      if (!isProbe) {
         const ip = clientIp(req);
         const rlKind = !isWrite ? "read"
           : url.pathname === "/api/events" ? "events"

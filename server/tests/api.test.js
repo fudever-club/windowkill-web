@@ -359,10 +359,16 @@ test("B7 migration: old-schema DB is upgraded (user_version + token_hash) and le
   const b = `http://127.0.0.1:${addr.port}`;
   const j = (r) => r.json();
   try {
+    // Season 1 added migration 2, so the chain now ends at user_version = 2.
     const v = migApp.store.db.prepare("PRAGMA user_version").get();
-    assert.equal(v.user_version, 1);
+    assert.equal(v.user_version, 2);
     const cols = migApp.store.db.prepare("PRAGMA table_info(profiles)").all().map((r) => r.name);
     assert.ok(cols.includes("token_hash"));
+    // Season 1 tables arrive via the migration too.
+    const tables = migApp.store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name);
+    assert.ok(tables.includes("seasons"));
+    assert.ok(tables.includes("season_scores"));
+    assert.equal(migApp.store.getActiveSeason()?.id, "S1");
     assert.equal(migApp.store.getProfileTokenHash("p_legacy"), null);
 
     const score = { profileId: "p_legacy", score: 100, wave: 1, kills: 5, durationMs: 10000, difficulty: "normal" };

@@ -124,11 +124,19 @@ var _boomAt = [];
  * hit-stop (freeze logic gameplay) nhưng vẫn render + input không bị freeze
  * (listener phím là event-driven, nằm ngoài update(dt)).
  */
-function hitstop(sec) {
+var _lastHsAt = -1e9; // FIX 2026-10-04 (CEO: "WASD khựng"): G.hitstop KHÔNG có cooldown
+// nên mỗi kill (pop 15ms) đều freeze dt=0 → tàu khựng liên tục khi giết quái.
+// Juice.hitStop có cooldown 350ms nhưng V2.hitstop đọc G.hitstop (nguồn chân lý
+// cho loop) nên bypass hoàn toàn — tuning 2026-10-02 chưa chạm tới đây.
+function hitstop(sec, opts) {
   var G = gameG(); if (!G || !(sec > 0)) return false;
+  var exempt = !!(opts && opts.exempt);
+  var now = nowMs();
+  if (!exempt && now - _lastHsAt < 350) return false; // cùng cooldown với Juice.hitStop
+  _lastHsAt = now;
   G.hitstop = Math.max(G.hitstop || 0, sec);
   // Đồng bộ sang Juice.hitStop (ms) để Juice.update() cũng đóng băng —
-  // Juice có cooldown 250ms riêng; G.hitstop là nguồn chân lý cho loop.
+  // Juice có cooldown 350ms riêng; G.hitstop là nguồn chân lý cho loop.
   try {
     if (typeof window !== "undefined" && window.Juice && window.Juice.hitStop)
       window.Juice.hitStop(Math.min(150, sec * 1000));
@@ -140,7 +148,7 @@ function hitstopTier(tier) {
   var G = gameG();
   var t = HS_TIER[tier] != null ? tier : "tick";
   if (G && (G.parts || []).length > 300 && (t === "pop" || t === "boom")) t = "tick";
-  return hitstop(HS_TIER[t]);
+  return hitstop(HS_TIER[t], t === "cinematic" ? { exempt: true } : null); // boss luôn được punch
 }
 /**
  * Gọi ĐẦU loop(), sau Juice.update(rawDt):

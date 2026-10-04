@@ -94,10 +94,10 @@ var LIST = [
   },
   {
     id: "keo_tu_va",
-    nameVi: "Keo Tự Vá",
-    descVi: "Mỗi 20s tự vá +10px cửa sổ.",
+    nameVi: "Súng Bắn Keo",
+    descVi: "Bấm E: vá ngay +60px cửa sổ. Hồi chiêu 30s.",
     pool: "common",
-    apply: function (ship) { ship.selfGlue = { t: 0, every: 20, px: 10 }; }
+    apply: function (ship) { ship.glueGun = { cd: 0, maxCd: 30, px: 60 }; }
   }
 ];
 
@@ -189,21 +189,16 @@ function tryAnchor(ship) {
   return true;
 }
 /**
- * Tick mỗi frame (dt đã scale): hồi chiêu Neo + timer Keo Tự Vá.
- * Trả về { glue: px } khi keo chín, ngược lại null.
+ * Tick mỗi frame (dt đã scale): hồi chiêu Neo + hồi chiêu Súng Bắn Keo.
+ * Không còn trả về event (Keo Tự Vá bị động đã bị thay bằng Súng Bắn Keo chủ động).
  */
 function tick(ship, dt) {
   if (!ship || !(dt > 0)) return null;
   var ev = null;
   if (ship.inertiaAnchor && ship.inertiaAnchor.cd > 0)
     ship.inertiaAnchor.cd = Math.max(0, ship.inertiaAnchor.cd - dt);
-  if (ship.selfGlue) {
-    var gl = ship.selfGlue;
-    gl.t = (gl.t || 0) + dt;
-    if (gl.t >= (gl.every || 20)) {
-      gl.t = 0;
-      ev = { glue: gl.px || 10 };
-    }
+  if (ship.glueGun) {
+    ship.glueGun.cd = Math.max(0, (ship.glueGun.cd || 0) - dt);
   }
   return ev;
 }

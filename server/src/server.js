@@ -27,7 +27,7 @@ import { config as defaultConfig } from "./config.js";
 import { hashProfileToken, openDb } from "./db.js";
 import { createRateLimiter } from "./ratelimit.js";
 import { applyCors, applySecurityHeaders, clientIp, isOriginAllowed } from "./security.js";
-import { validErrorsBody, validEventsBody, validId, validLeaderboardQuery, validProfileBody, validScoreBody } from "./validate.js";
+import { validErrorsBody, validEventsBody, validId, validLeaderboardQuery, validProfileBody, validScoreBody, validSeasonLeaderboardQuery } from "./validate.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -157,6 +157,15 @@ function compileRoutes(store, cfg) {
     if (!v) return fail(res, 400, "invalid score: need profileId, score, wave, kills, durationMs, difficulty(chill|normal|hard) with plausible score/wave/kills/duration correlation");
     if (!store.getProfile(v.profileId)) return fail(res, 404, "profile not found");
     if (!requireProfileAuth(req, res, v.profileId)) return;
+    /* Season 1: the seasonal board is opt-in via `seasonId` (the client only
+     * sends it for Boss-rush "Đấu Sếp" and Daily runs). The id must name a
+     * real, active season — otherwise the score lands on the all-time board
+     * only, or is rejected here with a clear error. */
+    if (v.seasonId) {
+      const season = store.getSeason(v.seasonId);
+      if (!season) return fail(res, 404, `season not found: ${v.seasonId}`);
+      if (season.status !== "active") return fail(res, 400, `season is not active (status=${season.status}): ${v.seasonId}`);
+    }
     const created = store.addScore(v);
     ok(res, created, 201);
   });
@@ -165,6 +174,27 @@ function compileRoutes(store, cfg) {
     const v = validLeaderboardQuery(url.searchParams);
     if (!v) return fail(res, 400, "invalid query: difficulty must be chill|normal|hard, limit 1-50");
     ok(res, store.leaderboard(v.difficulty, v.limit));
+  });
+
+  /* Season 1 — the two parallel boards in one response (SEASON-1-DECISIONS.md
+   * Q2b-A): `seasonal` counts only Boss-rush/Daily runs submitted with
+   * `seasonId` during this season; `allTime` is the classic cumulative board.
+   * `season` query param: a season id or 'current' (default). Public read,
+   * same pattern as /api/leaderboard (no profile-token auth needed). */
+  add("GET", "/api/season/leaderboard", async (_req, res, _params, url) => {
+    const v = validSeasonLeaderboardQuery(url.searchParams);
+    if (!v) return fail(res, 400, "invalid query: season must be an id or 'current', difficulty must be chill|normal|hard, limit 1-50");
+    const season = v.season === "current" ? store.getActiveSeason() : store.getSeason(v.season);
+    if (!season) {
+      return v.season === "current"
+        ? fail(res, 404, "no active season")
+        : fail(res, 404, `season not found: ${v.season}`);
+    }
+    ok(res, {
+      season,
+      seasonal: store.seasonalLeaderboard(season.id, v.difficulty, v.limit),
+      allTime: store.leaderboard(v.difficulty, v.limit),
+    });
   });
 
   add("GET", "/api/stats/:profileId", async (_req, res, params) => {
@@ -218,7 +248,12 @@ function compileRoutes(store, cfg) {
 
 export function createApp(overrides = {}) {
   const cfg = { ...defaultConfig, ...overrides };
-  const store = openDb(cfg.dbPath, { eventsCap: cfg.eventsCap, errorsCap: cfg.errorsCap });
+  const store = openDb(cfg.dbPath, {
+    eventsCap: cfg.eventsCap,
+    errorsCap: cfg.errorsCap,
+    // Season 1: seed the configured active season on migration/fresh boot.
+    seedSeason: { id: cfg.seasonId, name: cfg.seasonName, days: cfg.seasonDays },
+  });
   const limiter = createRateLimiter({
     readPerMin: cfg.rateLimitRead,
     writePerMin: cfg.rateLimitWrite,

@@ -81,6 +81,12 @@ ICONS = {
 "grad": '<path d="M2.5 9 12 5l9.5 4L12 13 2.5 9z"/><path d="M6.5 10.8V15c0 1.3 2.5 2.6 5.5 2.6s5.5-1.3 5.5-2.6v-4.2"/><path d="M21.5 9v4.5"/><circle cx="21.5" cy="14.8" r="1" fill="currentColor" stroke="none"/>',
 "infinity": '<circle cx="8.2" cy="12" r="3.9"/><circle cx="15.8" cy="12" r="3.9"/>',
 "palette": '<circle cx="12" cy="12" r="8.5"/><circle cx="8.8" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.8" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="15.4" r="1.2" fill="currentColor" stroke="none"/>',
+# ---- recovered 2026-10-04: i-arrow-right từng hand-add trong sprite index.html
+# (desktop-cta-card) nhưng thiếu trong source — đưa vào đây thành canonical
+# (bài học từ sự cố i-flag/i-anvil 2026-10-02)
+"arrow-right": '<path d="M4 12h15M13 6l6 6-6 6"/>',
+# ---- new 2026-10-04 (feat/pwa-trailer): glyph cho nút "Cài game" (PWA install prompt)
+"install": '<path d="M12 3v10"/><path d="M8 10l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
 }
 
 STROKE_ATTRS = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'

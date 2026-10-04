@@ -180,7 +180,9 @@
       self.onWaveClear(window.G ? window.G.wave : 10);
     },
     onLevelUp: function (x, y, level) {
-      safe(function () { if (window.Juice2) Juice2.onLevelUp(x, y); });
+      /* FIX 2026-10-04 "LÊN CẤP undefined!": trước đây làm rơi tham số level
+         khi forward sang Juice2 → fallback string nối "undefined". */
+      safe(function () { if (window.Juice2) Juice2.onLevelUp(x, y, level); });
       safe(function () { if (window.Meta) Meta.check("levelUp", { level: level }); });
     },
     onPickup: function (kind) {

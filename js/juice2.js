@@ -358,12 +358,24 @@ function onWaveClear(cx, cy) {
   haptic([30, 30, 30]);
 }
 /** Lên cấp §11.3: slow-mo 0.3/0.6s + ring r150 + flash 0.35 + HS 50ms + sfx.levelup. */
+/* FIX 2026-10-04 "LÊN CẤP undefined!": label đi qua levelLabel() — i18n
+ * juice.level_up (có {level}) + guard số, undefined không bao giờ lọt ra. */
+function levelLabel(level) {
+  var lvl = (typeof level === "number" && isFinite(level)) ? Math.max(1, Math.floor(level)) : 1;
+  try {
+    if (typeof window !== "undefined" && window.I18N && typeof window.I18N.t === "function") {
+      var s = window.I18N.t("juice.level_up", { level: lvl });
+      if (typeof s === "string" && s && s !== "juice.level_up" && s.indexOf("undefined") === -1) return s;
+    }
+  } catch (e) {}
+  return "LÊN CẤP " + lvl + "!";
+}
 function onLevelUp(x, y, level) {
   slowmo("levelup");
   ring(x, y, 150, "#ffd23f", 0.5);
   flash(0.35);
   hitstop(0.05);
-  _float(x, y - 40, T("levelUp", "LÊN CẤP " + level + "!"), "#ffd23f", true);
+  _float(x, y - 40, levelLabel(level), "#ffd23f", true);
   _sfx("levelup");
   haptic([25, 25, 40]);
 }
@@ -664,6 +676,7 @@ var Juice2 = {
   /* events */
   onKill: onKill, onWaveStart: onWaveStart, onWaveClear: onWaveClear,
   onLevelUp: onLevelUp, onBossPhase: onBossPhase, onBossKill: onBossKill,
+  _levelLabel: levelLabel, /* FIX 2026-10-04: expose cho test "không undefined" */
   onNuke: onNuke, onBossSlamTelegraph: onBossSlamTelegraph,
   checkNearDeath: checkNearDeath,
   /* game over 2 kiểu */

@@ -1706,12 +1706,15 @@ function t(key, lang) {
 }
 function setLang(l) { if (STRINGS[l]) _lang = l; }
 
-/* ---------------- WAVE_MODIFIERS (Variety Pack 1) ----------------
- * 12 modifier của Đạo Diễn Sóng: mỗi phần tử { id, apply(G), clear(G) }.
+/* ---------------- WAVE_MODIFIERS (Variety Pack 1 + Endless Delight) ----------------
+ * 17 modifier của Đạo Diễn Sóng (12 Pack 1 + 5 Endless Delight, wave 30+):
+ * mỗi phần tử { id, apply(G), clear(G) }.
  * QUY ƯỚC: apply()/clear() CHỈ set/reset các flag trên object G (truyền vào),
  * không truy cập DOM, không gọi hàm game khác. game.js đọc flag để áp effect.
  * Mặc định: gemMul/xpMul/shipSpdMul/magnetMul/pickupMul = 1; slowOpenT = 0;
  * các flag bool = false.
+ * LUẬT SẮT (triết lý CEO: vui vẻ > khó khăn): modifier KHÔNG BAO GIỜ được
+ * chạm HP/speed/dmg/spawn của quái — chỉ flag trang trí hoặc thưởng QoL.
  */
 var WAVE_MODIFIERS = [
   { id: "gemrain",
@@ -1750,6 +1753,23 @@ var WAVE_MODIFIERS = [
   { id: "fireworks",
     apply: function (G) { G.vp1_fireworks = true; },
     clear: function (G) { G.vp1_fireworks = false; } },
+  /* ---- Endless Delight (2026-10-04): 5 modifier vui cho wave 30+ ----
+   * Chỉ flag trang trí / QoL — KHÔNG chạm stat quái (luật sắt ở trên). */
+  { id: "discobullets", // Đạn Disco: đạn đổi màu cầu vồng theo thời gian
+    apply: function (G) { G.vp1_discoBullets = true; },
+    clear: function (G) { G.vp1_discoBullets = false; } },
+  { id: "confetti", // Pháo Giấy: mỗi kill nổ giấy màu ăn mừng
+    apply: function (G) { G.vp1_confetti = true; },
+    clear: function (G) { G.vp1_confetti = false; } },
+  { id: "luckypickup", // Nam Châm May Mắn: pickup rơi tự trôi về phía tàu
+    apply: function (G) { G.vp1_luckyPickup = true; },
+    clear: function (G) { G.vp1_luckyPickup = false; } },
+  { id: "boingyship", // Tàu Nảy Tưng: squash-and-stretch khi di chuyển
+    apply: function (G) { G.vp1_boingy = true; },
+    clear: function (G) { G.vp1_boingy = false; } },
+  { id: "giggle", // Quái Cười Khành Khạch: rung lắc vui + "boing" khi hạ
+    apply: function (G) { G.vp1_giggle = true; },
+    clear: function (G) { G.vp1_giggle = false; } },
 ];
 
 /* ---------------- expose ---------------- */

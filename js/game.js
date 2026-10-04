@@ -87,7 +87,32 @@ document.getElementById("btn-hud-pause")?.addEventListener("click", (e) => {
   if (typeof pauseGame === "function") pauseGame(true);
 });
 const SHAKE_WINDOW = qp.get("shake") === "1";
-if (typeof BG !== "undefined") BG.setQuality(qp.get("fx") === "reduced" ? "reduced" : "full");
+/* ---------- adaptive quality tiers (js/quality.js, feat/mobile-quality) ----------
+   Khởi tạo TRƯỚC fit() để wkDpr() đọc đúng dprCap của nấc. Áp nấc = set BG +
+   Juice quality + fit() lại (đổi DPR cap → resize backing store). */
+function applyQualityTier(tier) {
+  var T = (window.WKQuality && window.WKQuality.TIERS[tier]) || null;
+  try { if (typeof BG !== "undefined" && T) BG.setQuality(T.bg); } catch (e) {}
+  try { if (window.Juice && T) Juice.setPerfQuality(T.juice); } catch (e) {}
+  try { fit(); } catch (e) {} // áp lại DPR cap của nấc mới
+}
+if (window.WKQuality) {
+  try {
+    window.WKQuality.setOnTierChange(function (t) { applyQualityTier(t); });
+    window.WKQuality.init();
+    applyQualityTier(window.WKQuality.tier);
+  } catch (e) {}
+}
+// Helper đọc hệ số scale shadowBlur theo nấc (0 = tắt hẳn ở lite).
+function wkShadowScale() {
+  try {
+    var s = window.WKQuality && window.WKQuality.shadowScale;
+    return (typeof s === "number") ? s : 1;
+  } catch (e) { return 1; }
+}
+// Helper haptic: game core gọi, mobile.js cung cấp window.WKBuzz lúc runtime.
+// Guard đầy đủ — desktop / trình duyệt không có navigator.vibrate đều no-op.
+function wkBuzz(p) { try { if (window.WKBuzz) window.WKBuzz(p); } catch (e) {} }
 
 const MIN_W = 250, MIN_H = 190;      // cửa sổ nhỏ hơn -> vỡ
 const START_W = 980;
@@ -98,7 +123,10 @@ const START_W = 980;
 // logic vẽ vẫn dùng CSS px nhờ ctx.setTransform. Chặn dpr ở 2 để giữ perf GPU
 // mobile (DPR 3 native = 1170x2532 quá nặng cho hiệu ứng shadowBlur mỗi frame).
 function wkDpr() {
-  try { return Math.min(window.devicePixelRatio || 1, 2); } catch (e) { return 1; }
+  try {
+    var cap = (window.WKQuality && window.WKQuality.dprCap) || 2;
+    return Math.min(window.devicePixelRatio || 1, cap);
+  } catch (e) { return 1; }
 }
 function fit() {
   var dpr = wkDpr();
@@ -338,7 +366,9 @@ function drawBossShape(c, x, y, s, a, color) {
   c.save();
   c.translate(x, y); c.scale(s || 1, s || 1); c.globalAlpha = (a == null ? 1 : a);
   c.rotate(Math.sin(t * 0.8) * 0.12);
-  c.shadowColor = col; c.shadowBlur = 26;
+  // MOBILE-QUALITY: shadowBlur đắt → scale theo nấc (lite tắt hẳn).
+  var _bossSh = wkShadowScale();
+  if (_bossSh > 0) { c.shadowColor = col; c.shadowBlur = Math.round(26 * _bossSh); }
   c.fillStyle = col;
   c.fillRect(-34, -34, 68, 68);
   c.shadowBlur = 0;
@@ -349,6 +379,56 @@ function drawBossShape(c, x, y, s, a, color) {
   c.fillStyle = "#fff";
   c.beginPath(); c.arc(0, 0, 9 + Math.sin(t * 6) * 2, 0, Math.PI * 2); c.fill();
   c.restore();
+}
+/* ---------------- BOSS PERSONALITY: phụ kiện hài vẽ trên boss ----------------
+ * CHỈ visual — không đổi hitbox (r), không đổi sát thương. */
+function drawBossFlair(c, bs, r) {
+  const t = bs.t || 0;
+  if (bs.persona === "gnome") {
+    // hàm nhai chomp-chomp: răng trên/dưới đóng mở
+    const jaw = Math.abs(Math.sin(t * 5)) * r * 0.35;
+    c.fillStyle = "#fff";
+    c.fillRect(-r * 0.6, -r * 0.6, r * 1.2, jaw * 0.5);
+    c.fillRect(-r * 0.6, r * 0.6 - jaw * 0.5, r * 1.2, jaw * 0.5);
+  } else if (bs.persona === "deadline") {
+    // tờ giấy deadline đội trên đầu
+    c.save(); c.rotate(Math.sin(t * 2) * 0.2);
+    c.fillStyle = "#fff"; c.fillRect(-14, -r - 30, 28, 38);
+    c.fillStyle = "#8b2fc9";
+    for (let i = 0; i < 3; i++) c.fillRect(-10, -r - 22 + i * 10, 20, 3);
+    c.restore();
+  } else if (bs.persona === "dj") {
+    // equalizer + viền đổi màu theo beat
+    const beat = 0.5 + 0.5 * Math.sin(t * 8);
+    const hues = ["#ff5d5d", "#ffd166", "#4dd8a7", "#7df9ff", "#b26bff"];
+    c.strokeStyle = hues[Math.floor(t * 4) % hues.length]; c.lineWidth = 4 + beat * 4;
+    c.strokeRect(-r - 6, -r - 6, (r + 6) * 2, (r + 6) * 2);
+    c.fillStyle = "#ffd166";
+    for (let i = -2; i <= 2; i++) {
+      const h = 8 + beat * 26 * (0.6 + 0.4 * Math.sin(t * 8 + i));
+      c.fillRect(i * 16 - 5, -r - 14 - h, 10, h);
+    }
+  } else if (bs.persona === "sniffly") {
+    // mũi đỏ hắt xì + khăn giấy
+    c.fillStyle = "#ff8a8a";
+    c.beginPath(); c.arc(0, -r * 0.55, 8 + Math.sin(t * 6) * 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#fff"; c.fillRect(-22, r * 0.55, 44, 10);
+  } else if (bs.persona === "corechill") {
+    // tách cà phê chill
+    c.fillStyle = "#fff"; c.fillRect(r * 0.5, -r * 0.2, 22, 26);
+    c.strokeStyle = "#fff"; c.lineWidth = 4;
+    c.beginPath(); c.arc(r * 0.5 + 26, -r * 0.2 + 13, 8, -1.2, 1.2); c.stroke();
+    c.fillStyle = "#6b3f1d"; c.fillRect(r * 0.5 + 3, -r * 0.2 + 3, 16, 8);
+  } else if (bs.persona === "teaser") {
+    // vương miện cà khịa + kính râm
+    c.fillStyle = "#ffd166";
+    c.beginPath();
+    c.moveTo(-26, -r - 8); c.lineTo(-26, -r - 30); c.lineTo(-13, -r - 16);
+    c.lineTo(0, -r - 34); c.lineTo(13, -r - 16); c.lineTo(26, -r - 30); c.lineTo(26, -r - 8);
+    c.closePath(); c.fill();
+    c.fillStyle = "#111";
+    c.fillRect(-20, -14, 16, 10); c.fillRect(4, -14, 16, 10);
+  }
 }
 /* ---------------- Satellite Window System (multi-window, MULTIWINDOW-SPEC.md) ----------------
  * 1 cửa sổ chính + tối đa 3 popup vệ tinh. Vệ tinh là dumb renderer:
@@ -579,7 +659,9 @@ const SatManager = (() => {
       const a = s.dead ? Math.max(0, s.shatterT / 0.3) : 1;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+      // MOBILE-QUALITY: bóng cửa sổ vệ tinh vẽ mỗi frame → scale theo nấc.
+      var _satSh = wkShadowScale();
+      if (_satSh > 0) { ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = Math.round(18 * _satSh); ctx.shadowOffsetY = 6; }
       ctx.fillStyle = "#0d1420";
       roundRect(s.x, s.y, s.sw, s.sh, 8); ctx.fill();
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
@@ -1916,6 +1998,7 @@ function updateBlackholes(dt) {
             sat.swallowed.push(e.type);
             burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
             AudioEngine.sfx.slurp();
+            wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
             addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
             if (sat.swallowed.length >= 3) spitVacuum(sat);
           }
@@ -2271,6 +2354,11 @@ function addFloat(x, y, text, color = "#fff", big = false) {
   G.floats.push({ x, y, text, color, t: 0, life: 1.25, big });
 }
 function burst(x, y, n, colors, spd = 260) {
+  // MOBILE-QUALITY: scale số hạt theo nấc (lite = 30%, balanced = 60%).
+  try {
+    var mul = (window.WKQuality && window.WKQuality.particleMul) || 1;
+    n = Math.max(1, Math.round(n * mul));
+  } catch (e) {}
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, s = (0.3 + Math.random() * 0.7) * spd;
     G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0,
@@ -2689,6 +2777,43 @@ const ACTS = [
     boss: { name: "CORE TYRANT", color: "#b91c1c", hpMul: 2.3, shot: "spiral", slam: 38, adds: ["chewer", "dasher"] } },
 ];
 function actOf(w) { return w <= 10 ? 1 : w <= 20 ? 2 : 3; }
+/* =====================================================================
+   BOSS PERSONALITY (feat/boss-personality, 2026-10-04) — 6 boss cá tính
+   cho wave 5/10/15/20/25/30 (wave >30 endless: trùm cuối quay lại).
+   TRIẾT LÝ "VUI VẺ > KHÓ KHĂN": telegraph/flair CHỈ là visual + hài,
+   TUYỆT ĐỐI KHÔNG đổi HP/sát thương/tốc độ.
+   -> hpMul/shot/slam/adds PHẢI KHỚP baseline Act hiện tại, khóa bằng
+      tests/boss-personality.test.js (ai vô tình buff sẽ fail CI):
+      wave 5,10  = act1: hpMul 1.0, shot "ring",   slam 26, adds [chewer, chewer]
+      wave 15,20 = act2: hpMul 1.6, shot "aimed",  slam 32, adds [dasher]
+      wave 25,30 = act3: hpMul 2.3, shot "spiral", slam 38, adds [chewer, dasher]
+   ===================================================================== */
+var BOSS_PERSONAS = [
+  { wave: 5, id: "gnome", nameKey: "boss.w5.name", teleKey: "boss.w5.tele",
+    color: "#8b2fc9", hpMul: 1.0, shot: "ring", slam: 26, adds: ["chewer", "chewer"],
+    flair: "chomp", telegraph: "hunger" },
+  { wave: 10, id: "deadline", nameKey: "boss.w10.name", teleKey: "boss.w10.tele",
+    color: "#8b2fc9", hpMul: 1.0, shot: "ring", slam: 26, adds: ["chewer", "chewer"],
+    flair: "papers", telegraph: "papers" },
+  { wave: 15, id: "dj", nameKey: "boss.w15.name", teleKey: "boss.w15.tele",
+    color: "#5b21b6", hpMul: 1.6, shot: "aimed", slam: 32, adds: ["dasher"],
+    flair: "beat", telegraph: "disco" },
+  { wave: 20, id: "sniffly", nameKey: "boss.w20.name", teleKey: "boss.w20.tele",
+    color: "#5b21b6", hpMul: 1.6, shot: "aimed", slam: 32, adds: ["dasher"],
+    flair: "sneeze", telegraph: "sneeze" },
+  { wave: 25, id: "corechill", nameKey: "boss.w25.name", teleKey: "boss.w25.tele",
+    color: "#b91c1c", hpMul: 2.3, shot: "spiral", slam: 38, adds: ["chewer", "dasher"],
+    flair: "coffee", telegraph: "teabreak" },
+  { wave: 30, id: "teaser", nameKey: "boss.w30.name", teleKey: "boss.w30.tele",
+    color: "#b91c1c", hpMul: 2.3, shot: "spiral", slam: 38, adds: ["chewer", "dasher"],
+    flair: "taunt", telegraph: "confetti" },
+];
+/* Wave nào → persona nào. */
+function bossPersonaOf(w) {
+  for (let i = BOSS_PERSONAS.length - 1; i >= 0; i--)
+    if (w >= BOSS_PERSONAS[i].wave) return BOSS_PERSONAS[i];
+  return BOSS_PERSONAS[0];
+}
 /* Rebuild background khi đổi ải / resize (được gọi sau khi G đã khởi tạo). */
 function refreshBG() {
   if (typeof BG === "undefined") return;
@@ -2835,6 +2960,7 @@ function detonateKamikaze(e) {
   shrinkWindow(20, 16); // nổ gặm cửa sổ
   if (G.phase !== "play") return;
   AudioEngine.sfx.bigboom(); jxShake(6, 300, 4); windowJitter(20); // WOW tier: nổ lớn
+  wkBuzz([40, 30, 40]); // HAPTIC (feat/mobile-quality): nổ lớn
   burst(e.x, e.y, 26, ["#ff7a1a", "#ffd166", "#fff"], 340);
   addFloat(e.x, e.y - 24, I18N.t("combat.boom"), "#ff7a1a", true);
   const s = G.ship;
@@ -2876,10 +3002,42 @@ function vp1RollModifier(e) {
   if (G.vp1_spotlight) return; // Item 6: spotlight wave — modifier đã ép từ data, không roll
   const mods = vp1GetModifiers();
   if (!mods.length) return;
+  const n = G.wave || 0;
+  if (n >= 31) { vp1RollModifierEndless(mods, n); return; } // Endless Delight
   let pool = mods.filter(m => !G.vp1_lastMod || m.id !== G.vp1_lastMod);
   if (!pool.length) pool = mods;
   const m = pool[(Math.random() * pool.length) | 0];
   vp1ApplyModById(m.id, false);
+}
+/* Endless Delight (2026-10-04) — pure helper, test được, không chạm G/DOM:
+ * chọn modifier cho wave 30+: loại N id gần nhất (chống lặp), wave chia hết
+ * cho 4 → 2 id khác nhau (combo, như wave 29 Final Audition). */
+function vp1EndlessPick(ids, history, n, rnd) {
+  var pool = ids.filter(function (id) { return history.indexOf(id) < 0; });
+  if (!pool.length) pool = ids.slice(); // hết pool → reset lịch sử, roll lại từ đầu
+  var out = [];
+  var take = function () { return pool.splice((rnd() * pool.length) | 0, 1)[0]; };
+  out.push(take());
+  if (n % 4 === 0 && pool.length) out.push(take()); // wave 32, 36, 40...: combo 2 modifier
+  return out;
+}
+/* Số wave "trí nhớ" chống lặp modifier ở endless (mục tiêu: 30 phút chơi
+ * wave 30+ vẫn thấy cái mới — 17 modifier, nhớ 8 → luôn có ≥9 lựa chọn). */
+var VP1_ENDLESS_HISTORY = 8;
+/* Endless Delight — roll modifier wave 31+ (director đã spawn, không boss/breather).
+ * KHÔNG chạm difficulty: chỉ apply modifier vui qua vp1ApplyModById. */
+function vp1RollModifierEndless(mods, n) {
+  const ids = mods.map(m => m.id);
+  const hist = G.vp1_modHistory || (G.vp1_modHistory = []);
+  const picked = vp1EndlessPick(ids, hist, n, Math.random);
+  const names = [];
+  for (const id of picked) {
+    if (vp1ApplyModById(id, true)) names.push(I18N.t("vp1.mod." + id + ".name"));
+    hist.push(id);
+  }
+  while (hist.length > VP1_ENDLESS_HISTORY) hist.shift();
+  if (picked.length > 1) setBanner(I18N.t("vp1.spotlight.double.banner"), names.join(" + "));
+  else if (picked.length === 1) setBanner(names[0], I18N.t("vp1.mod." + picked[0] + ".desc"));
 }
 /* Item 6: apply 1 modifier theo id (spotlight ép từ data).
  * silent=true → không setBanner (banner wave ở cuối startWave gánh hiển thị
@@ -2964,9 +3122,13 @@ function vp1SpawnDirector() {
     setBanner(I18N.t("vp1.director.debut"), I18N.t("monster.director.desc"));
   }
 }
-/* Roll event theo trigger table (§3 spec). Trả về id event hoặc null. */
+/* Roll event theo trigger table (§3 spec + Endless Delight remix). Trả về id event hoặc null. */
 function vp1RollEvent(n) {
   if (vp1IsBossWave(n)) return null;
+  /* Endless Delight (2026-10-04): remix event cũ thành combo mới cho wave 30+.
+   * Kiểm tra trước event đơn để combo được ưu tiên ở wave trùng chu kỳ. */
+  if (n >= 36 && n % 24 === 12) return "goldrush";     // 36, 84, 108...: Mưa Vàng (meteor + golden; 60/180 là boss nên bỏ qua)
+  if (n >= 44 && n % 24 === 20) return "neonblackout"; // 44, 68, 92: Tắt Đèn Neon (blackout + dj)
   if (n >= 24 && n % 24 === 0) return "golden";      // 24, 48...
   if (n >= 18 && n % 24 === 18) return "blackout";   // 18, 42...
   if (n >= 14 && n % 12 === 2) return "meteor";      // 14, 26, 38...
@@ -2984,8 +3146,45 @@ function vp1TriggerEvent(ev, n) {
   } else if (ev === "golden") {
     G.vp1_golden = true;
     setBanner(I18N.t("vp1.event.golden.banner"), "");
+  } else if (ev === "goldrush") {
+    /* Endless Delight: Mưa Vàng = sao băng (quái trúng 25 dmg) + Giờ Vàng (gem ×2).
+     * Có lợi cho người chơi, không tăng khó. */
+    G.vp1_meteors = [5, 15, 25]; // giây trong wave sẽ có sao băng
+    G.vp1_golden = true;
+    setBanner(I18N.t("vp1.event.goldrush.banner"), "");
+  } else if (ev === "neonblackout") {
+    /* Endless Delight: Tắt Đèn Neon = blackout 10s + DJ quẩy (quái nhảy disco).
+     * dj do event bật (không qua modifier) → đánh dấu để startWave tự clear. */
+    try { if (typeof BG !== "undefined") BG.setBlackout(true); } catch (e) {}
+    G.vp1_blackoutT = 10;
+    G.vp1_dj = true;
+    G.vp1_eventDj = true;
+    setBanner(I18N.t("vp1.event.neonblackout.banner"), "");
   }
   try { AudioEngine.sfx.wave(); } catch (e) {}
+}
+/* Endless Delight (2026-10-04) — Victory Lap: beat ăn mừng mỗi 10 wave từ
+ * wave 40 (40/50/60...): banner + mưa gem + pháo hoa + fanfare.
+ * Thuần celebration — KHÔNG chạm spawn queue/interval/count/HP quái. */
+function vp1IsVictoryLap(n) { return n >= 40 && n % 10 === 0; }
+function vp1VictoryLap(n) {
+  setBanner(I18N.t("vp1.victory.banner", { n: n }), I18N.t("vp1.victory.sub"));
+  try {
+    const b = bounds();
+    // Mưa gem: 24 gem rải khắp arena (gem thường, không đổi giá trị)
+    for (let i = 0; i < 24; i++) {
+      G.gems.push({ x: b.x + rand(40, b.w - 40), y: b.y + rand(40, b.h - 40),
+        vx: rand(-60, 60), vy: rand(-60, 60), v: 2 + ((Math.random() * 4) | 0), t: rand(0, 9) });
+    }
+    // Pháo hoa chào mừng: 5 chùm rực rỡ
+    for (let k = 0; k < 5; k++) {
+      burst(b.x + rand(b.w * 0.2, b.w * 0.8), b.y + rand(b.h * 0.2, b.h * 0.6),
+        30, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
+    }
+  } catch (e) {}
+  try { AudioEngine.sfx.wave(); } catch (e) {}
+  try { AudioEngine.sfx.bellRing(); } catch (e2) {}
+  try { AudioEngine.sfx.up(); } catch (e3) {}
 }
 /* VP1: tick sao băng — 3 vệt quét ngang, quái trúng 25 dmg, không chạm tàu. */
 function vp1TickMeteors(dt) {
@@ -3015,6 +3214,8 @@ function vp1TickMeteors(dt) {
 function startWave(n) {
   G.wave = n; G.waveKills = 0;
   G.waveClearShown = false;
+  // Endless Delight: Victory Lap mỗi 10 wave từ 40 — beat ăn mừng trước mọi branch
+  if (vp1IsVictoryLap(n)) vp1VictoryLap(n);
   // Sprint Round 2 telemetry: wave đã tới (không ảnh hưởng gameplay)
   try {
     if (window.WKAnalytics && typeof window.WKAnalytics.trackWaveReached === "function")
@@ -3043,6 +3244,8 @@ function startWave(n) {
   if (n % 5 === 0) { spawnBoss(); return; }
   vp1ClearModifier(); // VP1: xóa modifier wave trước (không stack)
   G.vp1_golden = false; G.vp1_meteors = null; G.vp1_blackoutT = 0;
+  // Endless Delight: dj do event neonblackout bật → tự clear cuối wave
+  if (G.vp1_eventDj) { G.vp1_dj = false; G.vp1_eventDj = false; }
   G.vp1_spotlight = false; G.vp1_spotlightSub = ""; G.vp1_eliteParade = false; // Item 6: reset spotlight
   try { if (typeof BG !== "undefined") BG.setBlackout(false); } catch (e) {}
   // Item 6: spotlight ép trước khi build queue (elite parade cần bias pool ngay trong buildSpawnQueue)
@@ -3092,30 +3295,93 @@ function pickSub() {
 function setBanner(t, sub = "") { G.banner = t; G.bannerSub = sub; G.bannerT = 2.4; }
 async function spawnBoss() {
   const b = bounds();
-  const v = ACTS[(G.act || 1) - 1].boss; // boss variant theo Act
+  const v = bossPersonaOf(G.wave); // boss cá tính theo wave (stat = baseline Act, khóa số)
   const hp = (130 + G.wave * 14) * DIFF.hpMul * v.hpMul;
+  const bName = I18N.t(v.nameKey);
   G.boss = { x: b.x + b.w / 2, y: b.y + 130, r: 46, hp, maxHp: hp, t: 0,
-    atkT: 2.2, spawnT: 5, slamT: 11, phase: 1,
-    name: v.name, color: v.color, shot: v.shot, slam: v.slam, adds: v.adds };
+    atkT: 2.2, spawnT: 5, slamT: 11, phase: 1, wave: G.wave,
+    persona: v.id, flair: v.flair,
+    name: bName, color: v.color, shot: v.shot, slam: v.slam, adds: v.adds };
+  bossTelegraph(v); // telegraph vui riêng — visual thuần, không đụng gameplay
   // WOW: boss intro cinematic (~3.1s, lock update) — game không vẽ boss đè (G.bossCine)
   if (window.Cinema) {
     const tok = ++bossSpawnTok;
     G.bossCine = true;
     try {
       try { AudioEngine.sfx.boss_roar(); } catch (e2) { try { AudioEngine.sfx.boss(); } catch (e3) {} }
-      await Cinema.bossIntro(G.boss, v.name, `ACT ${G.act} — ${ACTS[(G.act || 1) - 1].name}`,
+      await Cinema.bossIntro(G.boss, `BOSS: ${bName}`, `WAVE ${G.wave} — ${I18N.t(v.teleKey)}`,
         { drawBoss: (c, x, y, s, a) => drawBossShape(c, x, y, s, a, v.color) });
     } catch (err) {}
     G.bossCine = false;
     if (tok !== bossSpawnTok) return; // restart giữa intro → bỏ
     try { Cinema.bgState("boss"); } catch (err) {}
   } else {
-    setBanner(`BOSS: ${v.name}`, I18N.t("banner.boss_sub"));
+    setBanner(`BOSS: ${bName}`, I18N.t(v.teleKey));
     AudioEngine.sfx.boss();
   }
   try { AudioEngine.setMusicState("BOSS"); } catch (err) {}
   if (typeof BG !== "undefined") BG.setDim(0.45); // dim nền khi boss xuất hiện (art-direction §3 L5)
   G.spawnQueue = v.adds.slice();
+}
+/* ---------------- BOSS PERSONALITY: telegraph vui riêng từng boss ----------------
+ * CHỈ visual (particles/float text/rung nhẹ) — tuyệt đối không đổi stat. */
+function bossTelegraph(p) {
+  try {
+    const b = bounds();
+    const cx = b.x + b.w / 2, cy = b.y + 100;
+    if (p.telegraph === "hunger") {
+      addFloat(cx, cy, I18N.t(p.teleKey), "#ffb020", true);
+      jxShake(4, 300, 4);
+    } else if (p.telegraph === "papers") {
+      for (let i = 0; i < 24; i++) // mưa giấy tờ bay
+        G.parts.push({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 140,
+          vx: (Math.random() - 0.5) * 60, vy: 140 + Math.random() * 90,
+          t: 0, life: 2.2, c: "#ffffff", sz: 7 });
+      addFloat(cx, cy, I18N.t("boss.w10.papers"), "#ffffff", true);
+    } else if (p.telegraph === "disco") {
+      burst(cx, b.y + 130, 30, ["#ff5d5d", "#ffd166", "#4dd8a7", "#7df9ff", "#b26bff"], 300);
+      addFloat(cx, cy, I18N.t("boss.w15.quay"), "#ffd166", true);
+    } else if (p.telegraph === "sneeze") {
+      addFloat(cx, cy, I18N.t("boss.w20.sneeze"), "#7df9ff", true);
+      burst(cx, b.y + 130, 12, ["#7df9ff", "#ffffff"], 200);
+    } else if (p.telegraph === "teabreak") {
+      for (let i = 0; i < 10; i++) // hơi trà bốc lên
+        G.parts.push({ x: cx + (Math.random() - 0.5) * 60, y: b.y + 150,
+          vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 40,
+          t: 0, life: 2.0, c: "#ffffff88", sz: 5 });
+      addFloat(cx, cy, I18N.t(p.teleKey), "#ffd166", true);
+    } else if (p.telegraph === "confetti") {
+      for (let i = 0; i < 40; i++) // mưa confetti vàng
+        G.parts.push({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 200,
+          vx: (Math.random() - 0.5) * 120, vy: 150 + Math.random() * 120,
+          t: 0, life: 2.6, c: ["#ffd166", "#ff5470", "#7df9ff", "#7dff9a"][i % 4], sz: 6 });
+      addFloat(cx, cy, I18N.t(p.teleKey), "#ffd166", true);
+    }
+  } catch (e) {}
+}
+/* BOSS PERSONALITY: hành vi hài định kỳ của boss — CHỈ visual/float text,
+ * không đổi nhịp tấn công, không spawn thêm quái, không buff. */
+function bossFlairTick(bs, dt) {
+  bs.flairT = (bs.flairT == null ? 2 : bs.flairT) - dt;
+  if (bs.flairT > 0) return;
+  try {
+    if (bs.persona === "corechill") { // hơi cà phê bốc lên + ngáp
+      bs.flairT = 0.5;
+      G.parts.push({ x: bs.x + (Math.random() - 0.5) * 40, y: bs.y - bs.r,
+        vx: (Math.random() - 0.5) * 16, vy: -50, t: 0, life: 1.4, c: "#ffffff66", sz: 5 });
+      if (Math.random() < 0.25) addFloat(bs.x, bs.y - 80, I18N.t("boss.w25.yawn"), "#cccccc", false);
+    } else if (bs.persona === "teaser") { // cà khịa người chơi
+      bs.flairT = 5 + Math.random() * 3;
+      addFloat(bs.x, bs.y - 80, I18N.t("boss.w30.taunt" + (1 + Math.floor(Math.random() * 3))), "#ffd166", true);
+    } else if (bs.persona === "dj") { // hô "QUẨY!" theo beat
+      bs.flairT = 1.6;
+      addFloat(bs.x + (Math.random() - 0.5) * 160, bs.y - 70, I18N.t("boss.w15.quay"), "#ffd166", false);
+    } else if (bs.persona === "sniffly") { // hắt xì định kỳ
+      bs.flairT = 4 + Math.random() * 3;
+      addFloat(bs.x, bs.y - 80, I18N.t("boss.w20.sneeze"), "#7df9ff", true);
+      burst(bs.x, bs.y, 8, ["#7df9ff", "#ffffff"], 160);
+    } else bs.flairT = 9999; // gnome/deadline: flair nằm ở draw/bullet, không cần tick
+  } catch (e) { bs.flairT = 5; }
 }
 function nearestEdgePoint(x, y) {
   const b = bounds();
@@ -3149,7 +3415,7 @@ function fireBullet() {
 
 /* ---------------- pause / chết / reset ---------------- */
 function pauseGame(on) {
-  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); paintPauseWjump(); }
+  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); paintPauseWjump(); paintPauseQuality(); }
   else if (!on && G.phase === "paused") {
     G.phase = "play"; $("ov-pause").classList.remove("show"); lastT = performance.now();
   }
@@ -3174,6 +3440,27 @@ document.querySelectorAll("[data-wjump]").forEach(function (b) {
     } catch (e) {}
     if (typeof AudioEngine !== "undefined" && AudioEngine.sfx) { try { AudioEngine.sfx.click(); } catch (e) {} }
     paintPauseWjump();
+  };
+});
+/* ---------- feat/mobile-quality: đổi nấc chất lượng giữa run (pause menu) ----------
+   Pattern data-wjump: nút [data-quality], lưu wk_settings.quality, áp ngay qua
+   WKQuality.setManual (khóa tay khi chọn nấc cụ thể, auto khi chọn Tự động). */
+function paintPauseQuality() {
+  var q = "auto";
+  try {
+    if (window.WKQuality) q = window.WKQuality.mode === "manual" ? window.WKQuality.tier : "auto";
+  } catch (e) {}
+  document.querySelectorAll("[data-quality]").forEach(function (b) {
+    var sel = b.dataset.quality === q;
+    b.classList.toggle("sel", sel);
+    b.setAttribute("aria-pressed", sel ? "true" : "false");
+  });
+}
+document.querySelectorAll("[data-quality]").forEach(function (b) {
+  b.onclick = function () {
+    try { if (window.WKQuality) window.WKQuality.setManual(b.dataset.quality); } catch (e) {}
+    if (typeof AudioEngine !== "undefined" && AudioEngine.sfx) { try { AudioEngine.sfx.click(); } catch (e) {} }
+    paintPauseQuality();
   };
 });
 function hurtShip(dmg, srcx, srcy) {
@@ -3260,6 +3547,10 @@ function resetGame() {
          vp1_shipSpdMul: 1, vp1_starBullets: false, vp1_slowOpenT: 0, vp1_glowParty: false,
          vp1_magnetMul: 1, vp1_dj: false, vp1_hullIns: false, vp1_pickupMul: 1,
          vp1_fireworks: false, vp1_golden: false, vp1_breather: false,
+         // Endless Delight (2026-10-04): reset 5 modifier vui wave 30+ khi chơi lại
+         vp1_discoBullets: false, vp1_confetti: false, vp1_luckyPickup: false,
+         vp1_boingy: false, vp1_giggle: false, vp1_eventDj: false,
+         vp1_modHistory: [], // Endless Delight: lịch sử modifier chống lặp (wave 30+)
          vp1_meteors: null, vp1_meteorT: 0, vp1_blackoutT: 0, vp1_directorDebutShown: false,
          // Item 6 (retune wave 15–30): reset spotlight flags khi chơi lại
          vp1_spotlight: false, vp1_spotlightSub: "", vp1_eliteParade: false,
@@ -3351,6 +3642,10 @@ function killEnemy(e) {
   if (def && def.onDeath) def.onDeath(e); // vd splitter đẻ mini
   // VP1 fireworks: kill nổ pháo hoa lớn nhiều màu
   if (G.vp1_fireworks) burst(e.x, e.y, 40, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
+  // Endless Delight confetti: kill nổ giấy màu ăn mừng (trang trí, không đổi dmg)
+  if (G.vp1_confetti) burst(e.x, e.y, 22, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#a7f3d0", "#ffffff"], 380);
+  // Endless Delight giggle: 25% kill kêu "boing" cartoon vui tai
+  if (G.vp1_giggle && Math.random() < 0.25) { try { AudioEngine.sfx.boing(); } catch (e2) {} }
   const n = ((e.type === "tank" ? 3 : 1) + (e.vp1_elite ? 2 : 0)) * (G.vp1_gemMul || 1);
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
@@ -3655,6 +3950,8 @@ function update(dt) {
       bh.update(e, dt, s, spd);
       // VP1 djparty: zigzag theo nhịp
       if (G.vp1_dj) { e.x += Math.sin(e.t * 8) * 40 * dt; e.y += Math.cos(e.t * 6) * 40 * dt; }
+      // Endless Delight giggle: quái rung lắc cười khành khạch (dao động sin thuần → không drift ròng)
+      if (G.vp1_giggle) { e.x += Math.sin(e.t * 10 + e.y * 0.05) * 24 * dt; e.y += Math.sin(e.t * 9 + 1.3) * 24 * dt; }
     }
     if (G.phase !== "play") return;
     // chạm tàu (healer dmg=0 -> không gây sát thương; quái say nắng không cắn tàu)
@@ -3748,22 +4045,23 @@ function update(dt) {
       bs.atkT = Math.max(1.4, (2.6 - G.wave * 0.06) * (DIFF.bossAtkMul || 1));
       const bdx = s.x - bs.x, bdy = s.y - bs.y, baseA = Math.atan2(bdy, bdx);
       const bMul = DIFF.bossBulletMul || 1; // REBALANCE v2.0: chill → đạn boss chậm hơn
+      const paper = bs.persona === "deadline"; // BOSS PERSONALITY: đạn giấy — visual thuần, cùng tốc độ/sát thương
       if (bs.shot === "aimed") { // VOID REAPER: chùm đạn xòe về phía tàu
         for (let i = -3; i <= 3; i++) {
           const a = baseA + i * 0.16;
-          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 240 * bMul, vy: Math.sin(a) * 240 * bMul, r: 6, life: 4 });
+          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 240 * bMul, vy: Math.sin(a) * 240 * bMul, r: 6, life: 4, paper });
         }
       } else if (bs.shot === "spiral") { // CORE TYRANT: xoắn ốc xoay theo thời gian
         const n = 18, off = bs.t * 2.2;
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2 + off;
-          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 200 * bMul, vy: Math.sin(a) * 200 * bMul, r: 6, life: 4.5 });
+          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 200 * bMul, vy: Math.sin(a) * 200 * bMul, r: 6, life: 4.5, paper });
         }
       } else { // ring: vòng đạn tròn (bản cũ)
         const n = 10 + Math.floor(G.wave / 2);
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2 + bs.t;
-          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 185 * bMul, vy: Math.sin(a) * 185 * bMul, r: 6, life: 4 });
+          G.ebullets.push({ x: bs.x, y: bs.y, vx: Math.cos(a) * 185 * bMul, vy: Math.sin(a) * 185 * bMul, r: 6, life: 4, paper });
         }
       }
       AudioEngine.sfx.shoot(); jxShake(2, 120, 1); // WOW tier: hit
@@ -3783,9 +4081,16 @@ function update(dt) {
         shrinkWindow(bs.slam, Math.round(bs.slam * 0.75));
         if (G.phase !== "play") return;
         AudioEngine.sfx.bigboom(); jxShake(8, 400, 8); windowJitter(26); // WOW tier: boss slam
+        wkBuzz([50, 30, 50]); // HAPTIC (feat/mobile-quality): boss nện
         burst(bs.x, bs.y, 30, ["#c084fc", "#ff5470"], 380);
       }
+      // BOSS PERSONALITY: flair visual khi nện — KHÔNG đổi sát thương/cửa sổ
+      if (bs.persona === "teaser") burst(bs.x, bs.y - 40, 26, ["#ffd166", "#ff5470", "#7df9ff", "#7dff9a"], 320); // confetti
+      else if (bs.persona === "deadline") addFloat(bs.x, bs.y - 100, I18N.t("boss.w10.papers"), "#ffffff", true);
+      else if (bs.persona === "dj") burst(bs.x, bs.y, 20, ["#ff5d5d", "#ffd166", "#4dd8a7", "#7df9ff", "#b26bff"], 300);
+      else if (bs.persona === "sniffly") burst(bs.x, bs.y, 14, ["#7df9ff", "#ffffff"], 220);
     }
+    bossFlairTick(bs, dt); // BOSS PERSONALITY: hành vi hài định kỳ — visual thuần
     if (dist2(bs.x, bs.y, s.x, s.y) < (bs.r + s.r) * (bs.r + s.r)) {
       hurtShip(1, bs.x, bs.y);
       if (G.phase !== "play") return;
@@ -3816,10 +4121,16 @@ function update(dt) {
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const p = G.pickups[i]; p.t += dt;
     if (p.t > 12) { G.pickups.splice(i, 1); continue; }
+    // Endless Delight luckypickup: pickup tự trôi về phía tàu (QoL — nhặt dễ hơn, không đổi khó)
+    if (G.vp1_luckyPickup) {
+      const ldx = s.x - p.x, ldy = s.y - p.y, ld = Math.hypot(ldx, ldy) || 1;
+      if (ld > 34) { p.x += ldx / ld * 150 * dt; p.y += ldy / ld * 150 * dt; }
+    }
     if (dist2(p.x, p.y, s.x, s.y) < 30 * 30) {
       G.pickups.splice(i, 1); AudioEngine.sfx.pickup();
       const pd = PICKUP_DEFS[p.kind];
       if (pd) pd.use(s);
+      if (p.kind === "heart") wkBuzz(15); // HAPTIC (feat/mobile-quality): nhặt heart
       // v2.0: meta hook (achievement nhặt vật phẩm)
       if (window.V2) { try { V2.onPickup(p.kind); } catch (er) {} }
       burst(p.x, p.y, 14, ["#fff", "#ffd166"], 220);
@@ -3929,6 +4240,10 @@ function render(now) {
         ctx[k === 0 ? "moveTo" : "lineTo"](Math.cos(aa) * rr, Math.sin(aa) * rr);
       }
       ctx.closePath(); ctx.fill();
+    } else if (G.vp1_discoBullets) { // Endless Delight discobullets: đạn đổi màu cầu vồng
+      ctx.fillStyle = "hsl(" + (((performance.now() / 25) + bl.x + bl.y) % 360) + ",100%,65%)";
+      ctx.fillRect(-9, -2.5, 18, 5);
+      ctx.fillStyle = "#fff"; ctx.fillRect(3, -1.5, 6, 3);
     } else {
       ctx.fillStyle = "#9df3ff"; ctx.fillRect(-9, -2.5, 18, 5);
       ctx.fillStyle = "#fff"; ctx.fillRect(3, -1.5, 6, 3);
@@ -3937,6 +4252,13 @@ function render(now) {
   });
   // đạn địch
   G.ebullets.forEach(eb => {
+    if (eb.paper) { // BOSS PERSONALITY: đạn giấy của Sếp Dí Deadline — cùng r/tốc độ/sát thương
+      ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(eb.x * 0.02);
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(-eb.r, -eb.r * 0.7, eb.r * 2, eb.r * 1.4);
+      ctx.strokeStyle = "#8b2fc9"; ctx.lineWidth = 1; ctx.strokeRect(-eb.r, -eb.r * 0.7, eb.r * 2, eb.r * 1.4);
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = "#ff5470";
     ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#ffd0da";
@@ -4109,6 +4431,7 @@ function render(now) {
     ctx.fillRect(-r * 0.55, -r * 0.55, r * 1.1, r * 1.1);
     ctx.fillStyle = "#ff5470";
     ctx.beginPath(); ctx.arc(0, 0, r * 0.28 + Math.sin(bs.t * 10) * 3, 0, Math.PI * 2); ctx.fill();
+    if (bs.persona) drawBossFlair(ctx, bs, r); // BOSS PERSONALITY: phụ kiện hài
     ctx.restore(); ctx.globalAlpha = 1;
   }
 
@@ -4120,6 +4443,11 @@ function render(now) {
       ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(s.x, s.y, s.r + 9, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.ang);
+    // Endless Delight boingyship: squash-and-stretch nảy tưng (trang trí, không đổi hitbox)
+    if (G.vp1_boingy) {
+      const bs = 1 + 0.12 * Math.sin(performance.now() / 130) * Math.min(1, (s.moveSpeed || 0) / 240 + 0.25);
+      ctx.scale(bs, 2 - bs);
+    }
     const tg = ctx.createLinearGradient(-12, 0, 14, 0);
     tg.addColorStop(0, "#7dd3fc"); tg.addColorStop(1, "#f0fdff");
     ctx.fillStyle = tg;
@@ -4374,31 +4702,19 @@ function render(now) {
 }
 
 /* ---------------- loop & boot ---------------- */
-// OPT: FPS monitor + adaptive quality — tự giảm FX khi máy yếu (dùng chung cho mobile team)
-let _fpsAcc = 0, _fpsN = 0, _fpsWin = 0, _lowSec = 0, _okSec = 0, _perfReduced = false, _lastFps = 60;
+// OPT: FPS monitor + adaptive quality tiers — hạ nấc khi máy yếu (js/quality.js).
+// Logic ngưỡng nằm trong WKQuality.onFpsSample: chỉ hạ khi < 35fps 2s liên tiếp
+// (hoặc < 22fps hạ ngay), chỉ tăng khi > 55fps 5s mà KHÔNG combat.
+let _fpsAcc = 0, _fpsN = 0, _fpsWin = 0, _lastFps = 60;
 function perfTick(rawDt) {
   _fpsAcc += rawDt; _fpsN++; _fpsWin += rawDt;
   if (_fpsWin >= 1) {
     _lastFps = _fpsN / Math.max(_fpsAcc, 1e-6);
     _fpsAcc = 0; _fpsN = 0; _fpsWin = 0;
-    if (!_perfReduced) {
-      _lowSec = _lastFps < 45 ? _lowSec + 1 : 0;
-      if (_lowSec >= 2) {
-        _perfReduced = true; _okSec = 0;
-        try { if (typeof BG !== "undefined") BG.setQuality("reduced"); } catch (e) {}
-        try { if (window.Juice) Juice.setPerfQuality("reduced"); } catch (e) {}
-      }
-    } else {
-      _okSec = _lastFps > 55 ? _okSec + 1 : 0;
-      if (_okSec >= 5) {
-        _perfReduced = false; _lowSec = 0;
-        try { if (typeof BG !== "undefined") BG.setQuality("full"); } catch (e) {}
-        try { if (window.Juice) Juice.setPerfQuality("full"); } catch (e) {}
-      }
-    }
+    try { if (window.WKQuality) window.WKQuality.onFpsSample(_lastFps, G.phase === "play"); } catch (e) {}
   }
 }
-if (typeof window !== "undefined") window.WKPerf = { get fps() { return _lastFps; }, get reduced() { return _perfReduced; } };
+if (typeof window !== "undefined") window.WKPerf = { get fps() { return _lastFps; }, get reduced() { try { return !!(window.WKQuality && window.WKQuality.tier !== "high"); } catch (e) { return false; } } };
 
 function loop(now) {
   const rawDt = Math.min(0.05, (now - lastT) / 1000); lastT = now;

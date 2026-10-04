@@ -182,7 +182,7 @@ var MONSTER_REGISTRY = {
   /* ---- Variety Pack 1 — 2 quái bonus ---- */
   shipper: { id: "shipper", nameVi: "Shipper Gem", role: "bonus rượt đuổi", color: "#2dd4bf",
     shape: "hộp carton có bánh xe + mũ bảo hiểm mini", r: 14, dmg: 0, xp: 2, gems: 15, behavior: "courier",
-    debutWave: 10, maxPerWave: 1,
+    debutWave: 11, maxPerWave: 1,
     debutHintVi: "Đón đầu nó lúc thấm mệt — hạ nhanh, ẵm 15 gem!",
     hpAt: hp1(w => 8 + w * 0.9), speedAt: sp1(() => 165),
     weaknessVi: "Không gây sát thương; chỉ chạy trốn. Phase 'mệt' tốc còn 90.",

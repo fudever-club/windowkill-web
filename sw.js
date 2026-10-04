@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261004T142833Z-9ac1fc0"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261004T150723Z-f7f81c4"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -36,6 +36,7 @@ const CORE_ASSETS = [
   "js/menu.js",
   "js/game.js",
   "js/pwa.js",
+  "js/particles.js", // perf-batch-2: particle batching — precache để offline vẫn có
   "js/install-prompt.js", // feat/pwa-trailer: PWA install prompt (launcher) — precache để offline vẫn có card
   "js/analytics.js",
   "js/bgm.js",

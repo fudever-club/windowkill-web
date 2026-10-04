@@ -35,10 +35,10 @@ describe("Variety Pack 1 — MONSTER_REGISTRY (js/game.js)", () => {
   it('registry có entry "director"', () => {
     assert.match(gameSrc, /"director":\s*\{\s*id:\s*"director"/);
   });
-  it("shipper: behavior courier, dmg 0, minWave 10, weight 25, r 14", () => {
+  it("shipper: behavior courier, dmg 0, minWave 11, weight 25, r 14", () => {
     assert.match(gameSrc, /"shipper":[^}]*behavior:\s*"courier"/s);
     assert.match(gameSrc, /"shipper":[^}]*dmg:\s*0/s);
-    assert.match(gameSrc, /"shipper":[^}]*minWave:\s*10/s);
+    assert.match(gameSrc, /"shipper":[^}]*minWave:\s*11/s);
     assert.match(gameSrc, /"shipper":[^}]*weight:\s*25/s);
     assert.match(gameSrc, /"shipper":[^}]*r:\s*14/s);
   });
@@ -238,9 +238,9 @@ describe("Variety Pack 1 — i18n (js/i18n.js)", () => {
 });
 
 describe("Variety Pack 1 — bestiary (js/monsters.js)", () => {
-  it('bestiary có "shipper" (debutWave 10)', () => {
+  it('bestiary có "shipper" (debutWave 11)', () => {
     assert.match(monstersSrc, /shipper:\s*\{\s*id:\s*"shipper"/);
-    assert.match(monstersSrc, /shipper:[\s\S]*?debutWave:\s*10/);
+    assert.match(monstersSrc, /shipper:[\s\S]*?debutWave:\s*11/);
   });
   it('bestiary có "director" (debutWave 12)', () => {
     assert.match(monstersSrc, /director:\s*\{\s*id:\s*"director"/);

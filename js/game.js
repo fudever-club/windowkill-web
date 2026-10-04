@@ -17,6 +17,44 @@ const BUS = "windowkill_bus";
 const bus = ("BroadcastChannel" in window) ? new BroadcastChannel(BUS) : null;
 const qp = new URLSearchParams(location.search);
 
+/* GC-2026-10 (perf batch 2): nén mảng tại chỗ, giữ đúng thứ tự, KHÔNG alloc mảng mới.
+ * Thay cho arr = arr.filter(keep) chạy mỗi frame (parts/floats/cracks/enemies...).
+ * Trả về cùng mảng (đã rút gọn length) để code gọi giữ nguyên được. */
+function compactInPlace(arr, keep) {
+  let w = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const it = arr[i];
+    if (keep(it)) arr[w++] = it;
+  }
+  arr.length = w;
+  return arr;
+}
+/* GC-2026-10: predicate hoist sẵn — tránh alloc closure mỗi frame khi gọi compactInPlace */
+const _keepPart = p => p.t < p.life;
+const _keepFloat = f => f.t < f.life;
+const _keepCrack = c => c.t < c.life;
+const _keepEnemy = e => !e.dead;
+const _keepZone = z => z.ttl > 0 && !(z.from && z.from.dead);
+/* GC-2026-10: maker gradient hoist sẵn (ctx ở module scope) — _gradGet không alloc factory mỗi lần gọi */
+function _mkShipGrad() {
+  const g = ctx.createLinearGradient(-12, 0, 14, 0);
+  g.addColorStop(0, "#7dd3fc"); g.addColorStop(1, "#f0fdff");
+  return g;
+}
+/* GC-2026-10: vignette nguy hiểm — cache trực tiếp (W/H là biến cục bộ render),
+ * nhịp đập qua globalAlpha nên gradient chỉ build lại khi resize */
+let _dangerVg = null, _dangerVgKey = "";
+const _gradCache = new Map(); // key -> CanvasGradient
+function _gradGet(key, make) {
+  let g = _gradCache.get(key);
+  if (!g) {
+    g = make();
+    if (_gradCache.size > 96) _gradCache.clear(); // trần an toàn, tránh phình vô hạn
+    _gradCache.set(key, g);
+  }
+  return g;
+}
+
 /* ---------------- config ---------------- */
 /* REBALANCE v2.0 (CEO): chill phải thật chill — quái yếu/chậm/thưa hơn, gặm chậm lại;
  * normal wave 1-3 là onboarding; hardcore giữ nguyên.
@@ -622,6 +660,8 @@ const SatManager = (() => {
 
   function anyRole(role) { for (const s of sats.values()) if (s.role === role && !s.dead) return true; return false; }
   const list = () => [...sats.values()];
+  // GC-2026-10: iterator trực tiếp, không alloc mảng — dùng cho vòng lặp per-frame
+  const values = () => sats.values();
   const count = () => sats.size;
 
   /* bus: sat-ready / sat-hit / sat-bye */
@@ -667,8 +707,13 @@ const SatManager = (() => {
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
       // title bar — DESIGN-SYSTEM v1.1 §8: tint theo role
       const tb = ROLE_TB_TINT[s.role] || ["#1a2b4a", "#0f1c33"];
-      const tg = ctx.createLinearGradient(0, s.y, 0, s.y + 26);
-      tg.addColorStop(0, tb[0]); tg.addColorStop(1, tb[1]);
+      // GC-2026-10: cache gradient title-bar theo màu + y lượng tử hóa (lệch ≤0.5px trên gradient 26px, không thấy được)
+      const _tby = Math.round(s.y);
+      const tg = _gradGet("sat-tb|" + tb[0] + "|" + tb[1] + "|" + _tby, () => {
+        const _g = ctx.createLinearGradient(0, _tby, 0, _tby + 26);
+        _g.addColorStop(0, tb[0]); _g.addColorStop(1, tb[1]);
+        return _g;
+      });
       ctx.fillStyle = tg;
       roundRect(s.x, s.y, s.sw, 26, [8, 8, 0, 0]); ctx.fill();
       const cols = ["#ff5f57", "#febc2e", "#28c840"];
@@ -989,7 +1034,7 @@ const SatManager = (() => {
     ctx.closePath();
   }
 
-  return { request, flush, poll, closeAll, count, list, anyRole, damage, kill, hitSim, drawSims, updateSims,
+  return { request, flush, poll, closeAll, count, list, values, anyRole, damage, kill, hitSim, drawSims, updateSims,
     send: (id, msg) => post(id, msg), // M8: gửi sat-tick cho popup thật
     steer: (id, vx, vy) => post(id, { type: "sat-steer", id, vx, vy }),
     warn: (id) => post(id, { type: "sat-warn", id }) };
@@ -1027,7 +1072,7 @@ function onNestClose(mode, sat) {
 
 function updateNests(dt) {
   const now = performance.now();
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "nest" || sat.dead) continue;
     if (now - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; } // TTL 60s
     sat.spawnT -= dt;
@@ -1070,7 +1115,7 @@ function maybeTriggerNest(n) {
  * - Máu kính 60px, mỗi lần bị gặm -12px (popup thật thu nhỏ theo cho thấy được).
  * - Fallback mô phỏng: drone khiên bay quanh tàu r=70, 5 tim, chewer bám drone.
  * - TTL 45s; đóng tay = mất khiên, không phạt; nhặt nữa = hồi đầy. */
-function shieldSat() { return SatManager.list().find(s => s.role === "shield" && !s.dead) || null; }
+function shieldSat() { for (const s of SatManager.values()) if (s.role === "shield" && !s.dead) return s; return null; }
 
 function requestShield() {
   const ex = shieldSat();
@@ -1194,7 +1239,7 @@ function launchDebris(sat) {
 }
 
 function updateDebris(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "debris" || sat.dead) continue;
     if (sat.warnT === undefined) sat.warnT = 0.7; // telegraph bắt đầu khi vệ tinh đã sống
     if (sat.warnT > 0) {
@@ -1319,7 +1364,7 @@ function onBombClose(mode, sat) {
 }
 
 function updateBombs(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "bomb" || sat.dead) continue;
     sat.fuseT -= dt;
     const secs = Math.max(0, Math.ceil(sat.fuseT));
@@ -1422,7 +1467,7 @@ function onMinionClose(mode, sat) {
 }
 
 function updateMinions(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "minion" || sat.dead) continue;
     if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
     let interval = sat.opts.enraged ? 2.5 : 4;
@@ -1475,6 +1520,12 @@ function maybeTriggerGiant(n) {
  * (rơi gem an ủi). ĐÓNG TAY mẹ = con giận + mất 1 HP. ĐÓNG TAY con = nổ, 2 mini. */
 function motherChicks(motherId) {
   return SatManager.list().filter(s => s.role === "chick" && !s.dead && s.motherId === motherId);
+}
+// GC-2026-10: bản đếm không alloc cho check per-frame trong updateMothers
+function motherChickCount(motherId) {
+  let n = 0;
+  for (const s of SatManager.values()) if (s.role === "chick" && !s.dead && s.motherId === motherId) n++;
+  return n;
 }
 
 function enrageChicks(motherId, msg) {
@@ -1539,19 +1590,19 @@ function layChick(mother) {
 }
 
 function updateMothers(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "mother" || sat.dead) continue;
     if (performance.now() - sat.born > 75000) { SatManager.kill(sat.id, "timeout"); continue; }
     sat.layT = (sat.layT === undefined ? 3 : sat.layT) - dt;
     if (sat.layT <= 0) {
-      if (motherChicks(sat.id).length < 2) layChick(sat);
+      if (motherChickCount(sat.id) < 2) layChick(sat);
       sat.layT = 8;
     }
   }
 }
 
 function updateChicks(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "chick" || sat.dead) continue;
     const enraged = sat.enrageT > 0;
     if (enraged) {
@@ -1703,7 +1754,7 @@ function mergeLovers(a, b) {
 }
 
 function updateLovers(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "lover" || sat.dead) continue;
     if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
     const p = loverOf(sat);
@@ -1750,7 +1801,7 @@ function updateLovers(dt) {
 }
 
 function updateSuperlove(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "superlove" || sat.dead) continue;
     if (performance.now() - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; }
     updateSayNangAura(sat); // CEO §9-Q2: aura I18N.t("sat.love_crush_status") — quái trong 200px tấn công lẫn nhau
@@ -1886,7 +1937,7 @@ function onMirrorClose(mode, sat) {
 /* đạn player bay vào vùng gương → phản chiếu thành đạn địch; trả về true nếu đã phản */
 function mirrorReflect(bl) {
   if (!SatManager.anyRole("mirror")) return false; // OPT: không gương sống → skip, tránh alloc SatManager.list() mỗi viên đạn
-  for (const m of SatManager.list()) {
+  for (const m of SatManager.values()) {
     if (m.role !== "mirror" || m.dead) continue;
     if (bl.mirrorId === m.id) continue; // mỗi gương chỉ phản 1 viên 1 lần
     // OPT: dùng anchor đã cache trong updateMirrors (1 lần/frame), fallback tính trực tiếp
@@ -1909,7 +1960,7 @@ function mirrorReflect(bl) {
 }
 
 function updateMirrors(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "mirror" || sat.dead) continue;
     if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
     const _ma = mirrorAnchor(sat); sat._mx = _ma.x; sat._my = _ma.y; // OPT: cache anchor 1 lần/frame cho mirrorReflect
@@ -2004,7 +2055,7 @@ function onVacuumClose(mode, sat) {
 }
 
 function updateBlackholes(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "blackhole" || sat.dead) continue;
     if (performance.now() - sat.born > 45000) { SatManager.kill(sat.id, "timeout"); continue; }
     sat.swallowed = sat.swallowed || [];
@@ -2095,7 +2146,7 @@ function maybeTriggerVacuum(n) {
  * chiếu vùng ảnh hưởng vào trong để player thấy) */
 function drawSatFields() {
   const t = performance.now();
-  for (const s of SatManager.list()) {
+  for (const s of SatManager.values()) {
     if (s.dead || s.sim) continue;
     let a = null, R = 0, col = "#fff", label = "";
     if (s.role === "mirror") { a = mirrorAnchor(s); R = 85; col = "#67e8f9"; label = I18N.t("sat.mirror_zone"); }
@@ -2244,7 +2295,7 @@ function fragmentBite(edge, x, y) {
 }
 
 function updateFragments(dt) {
-  for (const sat of SatManager.list()) {
+  for (const sat of SatManager.values()) {
     if (sat.role !== "fragment" || sat.dead) continue;
     sat.shipCD = Math.max(0, (sat.shipCD || 0) - dt);
     if (sat.sim) {
@@ -2647,9 +2698,10 @@ const MONSTER_REGISTRY = {
     hp: w => 8 + w * 0.9, spd: () => 45,
     init: e => { e.summonT = 12; e.warnT = 0; },
     desc: I18N.t("monster.meeting.desc") },
-  /* VARIETY PACK 1 (2026-10-03): Shipper Gem — bonus rượt đuổi, dmg 0, không áp lực. */
+  /* VARIETY PACK 1 (2026-10-03): Shipper Gem — bonus rượt đuổi, dmg 0, không áp lực.
+   * CEO 2026-10-04: wave 10 là boss-only → minWave 11, debut scripted ở wave 11 (vp1SpawnShipper). */
   "shipper": { id: "shipper", name: I18N.t("monster.shipper.name"), behavior: "courier", color: "#2dd4bf",
-    r: 14, dmg: 0, score: 40, xp: 2, minWave: 10, weight: 25, acts: [1, 2, 3],
+    r: 14, dmg: 0, score: 40, xp: 2, minWave: 11, weight: 25, acts: [1, 2, 3],
     hp: w => 8 + w * 0.9, spd: w => 165,
     init: e => { e.stam = 0; e.state = "cruise"; e.tauntT = 2; },
     onDeath: e => { for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2;
@@ -3232,6 +3284,23 @@ function vp1SpawnDirector() {
     setBanner(I18N.t("vp1.director.debut"), I18N.t("monster.director.desc"));
   }
 }
+/* Spawn shipper scripted: 1 con, cách tàu > 300px. Debut wave 11 (CEO 2026-10-04:
+ * wave 10 là boss-only, Shipper không thể debut cùng boss). */
+function vp1SpawnShipper() {
+  const def = MONSTER_REGISTRY["shipper"];
+  if (!def) return;
+  const b = bounds(), s = G.ship || { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  let x = b.x + b.w / 2, y = b.y + b.h / 2;
+  for (let i = 0; i < 12; i++) {
+    x = b.x + rand(60, b.w - 60); y = b.y + rand(60, b.h - 60);
+    if (hypot(x - s.x, y - s.y) > 300) break;
+  }
+  spawnEnemyAt("shipper", x, y);
+  if (!G.vp1_shipperDebutShown) {
+    G.vp1_shipperDebutShown = true;
+    setBanner(I18N.t("monster.shipper.name"), I18N.t("monster.shipper.desc"));
+  }
+}
 /* Roll event theo trigger table (§3 spec + Endless Delight remix). Trả về id event hoặc null. */
 function vp1RollEvent(n) {
   if (vp1IsBossWave(n)) return null;
@@ -3372,6 +3441,8 @@ function startWave(n) {
   G.spawnT = 0;
   // VP1: director scripted (1 con đầu wave)
   if (vp1DirectorEligible(n)) vp1SpawnDirector();
+  // VP1: Shipper debut scripted ở wave 11 (không cùng boss wave 10 — quyết định CEO 2026-10-04)
+  if (n === 11) vp1SpawnShipper();
   // VP1: roll event (bỏ qua nếu spotlight đã ép event — vd wave 24 Giờ Vàng)
   if (!vp1spot || !vp1spot.event) {
     const vp1ev = vp1RollEvent(n);
@@ -3801,7 +3872,7 @@ function nukeBlast() {
 function killBoss() {
   const bs = G.boss; if (!bs || bs.dead) return;
   bs.dead = true; G.boss = null;
-  for (const sat of SatManager.list()) // M2: hết boss → mảnh tự đóng
+  for (const sat of SatManager.values()) // M2: hết boss → mảnh tự đóng
     if (sat.role === "fragment" && !sat.dead) SatManager.kill(sat.id, "cleanup");
   if (typeof BG !== "undefined") BG.setDim(0); // hết dim nền
   const pts = 500; // §6: boss = 500 cố định
@@ -3842,7 +3913,7 @@ function seasonTick(dt, s) {
   if (G.hasteT > 0) { G.hasteT -= dt; if (G.hasteT <= 0) G.globalHaste = 1; }
   if (G.slowZones.length) {
     for (const z of G.slowZones) z.ttl -= dt;
-    G.slowZones = G.slowZones.filter(z => z.ttl > 0 && !(z.from && z.from.dead));
+    compactInPlace(G.slowZones, _keepZone);
   }
   if (shipSlowMult() < 1) {
     G.zoneFloatT = Math.max(0, (G.zoneFloatT || 0) - dt);
@@ -4075,7 +4146,7 @@ function update(dt) {
       if (s.thorns > 0) damageEnemy(e, s.thorns, null);
     }
   }
-  G.enemies = G.enemies.filter(e => !e.dead);
+  compactInPlace(G.enemies, _keepEnemy);
   // wave-clear banner kèm tên Act (hiện 1 lần khi sạch quái)
   // WOW: đợi cả quái đang warning-spawn (pendingSpawns) rồi mới clear
   if (!G.enemies.length && !G.boss && !G.spawnQueue.length && !(G.pendingSpawns > 0) && G.phase === "play" && !G.waveClearShown && G.wave > 0) {
@@ -4250,12 +4321,12 @@ function update(dt) {
 
   /* fx */
   G.parts.forEach(p => { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; });
-  G.parts = G.parts.filter(p => p.t < p.life);
+  compactInPlace(G.parts, _keepPart);
   G.floats.forEach(f => f.t += dt);
-  G.floats = G.floats.filter(f => f.t < f.life);
+  compactInPlace(G.floats, _keepFloat);
   if (G.cracks) { // M2 rework: vết rạn kính trên viền mờ dần
     G.cracks.forEach(c => c.t += dt);
-    G.cracks = G.cracks.filter(c => c.t < c.life);
+    compactInPlace(G.cracks, _keepCrack);
   }
   G.shake = Math.max(0, G.shake - 30 * dt);
   applyWindowMotion(dt);
@@ -4563,8 +4634,8 @@ function render(now) {
       const bs = 1 + 0.12 * Math.sin(performance.now() / 130) * Math.min(1, (s.moveSpeed || 0) / 240 + 0.25);
       ctx.scale(bs, 2 - bs);
     }
-    const tg = ctx.createLinearGradient(-12, 0, 14, 0);
-    tg.addColorStop(0, "#7dd3fc"); tg.addColorStop(1, "#f0fdff");
+    // GC-2026-10: gradient thân tàu hằng số trong hệ tọa độ local → cache, không tạo mỗi frame
+    const tg = _gradGet("ship-body", _mkShipGrad);
     ctx.fillStyle = tg;
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-11, -11); ctx.lineTo(-6, 0); ctx.lineTo(-11, 11); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#0b2536"; ctx.beginPath(); ctx.arc(2, 0, 4.5, 0, Math.PI * 2); ctx.fill();
@@ -4574,15 +4645,21 @@ function render(now) {
     ctx.restore(); ctx.globalAlpha = 1;
   }
 
-  // particles & floats
-  G.parts.forEach(p => {
+  // particles & floats — batching: gom hạt theo (color, alpha 8 nấc) → 1 Path2D
+  // mỗi bucket → 1 fillStyle + 1 globalAlpha + 1 fill() (js/particles.js).
+  // Fallback giữ nguyên vòng vẽ cũ nếu file chưa load. Không đổi số lượng/hành vi hạt.
+  if (window.WKParticles) window.WKParticles.draw(ctx, G.parts);
+  else G.parts.forEach(p => {
     ctx.globalAlpha = Math.max(0, 1 - p.t / p.life); ctx.fillStyle = p.c;
     ctx.fillRect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
   });
   ctx.globalAlpha = 1; ctx.textAlign = "center";
+  // GC-2026-10: font string tính 1 lần/frame (trước: nối chuỗi mỗi float mỗi frame)
+  const _flFontBig = "bold 19px " + HUDFONT, _flFontSm = "bold 15px " + HUDFONT;
   G.floats.forEach(f => {
     ctx.globalAlpha = Math.max(0, 1 - f.t / f.life);
-    ctx.font = f.big ? "bold 19px " + HUDFONT : "bold 15px " + HUDFONT;
+    const _ff = f.big ? _flFontBig : _flFontSm;
+    ctx.font = _ff;
     ctx.fillStyle = f.color;
     const fy = f.y - f.t * 46;
     let fDone = false;
@@ -4593,7 +4670,9 @@ function render(now) {
         if (fi.text === "" && fi.icons.length === 1) {
           HUDIcons.draw(ctx, fi.icons[0], 16, f.color, f.x, fy - 8);
         } else {
-          const ftw = ctx.measureText(fi.text).width;
+          // GC-2026-10: cache width 1 lần/float (đo lại nếu font đổi giữa chừng)
+          if (f._fw === undefined || f._fwFont !== _ff) { f._fw = ctx.measureText(fi.text).width; f._fwFont = _ff; }
+          const ftw = f._fw;
           let fix = f.x - ftw / 2 - 4 - 8;
           for (let ii = fi.icons.length - 1; ii >= 0; ii--) { HUDIcons.draw(ctx, fi.icons[ii], 16, f.color, fix, fy - 8); fix -= 20; }
           ctx.fillText(fi.text, f.x, fy);
@@ -4806,10 +4885,16 @@ function render(now) {
     // MOBILE 2026-10-03: banner dài (vd "⭐ Điểm = tổng điểm gốc — không nhân.")
     // bị cắt 2 mép trên màn hình hẹp (iPhone 375-390px) → co font cho vừa 94% rộng
     let _bfs = 44;
-    ctx.font = "bold " + _bfs + "px sans-serif"; ctx.textAlign = "center";
+    ctx.font = "bold 44px sans-serif"; ctx.textAlign = "center";
     try {
-      const _btw = ctx.measureText(G.banner || "").width;
-      if (_btw > W * 0.94) { _bfs = Math.max(18, Math.floor(_bfs * W * 0.94 / _btw)); ctx.font = "bold " + _bfs + "px sans-serif"; }
+      // GC-2026-10: đo width 1 lần/banner (trước: đo mỗi frame trong ~2.4s banner hiện)
+      if (G._bwKey !== G.banner) {
+        G._bwKey = G.banner;
+        ctx.font = "bold 44px sans-serif";
+        G._bw = ctx.measureText(G.banner || "").width;
+      }
+      const _btw = G._bw;
+      if (_btw > W * 0.94) { _bfs = Math.max(18, Math.floor(44 * W * 0.94 / _btw)); ctx.font = "bold " + _bfs + "px sans-serif"; }
     } catch (e) {}
     ctx.fillText(G.banner, W / 2, H / 2 - 20);
     if (G.bannerSub) {
@@ -4822,9 +4907,18 @@ function render(now) {
   const danger = (s.hp === 1) || winPct < 0.25;
   if (!window.Cinema && danger && G.phase === "play") {
     const p = (Math.sin(now / 220) + 1) / 2;
-    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
-    vg.addColorStop(0, "rgba(255,40,70,0)"); vg.addColorStop(1, `rgba(255,40,70,${0.18 + 0.22 * p})`);
+    // GC-2026-10: cache hình gradient theo W,H; nhịp đập đưa qua globalAlpha
+    // (fillStyle alpha × globalAlpha = đúng màu gốc, không đổi visual)
+    const _vgKey = W + "x" + H;
+    if (!_dangerVg || _dangerVgKey !== _vgKey) {
+      _dangerVg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
+      _dangerVg.addColorStop(0, "rgba(255,40,70,0)"); _dangerVg.addColorStop(1, "rgba(255,40,70,1)");
+      _dangerVgKey = _vgKey;
+    }
+    const vg = _dangerVg;
+    ctx.globalAlpha = 0.18 + 0.22 * p;
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
   }
   // touch sticks
   if (touch.active) {

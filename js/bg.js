@@ -68,6 +68,8 @@ const BG = (() => {
   let dim = 0, dimT = 0;
   let base = null;        // offscreen L0+L2+L5 (hoặc mảng 3 frame nếu flicker)
   let neb = null;         // offscreen L1
+  // GC-2026-10: cache gradient danger-nebula (vẽ mỗi frame khi danger>0; x/y/r cố định theo build)
+  let dnebG = null, dnebKey = "";
   let parts = [];         // pool particle
   let hexStrips = [];     // filmstrip mưa hex (ải 5)
   let cols = [];          // cột mưa hex
@@ -299,8 +301,14 @@ const BG = (() => {
     danger += (dangerT - danger) * Math.min(1, dt * 4);
     if (pal.dangerNeb && danger > 0.01) {
       const d = pal.dangerNeb, m = Math.max(W, H), r = d.r * m, x = d.x * W, y = d.y * H;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, d.c); g.addColorStop(1, "rgba(0,0,0,0)");
+      // GC-2026-10: cache gradient (key theo tọa độ + màu; build lại khi đổi stage/resize)
+      const dk = x + "," + y + "," + r + "|" + d.c;
+      if (!dnebG || dnebKey !== dk) {
+        dnebG = ctx.createRadialGradient(x, y, 0, x, y, r);
+        dnebG.addColorStop(0, d.c); dnebG.addColorStop(1, "rgba(0,0,0,0)");
+        dnebKey = dk;
+      }
+      const g = dnebG;
       ctx.save(); ctx.globalAlpha = danger * d.aMax; ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.restore();
     }

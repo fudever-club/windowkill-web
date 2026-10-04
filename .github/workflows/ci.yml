@@ -21,10 +21,19 @@ jobs:
       - name: Syntax check (node --check)
         run: |
           set -e
-          for f in js/*.js server/src/*.js tests/*.test.js; do
+          for f in js/*.js server/src/*.js scripts/*.js tests/*.test.js; do
             echo "check $f"
             node --check "$f"
           done
+
+      - name: SW cache version check (auto-stamp)
+        # sw.js VERSION do máy stamp (scripts/bump-sw.js, via pre-commit hook).
+        # Step này bắt trường hợp bypass hook / quên stamp: PR đổi site assets
+        # mà sw.js không restamp → FAIL. Cần deepen history vì checkout mặc định
+        # shallow (fetch-depth 1) không đủ để diff với base branch.
+        run: |
+          git fetch --deepen=50 origin "${{ github.base_ref || 'main' }}" || true
+          node scripts/bump-sw.js --check
 
       - name: Run test suite
         run: node --test tests/*.test.js
@@ -44,3 +53,16 @@ jobs:
           else
             echo "no package.json at root — skip npm audit"
           fi
+
+  server-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # node:sqlite cần Node >= 22.5 — giữ đồng nhất với job client
+          node-version: 24
+
+      - name: Run server test suite
+        run: cd server && npm test

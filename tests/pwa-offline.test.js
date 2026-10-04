@@ -82,7 +82,7 @@ describe("sw.js — precache đầy đủ game", () => {
       "js/upgrades2.js", "js/mobile.js", "js/portal.js", "js/pwa.js", "js/tuning.js",
       "js/audio.js", "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js",
       "js/juice2.js", "js/sfx2.js", "js/stagefx.js", "js/analytics.js",
-      "js/quality.js", "js/install-prompt.js"];
+      "js/quality.js", "js/install-prompt.js", "js/particles.js"];
     const missing = need.filter((f) => !core.includes(f));
     assert.deepEqual(missing, [], `CORE precache thiếu: ${missing.join(", ")}`);
   });

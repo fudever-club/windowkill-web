@@ -51,7 +51,7 @@ const AudioEngine = (() => {
   function resume() {
     const a = ac();
     if (!a) return;
-    try { if (a.state === "suspended") a.resume(); } catch (e) {}
+    try { if (a.state === "suspended") a.resume(); } catch (e) {} preloadStingers(); // §2b: preload 4 stinger sau user gesture đầu (autoplay policy)
     if (pendingMusicStart && settings.music) {
       const p = pendingMusicStart; pendingMusicStart = null;
       setMusicState(p.st, p.i);

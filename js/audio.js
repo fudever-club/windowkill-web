@@ -559,9 +559,7 @@ const AudioEngine = (() => {
           return 0.3;
         }});
     },
-  };
-
-  /* ================= 3. Adaptive music engine ================= */
+      stinger(name) { playStinger(name); },   };   const STINGER_DEFS = { waveClear: { file: "stinger-wave-clear", fallback: () => sfx.wave() }, levelUp: { file: "stinger-level-up", fallback: () => sfx.up() }, gameOver: { file: "stinger-game-over", fallback: () => sfx.over() }, victory: { file: "stinger-victory", fallback: () => sfx.fanfare() }, };   const stingerBufs = {};   let stingerPreloadStarted = false;   function stingerPickExt() { try { const el = document.createElement("audio"); const r = el.canPlayType('audio/ogg; codecs="vorbis"'); if (r === "probably" || r === "maybe") return "ogg"; } catch (e) {} return "mp3"; }   function preloadStingers() { if (stingerPreloadStarted) return; stingerPreloadStarted = true; const a = ac(); if (!a || typeof fetch !== "function") return; const ext = stingerPickExt(); Object.keys(STINGER_DEFS).forEach(name => { const url = "assets/stingers/" + STINGER_DEFS[name].file + "." + ext; fetch(url).then(r => { if (!r.ok) throw new Error("stinger http " + r.status); return r.arrayBuffer(); }).then(ab => a.decodeAudioData(ab)).then(buf => { stingerBufs[name] = buf; }).catch(() => {}); }); }   function playStinger(name) { const def = STINGER_DEFS[name]; if (!def) return false; const a = ac(); const buf = a && stingerBufs[name]; if (buf && G && G.sfxBus) { try { const src = a.createBufferSource(); src.buffer = buf; src.connect(G.sfxBus); src.start(); return true; } catch (e) {} } try { def.fallback(); } catch (e) {} return false; }   /* ================= 3. Adaptive music engine ================= */
   const M2F = m => 440 * Math.pow(2, (m - 69) / 12);
   // AUDIT 2026-10-02: trước đây toàn bộ engine dự phòng này là E minor → E Phrygian —
   // hướng nhạc user đã cấm tuyệt đối (2026-10-01: phải VUI NHỘN, thang trưởng/

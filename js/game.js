@@ -1350,7 +1350,7 @@ function maybeTriggerBomb(n) {
   }
   if (made > 0) {
     setBanner(I18N.t("sat.bomb_spawn"), "");
-    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
   } else if (SAT_MODE === "off") {
     spawnEnemy("dasher"); spawnEnemy("dasher");
   }
@@ -1837,7 +1837,7 @@ function maybeTriggerLove(n) {
       b.x = corners[1].x; b.y = corners[1].y;
     }
     setBanner(I18N.t("sat.love_pair"), "");
-    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
   } else {
     if (a) SatManager.kill(a.id, "timeout");
     if (b) SatManager.kill(b.id, "timeout");
@@ -1931,7 +1931,7 @@ function maybeTriggerMirror(n) {
   });
   if (sat) {
     setBanner(I18N.t("sat.mirror_spawn"), "");
-    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
   } else if (SAT_MODE === "off") {
     spawnEnemy("dasher");
   }
@@ -2085,7 +2085,7 @@ function maybeTriggerVacuum(n) {
   if (sat) {
     sat.swallowed = []; sat.spitT = 7;
     setBanner(I18N.t("sat.vacuum_spawn"), "");
-    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+    try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
   } else if (SAT_MODE === "off") {
     spawnEnemy("tank");
   }
@@ -2821,7 +2821,7 @@ const MONSTER_REGISTRY = {
       }
       burst(e.x, e.y, 20, ["#7dff9a", "#ffffff"], 240);
       addFloat(e.x, e.y - 30, I18N.t("season.summon"), "#7dff9a", true);
-      try { AudioEngine.sfx.summonPulse(); } catch (err) { try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave() } catch (e2) {} }
+      try { AudioEngine.sfx.summonPulse(); } catch (err) { try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {}  } catch (e2) {} }
     }
   } },
   /* VARIETY PACK 1: Shipper Gem — chạy TRÁNH tàu (flee) + zigzag + chu kỳ stamina.
@@ -3264,7 +3264,7 @@ function vp1TriggerEvent(ev, n) {
     G.vp1_eventDj = true;
     setBanner(I18N.t("vp1.event.neonblackout.banner"), "");
   }
-  try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave() } catch (e) {}
+  try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {}  } catch (e) {}
 }
 /* Endless Delight (2026-10-04) — Victory Lap: beat ăn mừng mỗi 10 wave từ
  * wave 40 (40/50/60...): banner + mưa gem + pháo hoa + fanfare.
@@ -3285,7 +3285,7 @@ function vp1VictoryLap(n) {
         30, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
     }
   } catch (e) {}
-  try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave() } catch (e) {}
+  try { try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {}  } catch (e) {}
   try { AudioEngine.sfx.bellRing(); } catch (e2) {}
   try { AudioEngine.sfx.up(); } catch (e3) {}
 }
@@ -4101,11 +4101,11 @@ function update(dt) {
         Cinema.waveClear(G.wave, G.waveKills || 0, patches);
       } catch (err) {
         setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? I18N.t("banner.next_boss") : I18N.t("banner.next"));
-        try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+        try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
       }
     } else {
       setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? I18N.t("banner.next_boss") : I18N.t("banner.next"));
-      try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
+      try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} 
     }
     try { AudioEngine.setMusicState("VICTORY"); } catch (err) {}
   }

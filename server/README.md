@@ -28,6 +28,8 @@ Environment variables:
 | `WK_RL_EVENTS` / `WK_RL_ERRORS` | `60` / `20` | dedicated rate limits per IP per minute for `/api/events` / `/api/errors` |
 | `WK_EVENTS_CAP` / `WK_ERRORS_CAP` | `100000` / `500` | max rows kept in the `events` / `errors` tables (oldest trimmed) |
 | `WK_MAX_BODY` | `65536` | max JSON body bytes |
+| `WK_SEASON_ID` / `WK_SEASON_NAME` | `S1` / `Season 1 — Mùa Deadline` | id + display name of the seeded active season (migration 2 creates it when no season is active yet) |
+| `WK_SEASON_DAYS` | `42` | season length in days used when seeding (`end_at = start_at + days`) |
 
 systemd template: `windowkill-backend.service` (sample only — not enabled).
 
@@ -41,8 +43,9 @@ All responses are JSON: `{ ok: true, data }` or `{ ok: false, error }`.
 | `GET /api/profiles` | — | list profiles (public; token hashes are never returned) |
 | `POST /api/profiles` | `{ id?, name, emoji? }` | create profile (name 1–24 chars). Response includes a one-time `token` — see Auth below |
 | `DELETE /api/profiles/:id` | header `X-Profile-Token` | delete profile + its scores (auth required) |
-| `POST /api/scores` | `{ profileId, score, wave, kills, durationMs, difficulty }` + header `X-Profile-Token` | submit a game result (`difficulty`: `chill`/`normal`/`hard`); score/wave/kills/duration must be mutually plausible (SEC-04) |
-| `GET /api/leaderboard?difficulty=&limit=` | `difficulty` default `normal`, `limit` 1–50 default 10 | top scores with profile name/emoji |
+| `POST /api/scores` | `{ profileId, score, wave, kills, durationMs, difficulty, seasonId? }` + header `X-Profile-Token` | submit a game result (`difficulty`: `chill`/`normal`/`hard`); score/wave/kills/duration must be mutually plausible (SEC-04). Optional `seasonId` (an active season id) also writes the score to that season's board — see Season 1 below |
+| `GET /api/leaderboard?difficulty=&limit=` | `difficulty` default `normal`, `limit` 1–50 default 10 | top scores with profile name/emoji (all-time board) |
+| `GET /api/season/leaderboard?season=&difficulty=&limit=` | `season`: id or `current` (default); `difficulty` default `normal`, `limit` 1–50 default 10 | Season 1: `{ season, seasonal, allTime }` — the seasonal board + the all-time board in one response (see Season 1 below) |
 | `GET /api/stats/:profileId` | — | aggregated stats + best score per difficulty |
 | `POST /api/events` | `{ events: [{ type, ts, ... }] }` (≤100/batch, ≤64 KB) | ingest privacy-friendly analytics events (see `docs/ANALYTICS.md`) |
 | `POST /api/errors` | `{ errors: [{ message, source?, ts? }] }` (≤20/batch) | ingest client error reports; table capped at 500 rows (oldest trimmed) |
@@ -65,8 +68,79 @@ All responses are JSON: `{ ok: true, data }` or `{ ok: false, error }`.
   them out would orphan them, and an un-claimed legacy profile is no more
   exposed than it was before tokens existed. New profiles are always
   token-protected.
-- Read endpoints (`leaderboard`, `stats`, `profiles`, `metrics`, `health`)
+- Read endpoints (`leaderboard`, `season/leaderboard`, `stats`, `profiles`, `metrics`, `health`)
   stay public.
+
+## Season 1 backend — two parallel leaderboards
+
+Design sign-off: `studio/game-design/SEASON-1-DECISIONS.md` Q2b-A —
+**"Mùa này"** (seasonal, resets per season id) + **"Mọi thời đại"** (all-time,
+never reset). Daily-modifier ids live in the `DAILY_MODS` namespace so they
+never clash with the M9/M10 chain-popup monster ids.
+
+### Schema (migration 2)
+
+```sql
+CREATE TABLE seasons (
+  id TEXT PRIMARY KEY,            -- e.g. 'S1'
+  name TEXT NOT NULL,             -- display name, e.g. 'Season 1 — Mùa Deadline'
+  start_at INTEGER NOT NULL,      -- epoch ms
+  end_at INTEGER,                 -- epoch ms (seeded = start + WK_SEASON_DAYS); NULL = open-ended
+  status TEXT NOT NULL DEFAULT 'upcoming'
+    CHECK (status IN ('upcoming','active','ended'))
+);
+
+CREATE TABLE season_scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  season_id TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL,
+  wave INTEGER NOT NULL,
+  kills INTEGER NOT NULL,
+  duration_ms INTEGER NOT NULL,
+  difficulty TEXT NOT NULL,       -- chill|normal|hard
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_season_scores_board   ON season_scores (season_id, difficulty, score DESC, created_at ASC);
+CREATE INDEX idx_season_scores_profile ON season_scores (season_id, profile_id);
+```
+
+`scores` is untouched — the all-time board keeps working exactly as before
+(every submitted score lands there regardless of seasons). Migration is
+forward-only: old databases gain the two tables via migration 2, and a
+`S1` season with `status='active'` is seeded (id/name/length configurable
+via `WK_SEASON_ID` / `WK_SEASON_NAME` / `WK_SEASON_DAYS`) whenever no season
+is active yet.
+
+### Endpoints
+
+- `GET /api/season/leaderboard?season=&difficulty=&limit=`
+  - `season`: a season id or the literal `current` (default) → the latest
+    active season. Unknown id → `404 { ok:false, error:"season not found: …" }`;
+    no active season → `404 "no active season"`. Bad `difficulty`/`limit`/
+    `season` format → `400`.
+  - Response `data`:
+    ```json
+    {
+      "season":  { "id": "S1", "name": "Season 1 — Mùa Deadline", "startAt": 1762119600000, "endAt": 1765748400000, "status": "active" },
+      "seasonal": [ /* rows, same shape as /api/leaderboard rows */ ],
+      "allTime":  [ /* rows */ ]
+    }
+    ```
+    Both boards are sliced by the same `difficulty` (default `normal`) and
+    `limit` (1–50, default 10), ordered `score DESC, createdAt ASC`. Public
+    read (same pattern as `/api/leaderboard`) — no profile-token auth.
+- `POST /api/scores` accepts an optional `seasonId` (body field, validated
+  as an id). When present it must name a real **active** season:
+  unknown id → `404 "season not found: …"`; non-active season →
+  `400 "season is not active …"`. The score is then written to **both**
+  `scores` and `season_scores` (response echoes `seasonId` + `seasonScoreId`).
+  **Without `seasonId` nothing changes** — the score only hits the all-time
+  board (fully backward compatible).
+
+Client contract (frontend work, not this task): only send `seasonId` for
+season-eligible runs — Boss-rush "Đấu Sếp" and Daily (`daily` mode) — so the
+seasonal board can't be farmed from endless runs (§2.4/§3 of the design doc).
 
 ## Security
 
@@ -87,8 +161,11 @@ All responses are JSON: `{ ok: true, data }` or `{ ok: false, error }`.
   otherwise) — CORS response headers alone do not stop cross-site writes.
 - Request body capped at 64 KB; server binds to `127.0.0.1` by default.
 - **Schema migrations (B7):** `PRAGMA user_version` + an ordered migration
-  list in `src/db.js` runs at boot (migration 1 adds `profiles.token_hash`),
-  so new builds upgrade database files already living on a persistent volume.
+  list in `src/db.js` runs at boot (migration 1 adds `profiles.token_hash`;
+  migration 2 adds Season 1 tables `seasons` + `season_scores` and seeds the
+  active `S1` season), so new builds upgrade database files already living on
+  a persistent volume. Migrations are forward-only — old data is never
+  rewritten or dropped.
 
 ## Deploy — Fly.io (B3)
 
@@ -120,9 +197,11 @@ checkpoint, never by copying the raw `.db` file while the server runs (WAL).
 
 ```bash
 cd server
-npm test   # node:test — boots the real server on an ephemeral port, 15 cases
+npm test   # node:test — boots the real server on an ephemeral port, 29 cases
            # (incl. profile-token auth, SEC-04 correlation, CORS enforcement,
-           #  XFF rate limiting + health exemption, and the B7 DB migration)
+           #  XFF rate limiting + health exemption, the B7 DB migration,
+           #  and the Season 1 backend: migration 2, season score submit,
+           #  seasonal + all-time leaderboards, 404/400 season errors)
 ```
 
 ## Analytics & error pipeline

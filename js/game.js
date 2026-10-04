@@ -2532,6 +2532,7 @@ function openDraft() {
   }
   while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   if (!picks.length) { G.phase = "play"; return; }
+  try { AudioEngine.sfx.stinger("levelUp"); } catch (e) {} // stinger level-up khi mở draft
   // WOW: draft qua Cinema (DOM overlay + phím 1/2/3); fallback overlay cũ
   if (window.Cinema) {
     const ups = picks.map(u => ({ name: u.t, desc: u.d, icon: '<svg class="ic" aria-hidden="true"><use href="#' + u.ico + '"/></svg>' }));
@@ -3598,7 +3599,7 @@ function die(reason) {
   // v2.0: meta (Mảnh Kính thưởng + achievement runEnd), tutorial hook
   if (window.V2) { try { V2.onGameOver(reason); } catch (er) {} }
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
-  AudioEngine.sfx.over();
+  try { AudioEngine.sfx.stinger("gameOver"); } catch (e) {} // stinger womp-womp hài — thay sfx.over() procedural buồn
   // H1/B4: cửa sổ vỡ → shatter vui nhộn (mảnh kính bay tại vị trí tàu)
   if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
     try { Cinema.shatterBurst(G.ship ? G.ship.x : undefined, G.ship ? G.ship.y : undefined); } catch (e) {}
@@ -3802,6 +3803,7 @@ function killBoss() {
   // v2.0: meta + tutorial hook
   if (window.V2) { try { V2.onBossKill(); } catch (er) {} }
   try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
+  try { AudioEngine.sfx.stinger("victory"); } catch (e) {} // stinger victory khi hạ boss
   jxShake(12, 700, 10); windowJitter(30);
   burst(bs.x, bs.y, 60, ["#c084fc", "#fff", "#ffd166"], 420);
   // WOW: boss burst + hit-stop elite + damage number vàng
@@ -4101,11 +4103,11 @@ function update(dt) {
         Cinema.waveClear(G.wave, G.waveKills || 0, patches);
       } catch (err) {
         setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? I18N.t("banner.next_boss") : I18N.t("banner.next"));
-        AudioEngine.sfx.wave();
+        try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
       }
     } else {
       setBanner(`WAVE ${G.wave} CLEAR — ${cfg.name}`, G.wave % 5 === 0 ? I18N.t("banner.next_boss") : I18N.t("banner.next"));
-      AudioEngine.sfx.wave();
+      try { AudioEngine.sfx.stinger("waveClear"); } catch (e) {} // stinger wave-clear thay sfx.wave()
     }
     try { AudioEngine.setMusicState("VICTORY"); } catch (err) {}
   }

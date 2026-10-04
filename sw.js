@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261004T101803Z-89d9b51"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261004T121831Z-af794c0"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -64,7 +64,7 @@ const CORE_ASSETS = [
 // Asset nặng ít đổi — precache ảnh/icons + track BGM đầu tiên (mp3 các track còn lại
 // sẽ được cache-first runtime lưu lại khi thực sự phát, để install lần đầu nhẹ).
 const STATIC_ASSETS = [
-  "assets/music/joyfully-loop.mp3", // track đầu tiên của playlist — có nhạc ngay cả khi offline lần đầu
+  "assets/music/joyfully-loop.mp3", "assets/stingers/stinger-wave-clear.ogg", "assets/stingers/stinger-wave-clear.mp3", "assets/stingers/stinger-level-up.ogg", "assets/stingers/stinger-level-up.mp3", "assets/stingers/stinger-game-over.ogg", "assets/stingers/stinger-game-over.mp3", "assets/stingers/stinger-victory.ogg", "assets/stingers/stinger-victory.mp3", // track đầu tiên của playlist — có nhạc ngay cả khi offline lần đầu
   "assets/favicon.png",
   "assets/hero.jpg",
   "assets/logo-lockup.webp",

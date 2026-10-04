@@ -21,6 +21,7 @@
      LIST, get(id), draftPool(), rollDraft(n),
      applyUpgrade(id, ship), hasTaken(id),
      unlockBossStage(stage), isUnlocked(id), resetRun(),
+     dname(u), ddesc(u), dtag(u),   // I18N (N4): tên/mô tả/tag theo ngôn ngữ hiện tại
      checkThornBorder, tryAnchor, tick, owlTargets, explodeAt, chainFrom
    }
    ===================================================================== */
@@ -32,11 +33,20 @@ function dist2(ax, ay, bx, by) { var dx = ax - bx, dy = ay - by; return dx * dx 
 function T(key, vi) {
   try {
     if (typeof window !== "undefined" && window.I18N && typeof window.I18N.t === "function") {
-      var s = window.I18N.t("upg." + key);
-      if (typeof s === "string" && s && s !== "upg." + key) return s;
+      var s = window.I18N.t("upg2." + key);
+      if (typeof s === "string" && s && s !== "upg2." + key) return s;
     }
   } catch (e) {}
   return vi;
+}
+/* I18N (gate N4 Season 1): tên/mô tả/tag qua dict "upg2.<id>.name|desc" —
+ * fallback tiếng Việt khi key thiếu. Integrator (game.js openDraft) dùng
+ * 3 helper này thay vì đọc trực tiếp nameVi/descVi. */
+function dname(u) { return u ? T(u.id + ".name", u.nameVi) : ""; }
+function ddesc(u) { return u ? T(u.id + ".desc", u.descVi) : ""; }
+function dtag(u) {
+  if (!u || !u.tagVi) return "";
+  return u.bossStage ? T("tag.stage" + u.bossStage, u.tagVi) : u.tagVi;
 }
 
 /* ================= 6 nâng cấp §7.2 ================= */
@@ -267,6 +277,10 @@ var Upgrades2 = {
   unlockBossStage: unlockBossStage,
   resetRun: resetRun,
   resetAll: resetAll,
+  /* i18n (N4) */
+  dname: dname,
+  ddesc: ddesc,
+  dtag: dtag,
   /* runtime */
   checkThornBorder: checkThornBorder,
   tryAnchor: tryAnchor,

@@ -2456,6 +2456,10 @@ function newShip() {
 function addFloat(x, y, text, color = "#fff", big = false) {
   G.floats.push({ x, y, text, color, t: 0, life: 1.25, big });
 }
+// PERF #1 quick-win: cap tổng hạt sống — wave 30 từng ~770 hạt / ~800 fillRect/frame.
+// Mọi điểm spawn hạt đi qua addPart(); vượt cap thì bỏ hạt mới (không đổi gameplay).
+var MAX_PARTICLES = 600;
+function addPart(p) { if (G.parts.length < MAX_PARTICLES) G.parts.push(p); }
 function burst(x, y, n, colors, spd = 260) {
   // MOBILE-QUALITY: scale số hạt theo nấc (lite = 30%, balanced = 60%).
   try {
@@ -2464,7 +2468,7 @@ function burst(x, y, n, colors, spd = 260) {
   } catch (e) {}
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, s = (0.3 + Math.random() * 0.7) * spd;
-    G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0,
+    addPart({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0,
       life: 0.4 + Math.random() * 0.5, c: colors[i % colors.length], sz: 2 + Math.random() * 3.5 });
   }
 }
@@ -2522,7 +2526,9 @@ function openDraft() {
       const u2 = Upgrades2.rollDraft(U2_DRAFT_SLOTS);
       if (u2.length) {
         const u = u2[0];
-        const pick = { t: u.nameVi, d: u.descVi,
+        // N4 i18n: tên/mô tả qua Upgrades2.dname/ddesc (EN đầy đủ), fallback nameVi/descVi
+        const pick = { t: (Upgrades2.dname ? Upgrades2.dname(u) : u.nameVi),
+                       d: (Upgrades2.ddesc ? Upgrades2.ddesc(u) : u.descVi),
                        _draftId: "u2:" + u.id, _u2: true,
                        apply: s => Upgrades2.applyUpgrade(u.id, s) };
         pick["ico"] = U2_ICON[u.id] || "i-sparkles"; // gán động: giữ nguyên dạng pick cho 2 đường draft
@@ -3301,7 +3307,7 @@ function vp1TickMeteors(dt) {
     const dir = Math.random() < 0.5 ? 1 : -1;
     // vệt sáng quét ngang
     for (let i = 0; i < 24; i++) {
-      G.parts.push({ x: b.x + (dir > 0 ? -i * 30 : b.w + i * 30), y: y + rand(-8, 8),
+      addPart({ x: b.x + (dir > 0 ? -i * 30 : b.w + i * 30), y: y + rand(-8, 8),
         vx: dir * 900, vy: 0, life: 1.2, t: 0, c: ["#ffd166", "#ffffff"][i % 2], r: 5 });
     }
     // sát thương quái trên đường quét
@@ -3438,7 +3444,7 @@ function bossTelegraph(p) {
       jxShake(4, 300, 4);
     } else if (p.telegraph === "papers") {
       for (let i = 0; i < 24; i++) // mưa giấy tờ bay
-        G.parts.push({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 140,
+        addPart({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 140,
           vx: (Math.random() - 0.5) * 60, vy: 140 + Math.random() * 90,
           t: 0, life: 2.2, c: "#ffffff", sz: 7 });
       addFloat(cx, cy, I18N.t("boss.w10.papers"), "#ffffff", true);
@@ -3450,13 +3456,13 @@ function bossTelegraph(p) {
       burst(cx, b.y + 130, 12, ["#7df9ff", "#ffffff"], 200);
     } else if (p.telegraph === "teabreak") {
       for (let i = 0; i < 10; i++) // hơi trà bốc lên
-        G.parts.push({ x: cx + (Math.random() - 0.5) * 60, y: b.y + 150,
+        addPart({ x: cx + (Math.random() - 0.5) * 60, y: b.y + 150,
           vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 40,
           t: 0, life: 2.0, c: "#ffffff88", sz: 5 });
       addFloat(cx, cy, I18N.t(p.teleKey), "#ffd166", true);
     } else if (p.telegraph === "confetti") {
       for (let i = 0; i < 40; i++) // mưa confetti vàng
-        G.parts.push({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 200,
+        addPart({ x: b.x + Math.random() * b.w, y: b.y - 20 - Math.random() * 200,
           vx: (Math.random() - 0.5) * 120, vy: 150 + Math.random() * 120,
           t: 0, life: 2.6, c: ["#ffd166", "#ff5470", "#7df9ff", "#7dff9a"][i % 4], sz: 6 });
       addFloat(cx, cy, I18N.t(p.teleKey), "#ffd166", true);
@@ -3471,7 +3477,7 @@ function bossFlairTick(bs, dt) {
   try {
     if (bs.persona === "corechill") { // hơi cà phê bốc lên + ngáp
       bs.flairT = 0.5;
-      G.parts.push({ x: bs.x + (Math.random() - 0.5) * 40, y: bs.y - bs.r,
+      addPart({ x: bs.x + (Math.random() - 0.5) * 40, y: bs.y - bs.r,
         vx: (Math.random() - 0.5) * 16, vy: -50, t: 0, life: 1.4, c: "#ffffff66", sz: 5 });
       if (Math.random() < 0.25) addFloat(bs.x, bs.y - 80, I18N.t("boss.w25.yawn"), "#cccccc", false);
     } else if (bs.persona === "teaser") { // cà khịa người chơi
@@ -3512,7 +3518,7 @@ function fireBullet() {
       star: !!G.vp1_starBullets }); // VP1 starbullets
   }
   // chớp nòng
-  G.parts.push({ x: s.x + Math.cos(ang) * 22, y: s.y + Math.sin(ang) * 22,
+  addPart({ x: s.x + Math.cos(ang) * 22, y: s.y + Math.sin(ang) * 22,
     vx: 0, vy: 0, t: 0, life: 0.08, c: "#fff7ae", sz: 9 });
   AudioEngine.sfx.shoot();
 }
@@ -4676,7 +4682,15 @@ function render(now) {
   ctx.scale(hsc, hsc);
   const padX = 12, padY = 8, baseA = 24, baseB = 50; // local (global y: 34/60)
   // đo hàng A
-  const heartsW = s.maxHp * 18 + Math.max(0, s.maxHp - 1) * 5;
+  // PERF #3: HP bar từng O(maxHp) drawImage/frame — cap 12 icon tim + "+N" cho phần dư.
+  const HP_ICON_CAP = 12;
+  const heartsDrawn = Math.min(s.maxHp, HP_ICON_CAP);
+  const heartsExtra = s.maxHp - heartsDrawn;
+  let heartsW = heartsDrawn * 18 + Math.max(0, heartsDrawn - 1) * 5;
+  if (heartsExtra > 0) {
+    ctx.font = "700 13px " + HUDFONT;
+    heartsW += 6 + ctx.measureText("+" + heartsExtra).width;
+  }
   const chipsW = chips.reduce((a, c, i) => a + chipW(c) + (i ? 6 : 0), 0);
   const rowAW = heartsW + (chips.length ? 12 + chipsW : 0);
   // đo hàng B
@@ -4701,12 +4715,20 @@ function render(now) {
   ctx.strokeStyle = "rgba(0,128,255,0.30)"; ctx.lineWidth = 1; ctx.stroke();
   // hàng A: tim HP + chip
   let ax = padX;
-  for (let i = 0; i < s.maxHp; i++) {
+  for (let i = 0; i < heartsDrawn; i++) {
     const full = i < s.hp;
     hudIcon("i-heart", 18, full ? "#ff5470" : "#42557a", ax + 9, baseA - 5, full);
     ax += 18 + 5;
   }
-  ax += 12 - 5; // gap 12 sau tim (đã cộng 5 ở vòng cuối)
+  if (heartsExtra > 0) { // phần HP vượt cap: gọn thành "+N", không vẽ thêm icon
+    ctx.font = "700 13px " + HUDFONT;
+    ctx.fillStyle = "#ff8fa3"; ctx.textAlign = "left";
+    const plusTxt = "+" + heartsExtra;
+    ctx.fillText(plusTxt, ax + 6, baseA);
+    ax += 6 + ctx.measureText(plusTxt).width + 12;
+  } else {
+    ax += 12 - 5; // gap 12 sau tim (đã cộng 5 ở vòng cuối)
+  }
   for (const c of chips) {
     const cw = chipW(c), cy = baseA - 5 - 12; // chip cao 24, tâm theo baseline-5
     rr(ax, cy, cw, 24, 8);

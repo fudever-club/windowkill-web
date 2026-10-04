@@ -89,13 +89,14 @@ describe("Variety Pack 1 — BEHAVIORS (js/game.js)", () => {
   });
 });
 
-describe("Variety Pack 1 — WAVE_MODIFIERS (js/monsters.js)", () => {
+describe("Variety Pack 1 + Endless Delight — WAVE_MODIFIERS (js/monsters.js)", () => {
   const EXPECTED = ["gemrain", "tiny", "xpturbo", "tailwind", "starbullets",
-    "slowopen", "glowparty", "gemmagnet", "djparty", "hullinsurance", "payday", "fireworks"];
-  it("đủ 12 modifier", () => {
+    "slowopen", "glowparty", "gemmagnet", "djparty", "hullinsurance", "payday", "fireworks",
+    "discobullets", "confetti", "luckypickup", "boingyship", "giggle"]; // +5 Endless Delight
+  it("đủ 17 modifier (12 Pack 1 + 5 Endless Delight)", () => {
     const M = loadMonsters();
     assert.ok(Array.isArray(M.WAVE_MODIFIERS), "Monsters.WAVE_MODIFIERS phải là mảng");
-    assert.equal(M.WAVE_MODIFIERS.length, 12);
+    assert.equal(M.WAVE_MODIFIERS.length, 17);
     const ids = M.WAVE_MODIFIERS.map(m => m.id).sort();
     assert.equal(ids.join(","), EXPECTED.slice().sort().join(","));
   });
@@ -121,6 +122,11 @@ describe("Variety Pack 1 — WAVE_MODIFIERS (js/monsters.js)", () => {
     assert.equal(G.vp1_hullIns || false, false);
     assert.equal(G.vp1_pickupMul || 1, 1);
     assert.equal(G.vp1_fireworks || false, false);
+    assert.equal(G.vp1_discoBullets || false, false);
+    assert.equal(G.vp1_confetti || false, false);
+    assert.equal(G.vp1_luckyPickup || false, false);
+    assert.equal(G.vp1_boingy || false, false);
+    assert.equal(G.vp1_giggle || false, false);
   });
   it("apply set đúng giá trị active", () => {
     const M = loadMonsters();

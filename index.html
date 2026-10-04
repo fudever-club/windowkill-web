@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="css/roles.css">
 <script src="js/portal.js" defer></script>
 <script src="js/pwa.js" defer></script>
+<script src="js/install-prompt.js" defer></script>
 <script src="js/analytics.js" defer></script>
 <style>
   #launcher { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; position: relative; z-index: 1; }
@@ -77,6 +78,32 @@
   .desktop-cta-text strong { font-size: 15px; letter-spacing: 1px; color: #fff; }
   .desktop-cta-text span { font-size: 13px; color: #9db8d9; }
   .desktop-cta-arrow { color: #8fc3ff; }
+  /* PWA install prompt (feat/pwa-trailer): card "Cài game" dưới nút CHƠI NGAY —
+     cùng ngôn ngữ thị giác với desktop-cta-card (không áp đảo, không che nút Play);
+     ẩn mặc định, chỉ install-prompt.js bật khi đủ điều kiện. */
+  #install-card[hidden] { display: none !important; }
+  .install-cta-card { max-width: 560px; margin: 0 auto 8px; padding: 0 20px; }
+  .install-cta {
+    display: flex; align-items: center; gap: 12px;
+    background: #0d1c34; border: 1px solid #0080FF55; border-radius: 14px;
+    padding: 12px 16px; color: #dbeafe;
+  }
+  .install-cta .ic { width: 26px; height: 26px; color: #8fc3ff; flex: none; }
+  .install-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .install-text strong { font-size: 15px; letter-spacing: 1px; color: #fff; }
+  .install-text span { font-size: 13px; color: #9db8d9; }
+  .btn-install {
+    flex: none; cursor: pointer; border: none; border-radius: 10px;
+    background: #0080FF; color: #fff; font-weight: 800; font-size: 14px;
+    padding: 10px 18px; letter-spacing: .5px; transition: background .15s, transform .15s;
+  }
+  .btn-install:hover { background: #0066CC; transform: translateY(-1px); }
+  .install-dismiss {
+    flex: none; cursor: pointer; background: none; border: none;
+    color: #8fb0d8; padding: 8px; border-radius: 8px; line-height: 0;
+  }
+  .install-dismiss:hover { color: #fff; background: #ffffff14; }
+  .install-dismiss .ic { width: 18px; height: 18px; }
   #new-profile-box { display: none; gap: 8px; margin-top: 10px; }
   #new-profile-box input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff2e; background: #0c1f3a; color: #fff; font-size: 15px; } /* QW12: wrap */
   footer { text-align: center; color: #8fb0d8; font-size: 13px; margin-top: 34px; line-height: 1.8; }
@@ -85,6 +112,30 @@
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.3L12 17.1l-5.7 3.1 1.2-6.3L2.8 9.5l6.4-.8L12 2.8z" fill="currentColor"/>
+</symbol>
+<symbol id="i-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-shard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2 L20 9 L16 20 L7 17 L4 8 Z" fill="rgba(125,249,255,0.12)"/><path d="M12 2 L10 10 L16 20"/>
+</symbol>
+<symbol id="i-window-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/><path d="M12 5l-3 6 4 4-2 4"/><path d="M9 9l8 3"/>
+</symbol>
+<symbol id="i-heart-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/><path d="M12 7l-2 3 3 2-2 3 3 2"/>
+</symbol>
+<symbol id="i-fang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M7 4l2 6 2-6z M13 4l2 6 2-6z"/>
+</symbol>
+<symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3c3 4.5 6 8 6 11a6 6 0 0 1-12 0c0-3 3-6.5 6-11z"/>
+</symbol>
+<symbol id="i-flash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M9 3l6 2-2 5-6-2z"/><path d="M13 10l7 7M15 8l6 3"/>
+</symbol>
 <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>
 </symbol>
@@ -205,9 +256,6 @@
 <symbol id="i-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/>
 </symbol>
-<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M4 12h15M13 6l6 6-6 6"/>
-</symbol>
 <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M11 4l1.6 4.2 4.2 1.6-4.2 1.6L11 15.6l-1.6-4.2-4.2-1.6 4.2-1.6L11 4z"/><path d="M17.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/>
 </symbol>
@@ -247,6 +295,12 @@
 <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <circle cx="12" cy="12" r="8.5"/><circle cx="8.8" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.8" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="15.4" r="1.2" fill="currentColor" stroke="none"/>
 </symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 12h15M13 6l6 6-6 6"/>
+</symbol>
+<symbol id="i-install" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3v10"/><path d="M8 10l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+</symbol>
 <symbol id="i-github" viewBox="0 0 1024 1024">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z" transform="scale(64)" fill="currentColor"/>
 </symbol>
@@ -276,30 +330,6 @@
 </symbol>
 <symbol id="i-avatar-8" viewBox="0 0 48 48">
 <defs><linearGradient id="avg8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a8cff"/><stop offset="1" stop-color="#003f8f"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg8)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 10 5 12 7.5 12M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 10 19 12 16.5 12"/></g>
-</symbol>
-<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.3L12 17.1l-5.7 3.1 1.2-6.3L2.8 9.5l6.4-.8L12 2.8z" fill="currentColor"/>
-</symbol>
-<symbol id="i-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>
-</symbol>
-<symbol id="i-shard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M12 2 L20 9 L16 20 L7 17 L4 8 Z" fill="rgba(125,249,255,0.12)"/><path d="M12 2 L10 10 L16 20"/>
-</symbol>
-<symbol id="i-window-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/><path d="M12 5l-3 6 4 4-2 4"/><path d="M9 9l8 3"/>
-</symbol>
-<symbol id="i-heart-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/><path d="M12 7l-2 3 3 2-2 3 3 2"/>
-</symbol>
-<symbol id="i-fang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M7 4l2 6 2-6z M13 4l2 6 2-6z"/>
-</symbol>
-<symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M12 3c3 4.5 6 8 6 11a6 6 0 0 1-12 0c0-3 3-6.5 6-11z"/>
-</symbol>
-<symbol id="i-flash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M9 3l6 2-2 5-6-2z"/><path d="M13 10l7 7M15 8l6 3"/>
 </symbol>
 </svg>
 <div class="hero-bg"></div>
@@ -333,6 +363,24 @@
       </span>
       <svg class="ic desktop-cta-arrow" aria-hidden="true"><use href="#i-arrow-right"/></svg>
     </a>
+  </section>
+  <!-- PWA install prompt (feat/pwa-trailer): card "Cài game" dưới nút CHƠI NGAY.
+       Ẩn mặc định (hidden); js/install-prompt.js bật khi: (a) beforeinstallprompt
+       đã fire → biến thể nút "Cài đặt", hoặc (b) iOS Safari → biến thể hướng dẫn
+       Share → Add to Home Screen. Không hiện khi đã cài / đã đóng / portal / Electron. -->
+  <section id="install-card" class="install-cta-card" hidden aria-live="polite">
+    <div class="install-cta" role="group" aria-labelledby="install-card-title">
+      <svg class="ic" aria-hidden="true"><use href="#i-install"/></svg>
+      <span class="install-text">
+        <strong id="install-card-title" data-i18n="pwa.install_title" data-install-variant="prompt">Cài WINDOWKILL</strong>
+        <strong data-i18n="pwa.ios_title" data-install-variant="ios" hidden>Thêm vào Màn hình chính</strong>
+        <span data-i18n="pwa.install_sub" data-install-variant="prompt">Chơi như app thật — mở nhanh, chơi offline, không cần mở trình duyệt</span>
+        <span data-i18n-html="pwa.ios_steps" data-install-variant="ios" hidden>Mở menu <b>Chia sẻ</b> rồi chọn <b>Thêm vào Màn hình chính</b> để cài game</span>
+      </span>
+      <button class="btn-install" id="btn-install" data-i18n="pwa.install_btn" data-install-variant="prompt">Cài đặt</button>
+      <button class="btn-install" id="btn-install-ios-ok" data-i18n="pwa.ios_btn" data-install-variant="ios" hidden>Đã hiểu</button>
+      <button class="install-dismiss" id="btn-install-dismiss" data-i18n-aria="pwa.install_dismiss" aria-label="Đóng"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
   </section>
 <div class="warn-box" id="popup-warn" role="alert" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> <span data-i18n-html="error.popup_blocked">Trình duyệt của bạn đang <b>chặn popup</b>. Hãy cho phép popup cho trang này (biểu tượng <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> trên thanh địa chỉ) rồi bấm Chơi lại.</span></div>
 
@@ -447,6 +495,14 @@
       <div class="row opt-btns" style="gap:8px">
         <button class="btn-ghost" data-fx="full" data-i18n="settings.fx_full">Đầy đủ</button>
         <button class="btn-ghost" data-fx="reduced" data-i18n="settings.fx_reduced">Giảm</button>
+      </div>
+    </div>
+    <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg> <span data-i18n="settings.quality">Chất lượng</span></span>
+      <div class="row opt-btns" style="gap:8px">
+        <button class="btn-ghost" data-quality="auto" data-i18n="settings.quality_auto">Tự động</button>
+        <button class="btn-ghost" data-quality="high" data-i18n="settings.quality_high">Cao</button>
+        <button class="btn-ghost" data-quality="balanced" data-i18n="settings.quality_balanced">Cân bằng</button>
+        <button class="btn-ghost" data-quality="lite" data-i18n="settings.quality_lite">Nhẹ</button>
       </div>
     </div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-window"/></svg> <span data-i18n="settings.sat">Cửa sổ vệ tinh</span></span>

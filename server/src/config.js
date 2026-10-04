@@ -28,5 +28,10 @@ export const config = {
   errorsCap: num(process.env.WK_ERRORS_CAP, 500),
   // Max JSON body size in bytes.
   maxBodyBytes: num(process.env.WK_MAX_BODY, 64 * 1024),
+  // Season 1: the seeded "current" season (migration 2 creates it when no
+  // season is active yet). Rename via env without touching code.
+  seasonId: (process.env.WK_SEASON_ID || "S1").trim() || "S1",
+  seasonName: (process.env.WK_SEASON_NAME || "Season 1 — Mùa Deadline").trim(),
+  seasonDays: num(process.env.WK_SEASON_DAYS, 42),
   version: "1.0.0",
 };

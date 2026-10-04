@@ -56,7 +56,16 @@ export function validScoreBody(body) {
   if (score > kills * 200 + wave * 5000 + 10_000) return null;
   if (wave >= 2 && durationMs < (wave - 1) * 3000) return null;
   if (kills > 100 + Math.floor(durationMs / 200)) return null;
-  return { profileId, score, wave, kills, durationMs, difficulty };
+  /* Season 1: optional seasonId gates the seasonal board. The all-time
+   * board (`scores`) always gets the score; `season_scores` only gets it
+   * when the client sends a seasonId (Boss-rush "Đấu Sếp" and Daily runs).
+   * Unknown/ended seasons are rejected by the route, not here. */
+  let seasonId;
+  if (body.seasonId !== undefined && body.seasonId !== null) {
+    seasonId = validId(body.seasonId);
+    if (!seasonId) return null;
+  }
+  return { profileId, score, wave, kills, durationMs, difficulty, seasonId };
 }
 
 export function validLeaderboardQuery(searchParams) {
@@ -66,6 +75,18 @@ export function validLeaderboardQuery(searchParams) {
   const limit = rawLimit === null ? 10 : intIn(Number(rawLimit), 1, 50);
   if (limit === null) return null;
   return { difficulty, limit };
+}
+
+/* Season 1 — GET /api/season/leaderboard query. `season` is a season id or
+ * the literal 'current' (default); difficulty/limit behave like the classic
+ * leaderboard. Returns null on any invalid value. */
+export function validSeasonLeaderboardQuery(searchParams) {
+  const rawSeason = searchParams.get("season") || "current";
+  const season = rawSeason === "current" ? "current" : validId(rawSeason);
+  if (!season) return null;
+  const base = validLeaderboardQuery(searchParams);
+  if (!base) return null;
+  return { ...base, season };
 }
 
 /* ---------- analytics events ---------- */

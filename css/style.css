@@ -347,3 +347,26 @@ button { touch-action: manipulation; }
 #wk-desktop-toast .toast-x:hover { color: #fff; }
 @keyframes toastIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #wk-desktop-toast { animation: none; } }
+/* Toast "có bản mới" (SW update): góc dưới phải, nằm TRÊN toast desktop CTA,
+   không tự tắt — user có thể đang giữa run game. */
+#wk-update-toast {
+  position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  z-index: 96; display: flex; align-items: center; gap: 10px;
+  background: #0d1c34f2; border: 1px solid #00d08466; border-radius: 12px;
+  padding: 10px 12px 10px 14px; font-size: 13.5px; color: #dbeafe;
+  box-shadow: 0 8px 28px #000c; max-width: min(340px, 80vw);
+  animation: toastIn .25s ease-out;
+}
+#wk-update-toast .ic { width: 20px; height: 20px; color: #7dffa8; flex: none; }
+#wk-update-toast .wk-update-go {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: #7df9ff; font-weight: 700; font-size: 13.5px; text-align: left;
+  font-family: inherit;
+}
+#wk-update-toast .wk-update-go:hover { text-decoration: underline; }
+#wk-update-toast .toast-x {
+  background: none; border: none; color: #9db8d9; font-size: 16px; cursor: pointer;
+  padding: 6px; line-height: 1; min-width: 32px; min-height: 32px;
+}
+#wk-update-toast .toast-x:hover { color: #fff; }
+@media (prefers-reduced-motion: reduce) { #wk-update-toast { animation: none; } }

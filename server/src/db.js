@@ -28,6 +28,35 @@ function columnNames(db, table) {
  * Migration 1 predates versioning in spirit: databases created by the old
  * code have user_version = 0 but already contain the base tables, so the
  * migration is written defensively (add the column only if missing). */
+/* Season 1 schema (shared by fresh-boot DDL and migration 2). Two parallel
+ * leaderboards (SEASON-1-DECISIONS.md Q2b-A): `scores` stays the all-time
+ * board (never reset); `season_scores` is the seasonal board, keyed by
+ * `seasons.id` so a season rollover just swaps the active row — no data is
+ * ever deleted. DAILY_MODS naming keeps daily-season ids separate from the
+ * M9/M10 chain-popup ids (design constraint). */
+const SEASON_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS seasons (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER,
+    status TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'ended'))
+  );
+  CREATE TABLE IF NOT EXISTS season_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    score INTEGER NOT NULL,
+    wave INTEGER NOT NULL,
+    kills INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    difficulty TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_season_scores_board ON season_scores (season_id, difficulty, score DESC, created_at ASC);
+  CREATE INDEX IF NOT EXISTS idx_season_scores_profile ON season_scores (season_id, profile_id);
+`;
+
 const MIGRATIONS = [
   {
     version: 1,
@@ -38,16 +67,37 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    version: 2,
+    up(db, opts = {}) {
+      // Season 1: seasons + season_scores (forward-only; old DBs just gain tables).
+      db.exec(SEASON_SCHEMA);
+      // Minimal current-season seed: exactly one active season. Configurable
+      // via openDb opts (server/config.js: WK_SEASON_ID / WK_SEASON_NAME /
+      // WK_SEASON_DAYS). Skipped if any season is already active.
+      const seed = opts.seedSeason || {};
+      const id = typeof seed.id === "string" && seed.id ? seed.id : "S1";
+      const name = typeof seed.name === "string" && seed.name ? seed.name : "Season 1 — Mùa Deadline";
+      const days = Number.isInteger(seed.days) && seed.days > 0 ? seed.days : 42;
+      const hasActive = db.prepare("SELECT 1 FROM seasons WHERE status = 'active' LIMIT 1").get();
+      if (!hasActive) {
+        const now = Date.now();
+        db.prepare(
+          "INSERT OR IGNORE INTO seasons (id, name, start_at, end_at, status) VALUES (?, ?, ?, ?, 'active')"
+        ).run(id, name, now, now + days * 24 * 3600_000);
+      }
+    },
+  },
 ];
 
-function runMigrations(db) {
+function runMigrations(db, opts = {}) {
   const row = db.prepare("PRAGMA user_version").get();
   let current = row ? Number(row.user_version) || 0 : 0;
   for (const m of MIGRATIONS) {
     if (m.version <= current) continue;
     db.exec("BEGIN");
     try {
-      m.up(db);
+      m.up(db, opts);
       db.exec(`PRAGMA user_version = ${m.version}`);
       db.exec("COMMIT");
       current = m.version;
@@ -109,10 +159,14 @@ export function openDb(dbPath, opts = {}) {
       received_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_errors_ts ON errors (ts);
+    /* Season 1: seasons + season_scores — the seasonal leaderboard board.
+       Defined in SEASON_SCHEMA above; included here so fresh DBs carry it
+       even before migrations run, and by migration 2 for existing DBs. */
   `);
+  db.exec(SEASON_SCHEMA);
   // B7: apply versioned migrations BEFORE preparing statements that may
   // reference migrated columns (token_hash).
-  runMigrations(db);
+  runMigrations(db, opts);
 
   const q = {
     insertProfile: db.prepare("INSERT INTO profiles (id, name, emoji, created_at, token_hash) VALUES (?, ?, ?, ?, ?)"),
@@ -125,6 +179,25 @@ export function openDb(dbPath, opts = {}) {
     insertScore: db.prepare(
       "INSERT INTO scores (profile_id, score, wave, kills, duration_ms, difficulty, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ),
+    /* Season 1 — seasonal board. Every score is ALSO written to `scores`
+     * (the all-time board); the season copy is opt-in via `seasonId` on
+     * the submit body (the client only sends it for Boss-rush "Đấu Sếp"
+     * and Daily runs, per SEASON-1-DECISIONS.md §2.4/§3). */
+    insertSeasonScore: db.prepare(
+      "INSERT INTO season_scores (season_id, profile_id, score, wave, kills, duration_ms, difficulty, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ),
+    getSeason: db.prepare("SELECT id, name, start_at AS startAt, end_at AS endAt, status FROM seasons WHERE id = ?"),
+    getActiveSeason: db.prepare(
+      "SELECT id, name, start_at AS startAt, end_at AS endAt, status FROM seasons WHERE status = 'active' ORDER BY start_at DESC LIMIT 1"
+    ),
+    seasonalLeaderboard: db.prepare(`
+      SELECT s.score, s.wave, s.kills, s.duration_ms AS durationMs, s.difficulty,
+             s.created_at AS createdAt, p.id AS profileId, p.name AS profileName, p.emoji AS profileEmoji
+      FROM season_scores s JOIN profiles p ON p.id = s.profile_id
+      WHERE s.season_id = ? AND s.difficulty = ?
+      ORDER BY s.score DESC, s.created_at ASC
+      LIMIT ?
+    `),
     leaderboard: db.prepare(`
       SELECT s.score, s.wave, s.kills, s.duration_ms AS durationMs, s.difficulty,
              s.created_at AS createdAt, p.id AS profileId, p.name AS profileName, p.emoji AS profileEmoji
@@ -219,11 +292,24 @@ export function openDb(dbPath, opts = {}) {
     deleteProfile: (id) => q.deleteProfile.run(id).changes > 0,
     /* Readiness probe for /api/health (B13): throws if the DB is dead. */
     ping: () => q.ping.get(),
-    addScore({ profileId, score, wave, kills, durationMs, difficulty }) {
+    addScore({ profileId, score, wave, kills, durationMs, difficulty, seasonId }) {
       const r = q.insertScore.run(profileId, score, wave, kills, durationMs, difficulty, now());
-      return { id: Number(r.lastInsertRowid) };
+      const out = { id: Number(r.lastInsertRowid) };
+      // Season 1: opt-in seasonal copy (client gates this to Đấu Sếp / Daily runs).
+      if (seasonId) {
+        const rs = q.insertSeasonScore.run(seasonId, profileId, score, wave, kills, durationMs, difficulty, now());
+        out.seasonScoreId = Number(rs.lastInsertRowid);
+        out.seasonId = seasonId;
+      }
+      return out;
     },
     leaderboard: (difficulty, limit) => q.leaderboard.all(difficulty, limit),
+    /* Season 1 — season lookups + the seasonal board. Row shape matches
+     * /api/leaderboard exactly (score, wave, kills, durationMs, difficulty,
+     * createdAt, profileId, profileName, profileEmoji). */
+    getSeason: (id) => q.getSeason.get(id) || null,
+    getActiveSeason: () => q.getActiveSeason.get() || null,
+    seasonalLeaderboard: (seasonId, difficulty, limit) => q.seasonalLeaderboard.all(seasonId, difficulty, limit),
     profileStats(profileId) {
       const agg = q.statsAgg.get(profileId);
       const best = {};

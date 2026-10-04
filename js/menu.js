@@ -132,9 +132,10 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   if (!["calm", "normal", "wild"].includes(settings.wjump)) settings.wjump = "normal"; // Item 4: repair corrupted wjump
+  if (!["auto", "high", "balanced", "lite"].includes(settings.quality)) settings.quality = "auto"; // feat/mobile-quality: repair corrupted quality
   const saveSettings = () => store.set("wk_settings", settings);
   // FIX 2026-10-03 (2-track): web không popup thật nữa — migrate setting "auto" cũ → "sim".
   // Desktop Electron giữ nguyên (popup thật do app quản lý).
@@ -155,6 +156,7 @@
     document.querySelectorAll("[data-fx]").forEach(b => { const sel = b.dataset.fx === settings.fx; b.classList.toggle("sel", sel); press(b, sel); });
     document.querySelectorAll("[data-sat]").forEach(b => { press(b, b.dataset.sat === settings.sat); });
     document.querySelectorAll("[data-wjump]").forEach(b => { press(b, b.dataset.wjump === settings.wjump); });
+    document.querySelectorAll("[data-quality]").forEach(b => { const sel = b.dataset.quality === settings.quality; b.classList.toggle("sel", sel); press(b, sel); });
   }
   document.querySelectorAll("[data-fx]").forEach(b => b.onclick = () => {
     settings.fx = b.dataset.fx; saveSettings(); paintToggles();
@@ -163,6 +165,13 @@
   document.querySelectorAll("[data-sat]").forEach(b => b.onclick = () => {
     settings.sat = b.dataset.sat; saveSettings();
     document.querySelectorAll("[data-sat]").forEach(x => { const sel = x === b; x.classList.toggle("sel", sel); x.setAttribute("aria-pressed", sel ? "true" : "false"); });
+  });
+  // feat/mobile-quality: segmented control "Chất lượng" (pattern data-wjump)
+  document.querySelectorAll("[data-quality]").forEach(b => { const sel = b.dataset.quality === settings.quality; b.classList.toggle("sel", sel); b.setAttribute("aria-pressed", sel ? "true" : "false"); });
+  document.querySelectorAll("[data-quality]").forEach(b => b.onclick = () => {
+    settings.quality = b.dataset.quality; saveSettings();
+    document.querySelectorAll("[data-quality]").forEach(x => { const sel = x === b; x.classList.toggle("sel", sel); x.setAttribute("aria-pressed", sel ? "true" : "false"); });
+    Analytics.track("settings_changed", { key: "quality", value: settings.quality });
   });
   // Item 4 — Sprint Round 2: segmented control "Độ Nhảy Cửa Sổ" (pattern data-sat)
   document.querySelectorAll("[data-wjump]").forEach(b => { const sel = b.dataset.wjump === settings.wjump; b.classList.toggle("sel", sel); b.setAttribute("aria-pressed", sel ? "true" : "false"); });
@@ -309,6 +318,7 @@
       diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
       shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
       sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "sim", profile: activeId,
+      quality: ["auto", "high", "balanced", "lite"].includes(settings.quality) ? settings.quality : "auto",
     });
     if (window.WK_PORTAL_MODE) {
       // Portal/iframe (itch.io, CrazyGames...): popup bị chặn → mở game ngay trong khung hiện tại
@@ -415,6 +425,7 @@
           diff: settings.diff, music: settings.music ? 1 : 0, sfx: settings.sfx ? 1 : 0,
           shake: settings.shake ? 1 : 0, fx: settings.fx === "reduced" ? "reduced" : "full",
           sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "sim", profile: activeId,
+          quality: ["auto", "high", "balanced", "lite"].includes(settings.quality) ? settings.quality : "auto",
         });
         if (v2sel.kind === "stage") q.set("stage", String(v2sel.n));
         if (v2sel.kind === "daily") q.set("daily", "1");

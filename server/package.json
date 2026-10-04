@@ -8,7 +8,7 @@
   "name": "windowkill-backend",
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test tests/api.test.js"
+    "test": "node --test tests/api.test.js tests/season.test.js"
   },
   "type": "module",
   "version": "1.0.0"

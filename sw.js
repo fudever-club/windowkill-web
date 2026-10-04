@@ -1,18 +1,33 @@
 /* WINDOWKILL Web Edition — Service Worker
- * Chiến lược:
- *  - stale-while-revalidate cho static assets (CSS/JS/ảnh/icon/manifest) — cache có version
- *  - network-first cho trang HTML (navigation) — luôn lấy bản mới khi online
- *  - offline fallback về offline.html
- * Không chạm tài nguyên cross-origin.
+ * Chiến lược (đổi từ 2026-10-04, fix incident "lớp xám" do stale-while-revalidate):
+ *  - network-first cho GAME CORE (HTML + js/* + css/* + manifest + tuning config):
+ *    luôn lấy bản mới khi online → user không bao giờ kẹt JS cũ sau deploy.
+ *    Offline → fallback về cache (toàn bộ core đã precache ở lần load đầu).
+ *  - cache-first cho asset NẶNG ít đổi (assets/music, ảnh, icons, fonts):
+ *    đổi hiếm, tránh tải lại nhiều MB mỗi lần; version bump dọn sạch cache cũ.
+ *  - navigation: network-first, fallback cache, cuối cùng offline.html.
+ * Không chạm tài nguyên cross-origin. Không nuốt /api/* và range request (audio seek).
+ *
+ * VERSION: TỰ ĐỘNG — không sửa tay. Pre-commit hook (.githooks/pre-commit, bật bằng
+ * `git config core.hooksPath .githooks`) tự stamp mỗi khi site assets đổi; CI verify
+ * bằng `node scripts/bump-sw.js --check`. Mỗi stamp đổi byte file này → browser cài
+ * SW mới → cache mới → client nhận assets mới sau deploy.
  */
 "use strict";
 
-const VERSION = "windowkill-v8"; // bump 2026-10-03: thêm js/tuning.js (Sprint R2 Item 3) vào precache — ép client nhận loader config mới
+const VERSION = "windowkill-20261004T062728Z-57f1920"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
-const HTML_CACHE = VERSION + "-html";
 const OFFLINE_URL = "offline.html";
 
-const STATIC_ASSETS = [
+// Game core — precache toàn bộ vào CORE_CACHE để chơi offline ngay sau lần load đầu.
+const CORE_ASSETS = [
+  "index.html",
+  "game.html",
+  "satellite.html",
+  OFFLINE_URL,
+  "manifest.webmanifest",
+  "difficulty.config.json",
   "css/style.css",
   "css/roles.css",
   "js/audio.js",
@@ -20,6 +35,7 @@ const STATIC_ASSETS = [
   "js/menu.js",
   "js/game.js",
   "js/pwa.js",
+  "js/install-prompt.js", // feat/pwa-trailer: PWA install prompt (launcher) — precache để offline vẫn có card
   "js/analytics.js",
   "js/bgm.js",
   "js/bg.js",
@@ -42,28 +58,37 @@ const STATIC_ASSETS = [
   "js/v2glue.js",
   "js/mobile.js",
   "js/portal.js",
-  "manifest.webmanifest",
-  OFFLINE_URL,
+  "js/quality.js", // feat/mobile-quality: adaptive quality tiers — precache để offline vẫn có
+];
+
+// Asset nặng ít đổi — precache ảnh/icons + track BGM đầu tiên (mp3 các track còn lại
+// sẽ được cache-first runtime lưu lại khi thực sự phát, để install lần đầu nhẹ).
+const STATIC_ASSETS = [
+  "assets/music/joyfully-loop.mp3", // track đầu tiên của playlist — có nhạc ngay cả khi offline lần đầu
   "assets/favicon.png",
   "assets/hero.jpg",
   "assets/logo-lockup.webp",
   // PERF 2026-10-02: bỏ og-banner.jpg (chỉ bot og:image cần) + icon-512.png (chỉ
-  // cần khi cài PWA) khỏi precache — file vẫn trên đĩa, SWR runtime cache sẽ tự
-  // lưu khi thực sự được request. Tiết kiệm ~136KB (theo số gốc) tải lần đầu.
+  // cần khi cài PWA) khỏi precache — file vẫn trên đĩa, runtime cache sẽ tự
+  // lưu khi thực sự được request.
   "assets/brand/dever-logo.png",
   "assets/icons/icon-192.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) =>
-        cache.addAll(
-          STATIC_ASSETS.map((u) => new Request(u, { cache: "reload" }))
-        )
-      )
-      .then(() => self.skipWaiting())
+    Promise.all([
+      caches
+        .open(CORE_CACHE)
+        .then((cache) =>
+          cache.addAll(CORE_ASSETS.map((u) => new Request(u, { cache: "reload" })))
+        ),
+      caches
+        .open(STATIC_CACHE)
+        .then((cache) =>
+          cache.addAll(STATIC_ASSETS.map((u) => new Request(u, { cache: "reload" })))
+        ),
+    ]).then(() => self.skipWaiting())
   );
 });
 
@@ -74,7 +99,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => k.indexOf("windowkill-") === 0 && k !== STATIC_CACHE && k !== HTML_CACHE)
+            .filter((k) => k.indexOf("windowkill-") === 0 && k !== CORE_CACHE && k !== STATIC_CACHE)
             .map((k) => caches.delete(k))
         )
       )
@@ -83,7 +108,8 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
+  const d = event.data;
+  if (d === "SKIP_WAITING" || (d && d.type === "SKIP_WAITING")) self.skipWaiting();
 });
 
 function putIfOk(cache, req, res) {
@@ -93,11 +119,19 @@ function putIfOk(cache, req, res) {
   return res;
 }
 
+// Game core: network-first — luôn ưu tiên bản mới nhất khi online.
+// Offline (fetch reject) → trả bản trong cache (đã precache ở install).
+function networkFirstCore(req) {
+  return caches.open(CORE_CACHE).then((cache) =>
+    fetch(req)
+      .then((res) => putIfOk(cache, req, res))
+      .catch(() => cache.match(req))
+  );
+}
+
 // Navigation: network-first, fallback cache, cuối cùng offline.html.
-// AUDIT 2026-10-02: offline.html được precache vào STATIC_CACHE (không phải HTML_CACHE),
-// nên fallback phải dùng caches.match (tìm mọi cache), không dùng cache.match của HTML_CACHE.
 function networkFirstPage(req) {
-  return caches.open(HTML_CACHE).then((cache) =>
+  return caches.open(CORE_CACHE).then((cache) =>
     fetch(req)
       .then((res) => putIfOk(cache, req, res))
       .catch(() =>
@@ -106,16 +140,37 @@ function networkFirstPage(req) {
   );
 }
 
-// Static: stale-while-revalidate — trả cache ngay (nhanh), đồng thời fetch bản mới
-// ngầm để lần sau dùng bản mới nhất. Không còn kẹt JS cũ vĩnh viễn sau deploy.
-function staleWhileRevalidate(req) {
+// Asset nặng ít đổi: cache-first — trả cache ngay nếu có; chưa có thì fetch
+// rồi lưu lại cho lần sau. Range request (audio seek) không đi qua đây.
+function cacheFirst(req) {
   return caches.open(STATIC_CACHE).then((cache) =>
     cache.match(req).then((hit) => {
-      const network = fetch(req)
-        .then((res) => putIfOk(cache, req, res))
-        .catch(() => hit || cache.match(OFFLINE_URL));
-      return hit || network;
+      if (hit) return hit;
+      return fetch(req).then((res) => putIfOk(cache, req, res));
     })
+  );
+}
+
+// Phân loại request same-origin vào đúng chiến lược.
+function isCoreAsset(pathname) {
+  return (
+    pathname === "/" ||
+    pathname === "/index.html" ||
+    pathname === "/game.html" ||
+    pathname === "/satellite.html" ||
+    pathname === "/offline.html" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/difficulty.config.json" ||
+    pathname.indexOf("/js/") === 0 ||
+    pathname.indexOf("/css/") === 0 ||
+    /\.html$/i.test(pathname)
+  );
+}
+
+function isHeavyAsset(pathname) {
+  return (
+    pathname.indexOf("/assets/") === 0 ||
+    /\.(mp3|ogg|wav|mp4|webm|woff2?|ttf|otf|eot)$/i.test(pathname)
   );
 }
 
@@ -125,14 +180,19 @@ self.addEventListener("fetch", (event) => {
   if (req.headers.has("range")) return; // audio seek: để browser tự xử, không cache 206
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // cross-origin: không chạm
-  // AUDIT 2026-10-02: không nuốt /api/* và file media vào stale-while-revalidate —
-  // trước đây response API (leaderboard/health) bị cache và trả cũ 1 nhịp, còn mp3
-  // không-range bị cache nguyên file ~7.6MB/track vào static cache.
+  // Không nuốt /api/* vào cache — response API (leaderboard/health) phải luôn tươi.
   if (url.pathname.startsWith("/api/")) return;
-  if (/\.(mp3|ogg|wav|mp4|webm)$/i.test(url.pathname)) return;
   if (req.mode === "navigate") {
     event.respondWith(networkFirstPage(req));
     return;
   }
-  event.respondWith(staleWhileRevalidate(req));
+  if (isCoreAsset(url.pathname)) {
+    event.respondWith(networkFirstCore(req));
+    return;
+  }
+  if (isHeavyAsset(url.pathname)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+  // Còn lại (robots.txt, sitemap...): network thuần, không cache.
 });

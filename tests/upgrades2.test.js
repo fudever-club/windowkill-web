@@ -113,10 +113,14 @@ describe("Upgrades2 — unit (động)", () => {
     assert.equal(U.tryAnchor(ship), false);
   });
 
-  it("U12: tick: keo chín sau 20s, cooldown neo giảm theo dt", () => {
-    const glueShip = { selfGlue: { t: 0, every: 20, px: 10 } };
-    assert.equal(U.tick(glueShip, 19.9), null);
-    assert.deepEqual(U.tick(glueShip, 0.2), { glue: 10 });
+  it("U12: tick: hồi chiêu Súng Bắn Keo giảm theo dt (clamp 0), cooldown neo giảm theo dt", () => {
+    // 2026-10-04 (CEO chốt): Keo Tự Vá bị động (+10px/20s) bị thay bằng Súng Bắn Keo
+    // chủ động — tick chỉ giảm cooldown, không còn trả về { glue }.
+    const glueShip = { glueGun: { cd: 10, maxCd: 30, px: 60 } };
+    assert.equal(U.tick(glueShip, 3), null);
+    assert.equal(glueShip.glueGun.cd, 7);
+    U.tick(glueShip, 10);
+    assert.equal(glueShip.glueGun.cd, 0);
     const anchorShip = { inertiaAnchor: { cd: 8, max: 8 } };
     U.tick(anchorShip, 3);
     assert.equal(anchorShip.inertiaAnchor.cd, 5);

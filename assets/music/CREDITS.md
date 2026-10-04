@@ -1,20 +1,39 @@
 # BGM Credits — `assets/music/`
 
-Nhạc nền có thật cho WINDOWKILL. Tất cả 4 track đều là **CC0 1.0 Universal (public domain)** —
-dùng thương mại thoải mái, **không bắt buộc ghi công** (ghi ở đây để minh bạch).
+Soundtrack duy nhất của WINDOWKILL (CEO chốt 2026-10-04): **một theme chạy loop liên tục**.
 
-Phong cách: vui nhộn, nhịp nhanh, chiptune/arcade — tuyệt đối không rùng rợn/u ám (theo feedback user 2026-10-01).
+## Track hiện tại
 
-| # | Track | Tác giả | Nguồn | License | File |
-|---|-------|---------|-------|---------|------|
-| 1 | "Joyfully" (loop, 170 BPM) | MintoDog | http://opengameart.org/content/joyfully | CC0 | `joyfully-loop.mp3` / `.ogg` |
-| 2 | "Pixel Sprinter" (loop version) | Zane Little Music | https://opengameart.org/content/pixel-sprinter | CC0 | `pixel-sprinter-loop.mp3` / `.ogg` |
-| 3 | "Dog in Car" (seamless loop) | congusbongus | https://opengameart.org/node/143647 | CC0 | `dog-in-car.mp3` / `.ogg` |
-| 4 | "Heckin' Crows" ("A cheerful chiptune for an arcade game") | congusbongus | https://opengameart.org/node/101054 | CC0 | `heckin-crows.mp3` / `.ogg` |
+| Track | Chi tiết |
+|---|---|
+| **"High Score Parade" (Game Loop)** | Arcade Funk, ~158 BPM, loop 103.1s (48kHz stereo) |
+| Metadata trong file | title "High Score Parade", album "Joystick Odyssey", genre "Arcade Funk" |
+| Master | −14.1 LUFS, true peak −1.1 dBTP |
+| File | `high-score-parade-loop.ogg` (Vorbis q6, primary) / `.mp3` (192kbps, fallback Safari) |
 
-Ghi chú kỹ thuật:
-- File gốc tải từ OpenGameArt.org (định dạng ogg/mp3).
-- MP3 được convert về 192kbps bằng ffmpeg để giảm dung lượng (mỗi file < 5MB); bản OGG gốc giữ lại làm fallback.
-- Player: `js/bgm.js` — playlist shuffle + loop, crossfade ~1.5s, âm lượng 0.5 (không lấn SFX).
+- Loop edit: one-bar equal-power crossfade ở điểm nối (phần mở đầu/kết thúc fade
+  yên tĩnh của source đã loại bỏ). Phát loop bằng thẻ `<audio loop>` — file đã
+  được edit để nối liền, không cần crossfade lúc phát.
+- Player: `js/bgm.js` — single-track loop, âm lượng 0.5 (không lấn SFX).
+
+## ⚠️ LƯU Ý BẢN QUYỀN (quan trọng)
+
+- **Tác giả/nhà soạn nhạc và giấy phép (license) KHÔNG có trong metadata của file nguồn.**
+  Track này đến từ user cung cấp (`High_Score_Parade.mp4`), không phải nhạc tự sáng tác,
+  không phải CC0.
+- **Chưa được xác minh quyền sử dụng.** Trước khi phát hành rộng rãi (đặc biệt nếu game
+  thu phí), CEO cần xác nhận: nguồn gốc track, ai là chủ bản quyền, và điều khoản
+  cho phép dùng trong game thương mại.
+- Khi có thông tin, bổ sung vào bảng trên: tác giả, nguồn, license, link mua/license.
+
+## Lịch sử
+
+- 2026-10-01 → 2026-10-04: 4 track CC0 (Joyfully, Pixel Sprinter, Dog in Car, Heckin' Crows)
+  chạy playlist shuffle. Đã gỡ khỏi repo (còn trong git history) khi CEO chốt single theme.
+- File preview `High_Score_Parade_Loop_Preview_3x.mp3` chỉ để nghe thử, KHÔNG ship.
+
+## Ghi chú kỹ thuật
+
 - Khi BGM phát được → procedural music layers của `js/audio.js` tự tắt (tránh chồng nhạc); SFX giữ nguyên.
-- Nếu tất cả track load lỗi → tự fallback về procedural music, game không crash.
+- Nếu track load lỗi → tự fallback về procedural music, game không crash.
+- Tôn trọng toggle nhạc của user (`BGM.setEnabled`).

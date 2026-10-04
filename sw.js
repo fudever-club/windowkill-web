@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261004T141929Z-6ed4a81"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261004T142833Z-9ac1fc0"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -65,7 +65,13 @@ const CORE_ASSETS = [
 // Asset nặng ít đổi — precache ảnh/icons + track BGM đầu tiên (mp3 các track còn lại
 // sẽ được cache-first runtime lưu lại khi thực sự phát, để install lần đầu nhẹ).
 const STATIC_ASSETS = [
-  "assets/music/joyfully-loop.mp3", "assets/stingers/stinger-wave-clear.ogg", "assets/stingers/stinger-wave-clear.mp3", "assets/stingers/stinger-level-up.ogg", "assets/stingers/stinger-level-up.mp3", "assets/stingers/stinger-game-over.ogg", "assets/stingers/stinger-game-over.mp3", "assets/stingers/stinger-victory.ogg", "assets/stingers/stinger-victory.mp3", // track đầu tiên của playlist — có nhạc ngay cả khi offline lần đầu
+  "assets/music/high-score-parade-loop.ogg", // single theme (CEO chốt 2026-10-04) — OGG primary
+  "assets/music/high-score-parade-loop.mp3", // MP3 fallback cho Safari — có nhạc ngay cả khi offline lần đầu
+  // Stingers (CEO duyệt): OGG primary + MP3 fallback cho Safari
+  "assets/stingers/stinger-wave-clear.ogg", "assets/stingers/stinger-wave-clear.mp3",
+  "assets/stingers/stinger-level-up.ogg", "assets/stingers/stinger-level-up.mp3",
+  "assets/stingers/stinger-game-over.ogg", "assets/stingers/stinger-game-over.mp3",
+  "assets/stingers/stinger-victory.ogg", "assets/stingers/stinger-victory.mp3",
   "assets/favicon.png",
   "assets/hero.jpg",
   "assets/logo-lockup.webp",

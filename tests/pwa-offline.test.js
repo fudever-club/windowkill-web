@@ -91,7 +91,8 @@ describe("sw.js — precache đầy đủ game", () => {
       "manifest.webmanifest", "difficulty.config.json", "css/style.css", "css/roles.css"]) {
       assert.ok(core.includes(f), `CORE thiếu ${f}`);
     }
-    assert.ok(stat.includes("assets/music/joyfully-loop.mp3"), "STATIC thiếu track BGM đầu");
+    assert.ok(stat.includes("assets/music/high-score-parade-loop.mp3"), "STATIC thiếu theme BGM");
+    assert.ok(stat.includes("assets/music/high-score-parade-loop.ogg"), "STATIC thiếu theme BGM (ogg)");
   });
   it("P8: mọi asset precache tồn tại trên disk (tránh install fail cả SW)", () => {
     const missing = all.filter((a) => !fs.existsSync(path.join(ROOT, a)));

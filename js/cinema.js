@@ -352,7 +352,7 @@ function waveClear(n, shards, patches) {
   jSlowMo(0.3, 350);
   spawnConfetti(36, true);
   jFloat(_player.x, _player.y - 46, I18N.t("juice.shard_float", { n: shards }), "#5dff8f", { size: 18 });
-  sfx("fanfare");
+  sfx("stinger", "waveClear"); // stinger wave-clear (thay fanfare procedural)
   setMusic("VICTORY");
   (patches || []).forEach(function (p) { patch(p.x, p.y); });
   return new Promise(function (resolve) {
@@ -987,7 +987,7 @@ function updateBossCine(dt) {
         m.color = cols[j % 3]; m.size = rand(5, 8);
       }
       jFloat(c.px, c.py - 50, I18N.t("juice.shard_float2"), "#5dff8f", { size: 16 });
-      sfx("fanfare");
+      // victory stinger đã phát ở killBoss() (game.js) — bỏ fanfare ở đây để tránh chồng tiếng
     }
     if (c.age >= 2.0) c.resolve();
   }

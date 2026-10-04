@@ -124,6 +124,13 @@ document.getElementById("btn-hud-pause")?.addEventListener("click", (e) => {
   try { e.stopPropagation(); } catch (_) {}
   if (typeof pauseGame === "function") pauseGame(true);
 });
+// Súng Bắn Keo (2026-10-04, CEO chốt): nút touch cạnh nút pause — chỉ hiện khi có nâng cấp
+const _glueBtn = document.getElementById("btn-hud-glue");
+let _glueBtnShown = false;
+_glueBtn?.addEventListener("click", (e) => {
+  try { e.stopPropagation(); AudioEngine.resume(); } catch (_) {}
+  if (G.phase === "play") fireGlueGun();
+});
 const SHAKE_WINDOW = qp.get("shake") === "1";
 /* ---------- adaptive quality tiers (js/quality.js, feat/mobile-quality) ----------
    Khởi tạo TRƯỚC fit() để wkDpr() đọc đúng dprCap của nấc. Áp nấc = set BG +
@@ -226,6 +233,27 @@ function growWindow(dw, dh) { // vá cửa sổ sau mỗi wave
   const nh = Math.min(720, window.outerHeight + dh);
   try { window.moveTo(window.screenX - (nw - window.outerWidth) / 2, window.screenY - (nh - window.outerHeight) / 2); } catch (e) {}
   try { window.resizeTo(nw, nh); } catch (e) {}
+}
+/* Súng Bắn Keo (thay Keo Tự Vá 2026-10-04, CEO chốt): bấm E vá ngay +60px,
+ * hồi chiêu 30s. Trả về true nếu bắn thành công. */
+function fireGlueGun() {
+  const s = G.ship;
+  if (!s || !s.glueGun || (s.glueGun.cd || 0) > 0) return false;
+  const px = s.glueGun.px || 60;
+  s.glueGun.cd = s.glueGun.maxCd || 30;
+  growWindow(px, Math.round(px * 0.75));
+  addFloat(s.x, s.y - 40, `+${px}px`, "#9df3ff");
+  try { AudioEngine.sfx.slurp(); } catch (er) {}
+  // chùm hạt keo bắn ra 4 hướng — dùng particle system hiện có (rẻ, có cap 600)
+  const cols = ["#9df3ff", "#67e8f9", "#a5f3fc"];
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2 + Math.random() * 0.25;
+    const sp = 180 + Math.random() * 240;
+    addPart({ x: s.x, y: s.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0,
+      life: 0.5 + Math.random() * 0.4, c: cols[i % cols.length], sz: 2.5 + Math.random() * 3 });
+  }
+  G.glueFlash = 0.3; // viền cửa sổ flash cyan 0.3s
+  return true;
 }
 /* Item 3 — Sprint Round 2: tuning tập trung.
  * Mọi hằng số balance dưới đọc từ difficulty.config.json qua window.WK_TUNING
@@ -2388,6 +2416,8 @@ window.addEventListener("keydown", e => {
           typeof StageFX.modules.slippery.stabilize === "function") StageFX.modules.slippery.stabilize();
     } catch (er) {}
   }
+  // Súng Bắn Keo (2026-10-04, CEO chốt) — E vá ngay +60px cửa sổ, hồi chiêu 30s
+  if (e.code === "KeyE" && !e.repeat && G.phase === "play") fireGlueGun();
 });
 window.addEventListener("keyup", e => keys[e.code] = false);
 canvas.addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
@@ -3953,17 +3983,20 @@ function update(dt) {
   s.shieldT = Math.max(0, s.shieldT - dt);
   s.magnetT = Math.max(0, s.magnetT - dt);
   s.overdriveT = Math.max(0, s.overdriveT - dt);
+  if (G.glueFlash > 0) G.glueFlash = Math.max(0, G.glueFlash - dt); // Súng Bắn Keo: viền flash cyan
+  // Súng Bắn Keo: nút touch chỉ hiện khi có nâng cấp và đang chơi (chỉ chạm DOM khi đổi state)
+  const _wantGlueBtn = !!(s.glueGun && G.phase === "play");
+  if (_wantGlueBtn !== _glueBtnShown) {
+    _glueBtnShown = _wantGlueBtn;
+    if (_glueBtn) _glueBtn.style.display = _wantGlueBtn ? "" : "none";
+  }
   if (s.regenT > 0) { /* dành cho nâng cấp sau */ }
 
-  /* M22: tick theo thời gian cho nâng cấp v2 — Keo Tự Vá + hồi chiêu Neo,
+  /* M22: tick theo thời gian cho nâng cấp v2 — hồi chiêu Súng Bắn Keo + hồi chiêu Neo,
      và Gai Phản có throttle 0,5s (helper gốc không có cooldown) */
   if (window.Upgrades2 && s) {
     try {
-      const ev = Upgrades2.tick(s, dt);
-      if (ev && ev.glue) {
-        growWindow(ev.glue, Math.round(ev.glue * 0.75));
-        addFloat(s.x, s.y - 40, `+${ev.glue}px`, "#9df3ff");
-      }
+      Upgrades2.tick(s, dt);
       if (s.thornBorder) {
         s._thornCd = Math.max(0, (s._thornCd || 0) - dt);
         if (s._thornCd <= 0) {
@@ -4375,6 +4408,13 @@ function render(now) {
     ctx.strokeStyle = "#ffd479"; ctx.lineWidth = 3; ctx.setLineDash([12, 8]);
     ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.setLineDash([]);
   }
+  if (G.glueFlash > 0) { // Súng Bắn Keo: viền cửa sổ flash cyan 0.3s
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, G.glueFlash / 0.3);
+    ctx.strokeStyle = "#9df3ff"; ctx.lineWidth = 5;
+    ctx.strokeRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
+    ctx.restore();
+  }
   // H1/B3: % nguyên vẹn cửa sổ — viền diegetic vẽ ở cuối frame (trước HUD)
   const winPct = winCtrl.ok
     ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
@@ -4746,6 +4786,12 @@ function render(now) {
   }
   if (s.magnetT > 0) chips.push({ icon: "i-magnet", ic: "#ff7ad9", text: Math.ceil(s.magnetT) + "s", tc: "#ff7ad9", bg: "rgba(255,122,217,0.14)" });
   if (s.overdriveT > 0) chips.push({ icon: "i-bolt", ic: "#ffe14d", text: Math.ceil(s.overdriveT) + "s", tc: "#ffe14d", bg: "rgba(255,225,77,0.14)" });
+  if (s.glueGun) { // Súng Bắn Keo: chip hiện hồi chiêu — sẵn sàng thì gợi ý phím E
+    const gg = s.glueGun, ready = (gg.cd || 0) <= 0;
+    chips.push({ icon: "i-heart-plus", ic: "#9df3ff", text: ready ? "E" : Math.ceil(gg.cd) + "s",
+      tc: ready ? "#9df3ff" : "#7d8aa0",
+      bg: ready ? "rgba(157,243,255,0.16)" : "rgba(125,138,160,0.10)" });
+  }
 
   const CHIP_FONT = "700 13px " + HUDFONT;
   const chipW = (c) => {

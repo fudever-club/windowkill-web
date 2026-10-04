@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- MOBILE 2026-10-03: viewport-fit=cover để env(safe-area-inset-*) có tác dụng trên iPhone tai thỏ; khóa zoom để gesture không phá game -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://windowkill-web.fly.dev; object-src 'none'; base-uri 'self'">
 <title data-i18n="game.title">WINDOWKILL: Web Edition — Chiến trường</title>
 <meta name="description" content="Chiến trường WINDOWKILL: Web Edition — twin-stick shooter trong popup trình duyệt, nơi cửa sổ chính là thanh máu. Chơi miễn phí trên web, phát triển bởi FU-DEVER.">
 <link rel="canonical" href="https://windowkill-web.vercel.app/game.html">
@@ -26,6 +26,9 @@
 <link rel="stylesheet" href="css/style.css">
 <script src="js/portal.js" defer></script>
 <script src="js/pwa.js" defer></script>
+<!-- js/config.js: set window.WK_API_BASE (CSP-safe, file ngoài) trước js/analytics.js
+     để telemetry/leaderboard trỏ đúng backend Fly.io (không inline script). -->
+<script src="js/config.js" defer></script>
 <script src="js/analytics.js" defer></script>
 <script src="js/i18n.js" defer></script>
 <style>

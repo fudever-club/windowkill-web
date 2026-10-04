@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- MOBILE 2026-10-03: viewport-fit=cover để env(safe-area-inset-*) có tác dụng trên iPhone tai thỏ; khóa zoom để gesture không phá game -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://windowkill-web.fly.dev; object-src 'none'; base-uri 'self'">
 <title>WINDOWKILL: Web Edition — FU-DEVER</title>
 <meta name="description" content="WINDOWKILL: Web Edition — twin-stick shooter fan-made nơi cửa sổ popup trình duyệt chính là thanh máu của bạn. Chơi miễn phí ngay trên web, phát triển bởi FU-DEVER (ĐH FPT Đà Nẵng).">
 <meta name="keywords" content="windowkill, web game, twin-stick shooter, FU-DEVER, FPT University, game web miễn phí, browser game">
@@ -96,11 +96,14 @@
     flex: none; cursor: pointer; border: none; border-radius: 10px;
     background: #0080FF; color: #fff; font-weight: 800; font-size: 14px;
     padding: 10px 18px; letter-spacing: .5px; transition: background .15s, transform .15s;
+    min-height: 44px; /* a11y: touch target ≥44px */
   }
   .btn-install:hover { background: #0066CC; transform: translateY(-1px); }
   .install-dismiss {
     flex: none; cursor: pointer; background: none; border: none;
     color: #8fb0d8; padding: 8px; border-radius: 8px; line-height: 0;
+    min-width: 44px; min-height: 44px; /* a11y: touch target ≥44px */
+    display: inline-flex; align-items: center; justify-content: center;
   }
   .install-dismiss:hover { color: #fff; background: #ffffff14; }
   .install-dismiss .ic { width: 18px; height: 18px; }
@@ -543,8 +546,10 @@
 <script src="js/audio.js" defer></script>
 <script src="js/bgm.js" defer></script>
 <!-- Backend leaderboard (Fly.io, verify live 2026-10-02): trỏ frontend tới API thật.
+     js/config.js (file ngoài, CSP-safe) set window.WK_API_BASE trước js/api.js —
+     KHÔNG dùng inline <script> (bị CSP script-src 'self' chặn).
      Dev local vẫn override được bằng localStorage "wk_api_base" (vd "http://localhost:3001"). -->
-<script>window.WK_API_BASE="https://windowkill-web.fly.dev";</script>
+<script src="js/config.js" defer></script>
 <script src="js/api.js" defer></script>
 <script src="js/juice.js" defer></script>
 <script src="js/cinema.js" defer></script>

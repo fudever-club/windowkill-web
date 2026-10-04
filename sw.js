@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261004T121831Z-af794c0"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261004T141929Z-6ed4a81"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -31,6 +31,7 @@ const CORE_ASSETS = [
   "css/style.css",
   "css/roles.css",
   "js/audio.js",
+  "js/config.js", // fix/audit-batch-1: WK_API_BASE CSP-safe — precache để offline vẫn có config
   "js/api.js",
   "js/menu.js",
   "js/game.js",

@@ -174,7 +174,7 @@ describe("sw.js — install precache (nền cho offline hoàn toàn)", () => {
   it("S2: precache asset nặng (ảnh/icons + track BGM đầu) vào static cache", () => {
     const stat = sb.store[versionOf() + "-static"];
     assert.ok(stat, "thiếu static cache");
-    for (const f of ["assets/music/joyfully-loop.mp3", "assets/icons/icon-192.png",
+    for (const f of ["assets/music/high-score-parade-loop.mp3", "assets/icons/icon-192.png",
       "assets/hero.jpg", "assets/logo-lockup.webp"]) {
       assert.ok(stat.get(ORIGIN + "/" + f), `static thiếu ${f}`);
     }
@@ -226,7 +226,7 @@ describe("sw.js — cache-first cho asset nặng", () => {
   it("S7: có cache → trả cache, KHÔNG chạm network", async () => {
     sb.fetchCalls.length = 0;
     sb.setOnline(() => "heavy-v2-must-not-be-used");
-    const { response } = sb.fireFetch(ORIGIN + "/assets/music/joyfully-loop.mp3");
+    const { response } = sb.fireFetch(ORIGIN + "/assets/music/high-score-parade-loop.mp3");
     const res = await response;
     assert.equal(res.body, "heavy-v1", "phải trả bản cache");
     assert.equal(sb.fetchCalls.length, 0, "cache-first có hit thì không được fetch");

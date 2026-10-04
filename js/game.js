@@ -2531,7 +2531,7 @@ function openDraft() {
     } catch (er) {}
   }
   while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  if (!picks.length) { G.phase = "play"; return; } try { AudioEngine.sfx.stinger("levelUp"); } catch (e) {} // stinger level-up khi mở draft
+  if (!picks.length) { G.phase = "play"; return; } try { AudioEngine.sfx.stinger("levelUp"); } catch (e) {}e) {} // stinger level-up khi mở draft
   // WOW: draft qua Cinema (DOM overlay + phím 1/2/3); fallback overlay cũ
   if (window.Cinema) {
     const ups = picks.map(u => ({ name: u.t, desc: u.d, icon: '<svg class="ic" aria-hidden="true"><use href="#' + u.ico + '"/></svg>' }));

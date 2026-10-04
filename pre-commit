@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# WINDOWKILL pre-commit hook — tự stamp sw.js VERSION khi staged files chạm site assets.
+# Bật một lần mỗi clone:  git config core.hooksPath .githooks
+# Logic nằm hết trong scripts/bump-sw.js (mode --hook) để 1 nguồn duy nhất.
+set -euo pipefail
+exec node scripts/bump-sw.js --hook

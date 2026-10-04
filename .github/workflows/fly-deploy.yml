@@ -1,0 +1,28 @@
+name: Deploy backend to Fly.io
+
+# Tự động deploy server/ lên Fly.io khi có thay đổi backend.
+# Cần secret FLY_API_TOKEN (fly.io → Access Tokens → deploy token cho app windowkill-web).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/fly-deploy.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy to Fly.io
+        run: flyctl deploy --config server/deploy/fly.toml --dockerfile server/deploy/Dockerfile --yes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Verify telemetry endpoint
+        run: |
+          sleep 45
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://windowkill-web.fly.dev/api/metrics/summary)
+          echo "GET /api/metrics/summary -> $code"
+          test "$code" = "200"

@@ -1,10 +1,11 @@
 /* js/bgm.js — BGM player: nhạc nền CÓ THẬT (assets/music/*.mp3)
  *
- * - Playlist 4 track CC0: vui nhộn, nhịp nhanh, không rùng rợn.
- * - Shuffle + loop playlist, crossfade ~1.5s giữa các track (2 thẻ <audio>).
+ * - Single theme "High Score Parade" loop liên tục (CEO chốt 2026-10-04).
+ * - File đã được edit để nối liền (equal-power crossfade ở điểm nối) →
+ *   phát bằng thẻ <audio loop>, KHÔNG crossfade lúc phát (tránh chồng tiếng).
  * - Khi track phát OK → patch AudioEngine.startMusic/setMusicState thành no-op
  *   để TẮT procedural music layers (tránh chồng nhạc). SFX procedural GIỮ NGUYÊN.
- * - Track load lỗi hết → fallback về procedural music, không crash, không im lặng.
+ * - Track load lỗi → fallback về procedural music, không crash, không im lặng.
  * - Tôn trọng settings.music qua BGM.setEnabled(bool).
  * - Chạy độc lập nếu audio.js/AudioEngine chưa load — không crash.
  */
@@ -13,12 +14,10 @@ window.BGM = (() => {
 
   const BASE = "assets/music/";
   const TRACKS = [
-    { file: "joyfully-loop",       title: "Joyfully",       artist: "MintoDog" },
-    { file: "pixel-sprinter-loop",  title: "Pixel Sprinter", artist: "Zane Little Music" },
-    { file: "dog-in-car",           title: "Dog in Car",     artist: "congusbongus" },
-    { file: "heckin-crows",         title: "Heckin' Crows",  artist: "congusbongus" },
+    { file: "high-score-parade-loop", title: "High Score Parade", artist: "Joystick Odyssey" },
   ];
-  const XFADE_MS = 1500;
+  const SINGLE_LOOP = TRACKS.length === 1; // theme duy nhất → loop liền, không crossfade
+  const XFADE_MS = 1500; // chỉ dùng khi playlist nhiều track
   const VOLUME = 0.5; // vừa phải, không lấn SFX
 
   let enabled = false;   // user muốn nhạc (settings.music)
@@ -98,6 +97,7 @@ window.BGM = (() => {
     a.addEventListener("ended", () => { if (idx === cur) next(false); });
     a.addEventListener("error", () => onTrackError(a, idx));
     a.addEventListener("timeupdate", () => {
+      if (SINGLE_LOOP) return; // single theme đã loop liền bằng <audio loop> — không crossfade
       if (idx !== cur || a._xarmed || !a.duration || !isFinite(a.duration)) return;
       if (a.duration - a.currentTime <= XFADE_MS / 1000 + 0.3) {
         a._xarmed = true;
@@ -164,6 +164,7 @@ window.BGM = (() => {
     a._xarmed = false;
     a._triedOgg = false;
     try { a.pause(); } catch (e) {}
+    try { a.loop = SINGLE_LOOP; } catch (e) {} // single theme: loop liền, không crossfade
     a.src = BASE + t.file + ".mp3";
     try { a.load(); } catch (e) {}
     fadeTo(a, VOLUME, fadeInMs);
@@ -280,6 +281,6 @@ window.BGM = (() => {
   return {
     init, setEnabled, suspend, resume, nowPlaying,
     setVolume: (v) => { players.forEach((a) => { a.volume = Math.max(0, Math.min(1, v)); }); },
-    version: "1.1-bgm-watchdog",
+    version: "1.2-bgm-single-loop",
   };
 })();

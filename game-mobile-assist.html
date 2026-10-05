@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- MOBILE 2026-10-03: viewport-fit=cover để env(safe-area-inset-*) có tác dụng trên iPhone tai thỏ; khóa zoom để gesture không phá game -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://windowkill-web.fly.dev; object-src 'none'; base-uri 'self'">
+<title data-i18n="game.title">WINDOWKILL: Web Edition — Chiến trường</title>
+<meta name="description" content="Chiến trường WINDOWKILL: Web Edition — twin-stick shooter trong popup trình duyệt, nơi cửa sổ chính là thanh máu. Chơi miễn phí trên web, phát triển bởi FU-DEVER.">
+<link rel="canonical" href="https://windowkill-web.vercel.app/game.html">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<meta name="theme-color" content="#0066CC">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WINDOWKILL">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://windowkill-web.vercel.app/game.html">
+<meta property="og:title" content="WINDOWKILL: Web Edition — Chiến trường">
+<meta property="og:description" content="Twin-stick shooter trong popup trình duyệt — cửa sổ chính là thanh máu. Sống sót. Đừng để bị đóng cửa sổ.">
+<meta property="og:image" content="https://windowkill-web.vercel.app/assets/og-banner.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://windowkill-web.vercel.app/assets/og-banner.jpg">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/portal.js" defer></script>
+<script src="js/pwa.js" defer></script>
+<!-- js/config.js: set window.WK_API_BASE (CSP-safe, file ngoài) trước js/analytics.js
+     để telemetry/leaderboard trỏ đúng backend Fly.io (không inline script). -->
+<script src="js/config.js" defer></script>
+<script src="js/analytics.js" defer></script>
+<script src="js/i18n.js" defer></script>
+<style>
+  html, body { height: 100%; overflow: hidden; background: #04080f; }
+  #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
+  #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; /* MOBILE 2026-10-03: joystick cần độc quyền gesture, không để Safari cuộn/zoom */ }
+  .menu-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .menu-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
+  .stat-line { color: #9db8d9; font-size: 15px; line-height: 2; }
+  .stat-line b { color: #fde68a; }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-restart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+</symbol>
+<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>
+</symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 5v14M5 12h14"/>
+</symbol>
+<symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 6l12 12M18 6 6 18"/>
+</symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>
+</symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 10 5 12 7.5 12M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 10 19 12 16.5 12"/>
+</symbol>
+<symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 20v-6M12 20V6M18 20v-9"/><path d="M3 20h18"/>
+</symbol>
+<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 8h9M17.5 8H20M4 16h3M11.5 16H20"/><circle cx="15" cy="8" r="2.3"/><circle cx="9" cy="16" r="2.3"/>
+</symbol>
+<symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M9 18V6l10-2v11"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/>
+</symbol>
+<symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M11 5 6.5 9H3v6h3.5L11 19V5z" fill="currentColor" stroke="none"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5M17.8 7a7.5 7.5 0 0 1 0 10"/>
+</symbol>
+<symbol id="i-vibrate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="9" y="2.5" width="6" height="19" rx="2"/><path d="M5.5 8.5v7M3.5 6.5v11M18.5 8.5v7M20.5 6.5v11"/>
+</symbol>
+<symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14l4.2-4.2"/><path d="M2.5 19h19"/>
+</symbol>
+<symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/>
+</symbol>
+<symbol id="i-heart-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/><path d="M12 8.5v5M9.5 11h5"/>
+</symbol>
+<symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3l7 3v5c0 4.5-3 8.6-7 10-4-1.4-7-5.5-7-10V6l7-3z"/>
+</symbol>
+<symbol id="i-bomb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="10.5" cy="14.5" r="6.5"/><path d="M14.8 10.2c1.2-2.3 2.8-3.6 5.2-4.2"/><path d="M20 6l.7-2M21.7 7.2l2-.7"/>
+</symbol>
+<symbol id="i-magnet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M5 4h4.5v8a2.75 2.75 0 0 0 5.5 0V4H20v8a8 8 0 0 1-16 0V4z"/><path d="M5 8.5h4.5M15 8.5h5" stroke-width="2.6"/>
+</symbol>
+<symbol id="i-pierce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3 12h17"/><path d="M16.5 7.5 21 12l-4.5 4.5"/><path d="M7 5.5 9 12l-2 6.5"/>
+</symbol>
+<symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2.5c3.4 2.4 5 6.3 5 10.5l2.8 2.8-3.8.6a12 12 0 0 1-8 0l-3.8-.6L7 13c0-4.2 1.6-8.1 5-10.5z"/><circle cx="12" cy="10" r="1.8"/><path d="M9.8 18.6c.4 1.4 1 2.6 2.2 3.9.9-1.3 1.6-2.5 2-3.9"/>
+</symbol>
+<symbol id="i-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 22c4.2 0 7-2.9 7-6.6 0-3.8-2.8-5.7-4.3-8.6-.9 1.6-2 2.6-3 2.6.2-1.9-.3-3.3-1.3-4.9C7.6 7 5 10.1 5 14.4 5 19.1 7.8 22 12 22z"/>
+</symbol>
+<symbol id="i-split" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 20v-9M6 11 4 13M6 11l2 2M12 20V5M12 5 10 7M12 5l2 2M18 20v-9M18 11l-2 2M18 11l2 2"/>
+</symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H13L13 2z"/>
+</symbol>
+<symbol id="i-clover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="9" cy="9" r="3.2"/><circle cx="15" cy="9" r="3.2"/><circle cx="9" cy="15" r="3.2"/><circle cx="15" cy="15" r="3.2"/><path d="M12 17.5c-.2 2-1 3.3-2.8 4.5"/>
+</symbol>
+<symbol id="i-snow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17"/><path d="M12 2 10 4.5M12 2l2 2.5M12 22l-2-2.5M12 22l2-2.5"/>
+</symbol>
+<symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6.5 3h11L22 9l-10 12L2 9l4.5-6z"/><path d="M2 9h20"/><path d="M8.7 9 12 3l3.3 6L12 21z"/>
+</symbol>
+<symbol id="i-skull" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2.5a7.5 7.5 0 0 0-7.5 7.5c0 2.7 1.5 5 3.7 6.3V19a1.5 1.5 0 0 0 1.5 1.5h4.6A1.5 1.5 0 0 0 15.8 19v-2.7c2.2-1.3 3.7-3.6 3.7-6.3A7.5 7.5 0 0 0 12 2.5z"/><circle cx="9.2" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.8" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><path d="M10.2 20.5v-2.3M13.8 20.5v-2.3"/>
+</symbol>
+<symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M2 9c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2"/><path d="M2 15c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2"/>
+</symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.5 2"/>
+</symbol>
+<symbol id="i-gamepad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M7 8h10a5 5 0 0 1 5 5v1.6a4 4 0 0 1-6.8 2.8L13.6 15.6h-3.2l-1.6 1.8A4 4 0 0 1 2 14.6V13a5 5 0 0 1 5-5z"/><path d="M7.5 11v3.5M5.75 12.75h3.5"/><circle cx="15.8" cy="11.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="18" cy="14" r="1.1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-levelup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M12 16.5v-8M8.3 11.8 12 8l3.7 3.8"/>
+</symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+</symbol>
+<symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3.5 2.8 19.5h18.4L12 3.5z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r="1.1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-crosshair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="6.5"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/>
+</symbol>
+<symbol id="i-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.8 18.5h2.4"/>
+</symbol>
+<symbol id="i-ghost" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3a7 7 0 0 0-7 7v10.5l2.4-1.9 2.1 1.9 2.5-1.9 2.5 1.9 2.1-1.9 2.4 1.9V10a7 7 0 0 0-7-7z"/><circle cx="9.4" cy="10.3" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.6" cy="10.3" r="1.2" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/><circle cx="9" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-meh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.5h7"/><circle cx="9" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/>
+</symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M11 4l1.6 4.2 4.2 1.6-4.2 1.6L11 15.6l-1.6-4.2-4.2-1.6 4.2-1.6L11 4z"/><path d="M17.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/>
+</symbol>
+<symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c-5 5-5 12 0 17"/><path d="M12 3.5c5 5 5 12 0 17"/>
+</symbol>
+<symbol id="i-mirror" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="9" r="5.5"/><path d="M12 14.5V21"/><path d="M9.5 21h5"/><path d="M18.6 3.4l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/>
+</symbol>
+<symbol id="i-vacuum" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3" y="12" width="10" height="7" rx="2"/><path d="M13 15.5h3.5a4 4 0 0 0 4-4V7"/><path d="M20 7l1.5-1.5"/><circle cx="6.5" cy="19.5" r="1.4"/><circle cx="10.5" cy="19.5" r="1.4"/>
+</symbol>
+<symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+</symbol>
+<symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 21V4"/><path d="M6 4.5c4-2.6 7.5 2.6 12 0v8.5c-4.5 2.6-8-2.6-12 0"/>
+</symbol>
+<symbol id="i-anvil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3.5 7.5h11L20.5 5.8"/><path d="M20.5 5.8c.5 1.7 0 3.2-1.4 4L13.6 11.4"/><path d="M13.6 11.4 12.8 18.5"/><path d="M7 18.5h10"/><circle cx="6" cy="7.5" r="0.9" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-shop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M3.5 4.5h17L22 9.5"/><path d="M5 9.5h14V20H5z"/><path d="M10 20v-5.5h4V20"/><path d="M8.6 4.5v5M12 4.5v5M15.4 4.5v5"/>
+</symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><circle cx="9" cy="14.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14.5" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.3l2.5 2.5 4.9-5.3"/>
+</symbol>
+<symbol id="i-grad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M2.5 9 12 5l9.5 4L12 13 2.5 9z"/><path d="M6.5 10.8V15c0 1.3 2.5 2.6 5.5 2.6s5.5-1.3 5.5-2.6v-4.2"/><path d="M21.5 9v4.5"/><circle cx="21.5" cy="14.8" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-infinity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="8.2" cy="12" r="3.9"/><circle cx="15.8" cy="12" r="3.9"/>
+</symbol>
+<symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="8.5"/><circle cx="8.8" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.8" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="15.4" r="1.2" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-github" viewBox="0 0 1024 1024">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z" transform="scale(64)" fill="currentColor"/>
+</symbol>
+<symbol id="i-vercel" viewBox="0 0 256 222">
+<path fill="currentColor" d="m128 0 128 221.705H0z"/>
+</symbol>
+<symbol id="i-avatar-1" viewBox="0 0 48 48">
+<defs><linearGradient id="avg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0080FF"/><stop offset="1" stop-color="#004C99"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg1)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M7 8h10a5 5 0 0 1 5 5v1.6a4 4 0 0 1-6.8 2.8L13.6 15.6h-3.2l-1.6 1.8A4 4 0 0 1 2 14.6V13a5 5 0 0 1 5-5z"/><path d="M7.5 11v3.5M5.75 12.75h3.5"/><circle cx="15.8" cy="11.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="18" cy="14" r="1.1" fill="currentColor" stroke="none"/></g>
+</symbol>
+<symbol id="i-avatar-2" viewBox="0 0 48 48">
+<defs><linearGradient id="avg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a8cff"/><stop offset="1" stop-color="#0066CC"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg2)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M12 2.5c3.4 2.4 5 6.3 5 10.5l2.8 2.8-3.8.6a12 12 0 0 1-8 0l-3.8-.6L7 13c0-4.2 1.6-8.1 5-10.5z"/><circle cx="12" cy="10" r="1.8"/><path d="M9.8 18.6c.4 1.4 1 2.6 2.2 3.9.9-1.3 1.6-2.5 2-3.9"/></g>
+</symbol>
+<symbol id="i-avatar-3" viewBox="0 0 48 48">
+<defs><linearGradient id="avg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4da3ff"/><stop offset="1" stop-color="#004C99"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg3)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H13L13 2z"/></g>
+</symbol>
+<symbol id="i-avatar-4" viewBox="0 0 48 48">
+<defs><linearGradient id="avg4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0066CC"/><stop offset="1" stop-color="#003d7a"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg4)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M12 3a7 7 0 0 0-7 7v10.5l2.4-1.9 2.1 1.9 2.5-1.9 2.5 1.9 2.1-1.9 2.4 1.9V10a7 7 0 0 0-7-7z"/><circle cx="9.4" cy="10.3" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.6" cy="10.3" r="1.2" fill="currentColor" stroke="none"/></g>
+</symbol>
+<symbol id="i-avatar-5" viewBox="0 0 48 48">
+<defs><linearGradient id="avg5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0080FF"/><stop offset="1" stop-color="#002f66"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg5)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M6.5 3h11L22 9l-10 12L2 9l4.5-6z"/><path d="M2 9h20"/><path d="M8.7 9 12 3l3.3 6L12 21z"/></g>
+</symbol>
+<symbol id="i-avatar-6" viewBox="0 0 48 48">
+<defs><linearGradient id="avg6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#33a0ff"/><stop offset="1" stop-color="#004C99"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg6)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M12 22c4.2 0 7-2.9 7-6.6 0-3.8-2.8-5.7-4.3-8.6-.9 1.6-2 2.6-3 2.6.2-1.9-.3-3.3-1.3-4.9C7.6 7 5 10.1 5 14.4 5 19.1 7.8 22 12 22z"/></g>
+</symbol>
+<symbol id="i-avatar-7" viewBox="0 0 48 48">
+<defs><linearGradient id="avg7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0080FF"/><stop offset="1" stop-color="#0052a3"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg7)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></g>
+</symbol>
+<symbol id="i-avatar-8" viewBox="0 0 48 48">
+<defs><linearGradient id="avg8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a8cff"/><stop offset="1" stop-color="#003f8f"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#avg8)"/><g transform="translate(12 12)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 10 5 12 7.5 12M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 10 19 12 16.5 12"/></g>
+</symbol>
+<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.3L12 17.1l-5.7 3.1 1.2-6.3L2.8 9.5l6.4-.8L12 2.8z" fill="currentColor"/>
+</symbol>
+<symbol id="i-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-shard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 2 L20 9 L16 20 L7 17 L4 8 Z" fill="rgba(125,249,255,0.12)"/><path d="M12 2 L10 10 L16 20"/>
+</symbol>
+<symbol id="i-window-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M9.5 9.5V19"/><path d="M12 5l-3 6 4 4-2 4"/><path d="M9 9l8 3"/>
+</symbol>
+<symbol id="i-heart-crack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 20.5C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4 2.5 0 4.7 1.9 4.7 4.8 0 4-4 7.2-9 11.2z"/><path d="M12 7l-2 3 3 2-2 3 3 2"/>
+</symbol>
+<symbol id="i-fang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M7 4l2 6 2-6z M13 4l2 6 2-6z"/>
+</symbol>
+<symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M12 3c3 4.5 6 8 6 11a6 6 0 0 1-12 0c0-3 3-6.5 6-11z"/>
+</symbol>
+<symbol id="i-flash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M9 3l6 2-2 5-6-2z"/><path d="M13 10l7 7M15 8l6 3"/>
+</symbol>
+</svg>
+<div id="arena-wrap">
+  <canvas id="game-canvas"></canvas>
+  <canvas id="fx-shatter" aria-hidden="true"></canvas>
+
+  <div class="overlay" id="ov-draft">
+    <h2><svg class="ic" aria-hidden="true"><use href="#i-levelup"/></svg> <span data-i18n="draft.title">LÊN CẤP! Chọn 1 nâng cấp</span></h2>
+    <div class="cards" id="draft-cards"></div>
+  </div>
+
+  <div class="overlay" id="ov-pause">
+    <div class="ov-brand"><img src="assets/brand/dever-logo.png" alt="FU-DEVER" data-hide-onerror> FU-DEVER</div>
+    <h2><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> <span data-i18n="pause.title">Tạm dừng</span></h2>
+    <div class="menu-btns">
+      <button class="btn-big" id="btn-resume" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="pause.resume">Tiếp tục</span></button>
+      <button class="btn-ghost" id="btn-restart"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="pause.retry">Chơi lại</span></button>
+      <button class="btn-ghost" id="btn-quit"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="pause.quit">Về menu</span></button>
+    </div>
+    <!-- Item 4 — Sprint Round 2: đổi Độ Nhảy Cửa Sổ giữa run -->
+    <div class="menu-btns" style="margin-top:12px;align-items:center">
+      <span style="color:#9db8d9;font-size:13.5px" data-i18n="settings.wjump">Độ Nhảy Cửa Sổ</span>
+      <button class="btn-ghost" data-wjump="calm" data-i18n="settings.wjump_calm">Êm</button>
+      <button class="btn-ghost" data-wjump="normal" data-i18n="settings.wjump_normal">Vừa</button>
+      <button class="btn-ghost" data-wjump="wild" data-i18n="settings.wjump_wild">Điên</button>
+    </div>
+    <!-- feat/mobile-quality: đổi nấc chất lượng giữa run -->
+    <div class="menu-btns" style="margin-top:12px;align-items:center">
+      <span style="color:#9db8d9;font-size:13.5px" data-i18n="settings.quality">Chất lượng</span>
+      <button class="btn-ghost" data-quality="auto" data-i18n="settings.quality_auto">Tự động</button>
+      <button class="btn-ghost" data-quality="high" data-i18n="settings.quality_high">Cao</button>
+      <button class="btn-ghost" data-quality="balanced" data-i18n="settings.quality_balanced">Cân bằng</button>
+      <button class="btn-ghost" data-quality="lite" data-i18n="settings.quality_lite">Nhẹ</button>
+    </div>
+    <!-- Mobile Assist (2026-10-05): giảm nhẹ độ khó trên mobile, đổi giữa run -->
+    <div class="menu-btns" style="margin-top:12px;align-items:center">
+      <span style="color:#9db8d9;font-size:13.5px" data-i18n="settings.mobile_assist" title="">Hỗ trợ mobile</span>
+      <button class="btn-ghost" id="btn-pause-mobile-assist" data-i18n-aria="settings.mobile_assist_aria" aria-label="Hỗ trợ mobile"><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg></button>
+    </div>
+    <div class="stat-line" data-i18n="pause.hint">P / Esc: tiếp tục · M: bật/tắt nhạc</div>
+  </div>
+
+  <div class="overlay" id="ov-over">
+    <div class="ov-brand"><img src="assets/brand/dever-logo.png" alt="FU-DEVER" data-hide-onerror> FU-DEVER</div>
+    <h2><svg class="ic" aria-hidden="true"><use href="#i-window-crack"/></svg> <span id="over-title">GAME OVER</span></h2>
+    <div class="score-big" id="over-score"></div>
+    <div class="stat-line" id="over-stats"></div>
+    <div id="over-record" style="color:#fde68a;font-weight:700;font-size:18px"></div>
+    <div class="menu-btns">
+      <button class="btn-big" id="btn-again" style="font-size:16px;padding:12px 28px"><svg class="ic" aria-hidden="true"><use href="#i-restart"/></svg> <span data-i18n="gameover.retry">Chơi lại (R)</span></button>
+      <button class="btn-ghost" id="btn-quit2"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg> <span data-i18n="gameover.menu">Về menu</span></button>
+    </div>
+    <!-- CTA web→desktop (Sprint R2 item 5): chỉ hiện khi wave≥5; ẩn mặc định,
+         game.js bật theo điều kiện (không portal, không Electron). -->
+    <div id="over-desktop-cta" class="desktop-cta-line" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-window"/></svg>
+      <span data-i18n="cta.gameover_text">Cửa sổ này chỉ là mô phỏng. Trải nghiệm cửa sổ THẬT trên bản Desktop →</span>
+      <a href="https://quangnhat1504.itch.io/windowkill?utm_source=game&utm_medium=cta&utm_campaign=desktop"
+         target="_blank" rel="noopener" class="btn-ghost" data-cta-id="gameover_banner"><span data-i18n="cta.gameover_btn">Tải Desktop</span></a>
+    </div>
+  </div>
+
+  <!-- banner xin phép mở popup vệ tinh (non-blocking, MULTIWINDOW-SPEC §3.1) -->
+  <div id="satperm" style="display:none;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:60;
+       align-items:center;gap:10px;background:#0d1626ee;border:1px solid #2e6db488;border-radius:12px;
+       padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
+    <span data-i18n="satperm.text">Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
+    <button class="btn-ghost" id="btn-sat-allow" style="padding:10px 18px;min-height:44px" data-i18n="satperm.allow">Cho phép</button>
+    <button class="btn-ghost" id="btn-sat-single" style="padding:10px 18px;min-height:44px" data-i18n="satperm.single">Chơi 1 cửa sổ</button>
+  </div>
+</div>
+
+  <button id="btn-hud-pause" class="hud-btn" data-i18n-aria="game.hud_pause_aria" aria-label="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+  <button id="btn-hud-glue" class="hud-btn" style="display:none" data-i18n-aria="game.hud_glue_aria" aria-label="Bắn keo vá cửa sổ"><svg class="ic" aria-hidden="true"><use href="#i-heart-plus"/></svg></button>
+  <button id="btn-hud-full" class="hud-btn" data-i18n-aria="game.hud_full_aria" aria-label="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
+  <!-- H3/A5.1: nút menu tròn + radial — chỉ hiện khi coarse pointer (mobile) -->
+  <button id="btn-hud-menu" class="hud-btn hud-btn-round" data-i18n-aria="game.hud_menu_aria" aria-label="Menu game" aria-haspopup="true" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-dots"/></svg></button>
+  <div id="hud-menu-backdrop" class="hud-menu-backdrop" hidden></div>
+  <div id="hud-radial" class="hud-radial">
+    <button class="hud-radial-btn" data-act="pause" data-i18n-aria="game.hud_menu_pause" data-i18n-title="game.hud_menu_pause" aria-label="Tạm dừng" title="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+    <button class="hud-radial-btn" data-act="full" data-i18n-aria="game.hud_menu_full" data-i18n-title="game.hud_menu_full" aria-label="Toàn màn hình" title="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
+    <button class="hud-radial-btn" data-act="quit" data-i18n-aria="game.hud_menu_quit" data-i18n-title="game.hud_menu_quit" aria-label="Về menu" title="Về menu"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg></button>
+  </div>
+<script src="js/audio.js" defer></script>
+<script src="js/bgm.js" defer></script>
+<script src="js/bg.js" defer></script>
+<script src="js/juice.js" defer></script>
+<script src="js/cinema.js" defer></script>
+<script src="js/tuning.js" defer></script>
+<script src="js/campaign.js" defer></script>
+<script src="js/monsters.js" defer></script>
+<script src="js/bosses.js" defer></script>
+<script src="js/stagefx.js" defer></script>
+<script src="js/stageobj.js" defer></script>
+<script src="js/tutorial.js" defer></script>
+<script src="js/meta.js" defer></script>
+<script src="js/juice2.js" defer></script>
+<script src="js/sfx2.js" defer></script>
+<script src="js/upgrades2.js" defer></script>
+<script src="js/v2glue.js" defer></script>
+<script src="js/hud-icons.js" defer></script>
+<script src="js/borderfx.js" defer></script>
+<script src="js/quality.js" defer></script>
+<script src="js/particles.js" defer></script>
+<script src="js/game.js" defer></script>
+<script src="js/mobile.js" defer></script>
+</body>
+</html>

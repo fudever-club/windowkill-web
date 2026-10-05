@@ -440,6 +440,51 @@
     };
   }
 
+  /* ---------------- Item 2: nghi thức vào ải (2-3s) ----------------
+   * Wave 1 mỗi ải campaign: banner TÊN ẢI + 1 câu luật chơi gắn với mechanic
+   * của ải (campaign.ritual_rule_N), kèm 1 câu story "quét virus" nối 5 ải
+   * thành một hành trình (campaign.ritual_story_N). VI+EN qua i18n. */
+  var RITUAL_RULE_FB = {
+    1: "MÀN HÌNH XANH — bắn thoải mái, làm quen quái mới!",
+    2: "TƯỜNG LỬA — dụ quái lao vào gai!",
+    3: "TRỌNG LỰC 404 — trơn như băng, bay ngược để phanh!",
+    4: "CÚP ĐIỆN — nhắm mắt đỏ, nghe tiếng gầm!",
+    5: "TRÀN BỘ NHỚ — nhặt patch xanh để nới sân!"
+  };
+  var RITUAL_STORY_FB = {
+    1: "Sáng nay máy bạn nhiễm virus. Nhiệm vụ: DỌN SẠCH TỪNG PIXEL.",
+    2: "Virus dựng TƯỜNG LỬA chiếm cổng ra vào.",
+    3: "Virus hack TRỌNG LỰC hệ thống — mọi thứ trơn như xà phòng.",
+    4: "Virus cúp điện toàn khu vực. Đừng sợ bóng tối.",
+    5: "Đòn cuối của virus: TRÀN BỘ NHỚ. Xoá nó, hoặc máy bạn bay màu."
+  };
+  function getStageRitual(stageId) {
+    var st = STAGES[stageId - 1];
+    if (!st) return null;
+    return {
+      stageId: stageId,
+      title: stageName(st), // tên ải theo ngôn ngữ hiện tại
+      rule: _t("ritual_rule_" + stageId, RITUAL_RULE_FB[stageId]),
+      story: _t("ritual_story_" + stageId, RITUAL_STORY_FB[stageId])
+    };
+  }
+
+  /* ---------------- Item 2: boss taunt riêng mỗi ải ----------------
+   * 1-2 câu ngắn của boss khi xuất hiện, VI+EN qua i18n (campaign.boss_taunt_N).
+   * Chỉ là lời thoại (float text) — không đổi stat, không tăng khó. */
+  var BOSS_TAUNT_FB = {
+    1: "RĂNG TA GẶM ĐƯỢC CẢ CỬA SỔ!",
+    2: "BẬT TƯỜNG LỬA! KẺ LẠ CẤM VÀO!",
+    3: "HÚT HẾT! KỂ CẢ ĐẠN CỦA NGƯƠI!",
+    4: "TẮT ĐÈN RỒI… NGƯƠI ĐANG Ở ĐÂU?",
+    5: "TA LÀ NULL. NGƯƠI KHÔNG HỀ TỒN TẠI."
+  };
+  function getBossTaunt(stageId) {
+    var fb = BOSS_TAUNT_FB[stageId];
+    if (!fb) return null;
+    return _t("boss_taunt_" + stageId, fb);
+  }
+
   /* ---------------- Persistence (localStorage, an toàn trong iframe) ---------------- */
   function lsGet(k) {
     try { return (typeof localStorage !== "undefined") ? localStorage.getItem(k) : null; }
@@ -495,6 +540,29 @@
     best[String(stage)] = { score: score, wave: wave };
     lsSet(kBest(pid), JSON.stringify(best));
     return best[String(stage)];
+  }
+  /* Huy hiệu objective phụ theo ải (Stage Identity item 3) — pattern như stage best:
+     localStorage theo profile, key riêng "wk_stage_badges_<pid>", value {stageId: 1}. */
+  function kBadges(pid) { return "wk_stage_badges_" + pid; }
+  function getStageBadges(pid) {
+    pid = pid || profileId();
+    try {
+      var o = JSON.parse(lsGet(kBadges(pid)) || "{}");
+      return (o && typeof o === "object") ? o : {};
+    } catch (e) { return {}; }
+  }
+  function setStageBadge(pid, stageId) {
+    pid = pid || profileId();
+    stageId = stageId | 0;
+    if (!(stageId >= 1 && stageId <= 5)) return false;
+    var b = getStageBadges(pid);
+    b[String(stageId)] = 1;
+    lsSet(kBadges(pid), JSON.stringify(b));
+    return true;
+  }
+  function hasStageBadge(pid, stageId) {
+    pid = pid || profileId();
+    return !!getStageBadges(pid)[String(stageId | 0)];
   }
   function isEndlessUnlocked(pid) {
     pid = pid || profileId();
@@ -574,6 +642,8 @@
     getRunParams: getRunParams,
     getStageMechanic: getStageMechanic,
     getBossBanner: getBossBanner,
+    getStageRitual: getStageRitual, // Item 2: nghi thức vào ải + story quét virus
+    getBossTaunt: getBossTaunt,     // Item 2: boss taunt riêng mỗi ải
     // persistence
     profileId: profileId,
     setProfile: function (id) { _profileId = id || null; },
@@ -581,6 +651,9 @@
     setUnlockedStage: setUnlockedStage,
     getStageBest: getStageBest,
     setStageBest: setStageBest,
+    getStageBadges: getStageBadges,
+    setStageBadge: setStageBadge,
+    hasStageBadge: hasStageBadge,
     isEndlessUnlocked: isEndlessUnlocked,
     unlockEndless: unlockEndless,
     // run hooks

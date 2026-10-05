@@ -270,7 +270,21 @@
           onTimeout: function () { try { window.WKDie("window"); } catch (e) {} },
         });
         var b = Bosses.startBoss(this.stageId, diff, G);
-        if (b) { this.bossActive = true; return true; }
+        if (b) {
+          this.bossActive = true;
+          // Item 2: boss taunt — 1 câu float text của boss, đúng 1 lần mỗi lần spawn.
+          // Chỉ là lời thoại (visual) — không đụng stat/gameplay.
+          try {
+            if (window.Campaign && typeof Campaign.getBossTaunt === "function") {
+              var taunt = Campaign.getBossTaunt(this.stageId);
+              if (taunt && G && Array.isArray(G.floats) && G.ship) {
+                G.floats.push({ x: G.ship.x, y: G.ship.y - 110, text: taunt,
+                  color: "#ffd479", t: 0, life: 2.6, big: true });
+              }
+            }
+          } catch (e3) {}
+          return true;
+        }
       } catch (e) {}
       return false;
     },
@@ -306,6 +320,26 @@
         } catch (e) {}
         StageFX.enter(self.stageId, window.G, diff);
       });
+    },
+    /* Item 2: nghi thức vào ải — wave 1 mỗi ải campaign (2-3s, banner có sẵn).
+       Banner: TÊN ẢI + 1 câu luật chơi gắn với mechanic ải;
+       story "quét virus" hiện dạng float text ngay sau.
+       Trả true khi đã hiện nghi thức (startWave dùng để skip banner wave mặc định).
+       Chỉ visual/text — không đổi difficulty, tôn trọng reduced-motion (text tĩnh). */
+    stageRitualEnter: function (n) {
+      if (n !== 1 || !this.stageId || this.stageDone) return false;
+      try {
+        if (!window.Campaign || typeof Campaign.getStageRitual !== "function") return false;
+        var r = Campaign.getStageRitual(this.stageId);
+        if (!r) return false;
+        try { window.WKSetBanner(r.title, r.rule); } catch (e2) {}
+        var G = window.G;
+        if (G && Array.isArray(G.floats) && G.ship) {
+          G.floats.push({ x: G.ship.x, y: G.ship.y - 80, text: r.story,
+            color: "#9df3ff", t: 0, life: 2.6, big: true });
+        }
+        return true;
+      } catch (e) { return false; }
     },
     bossBar: function () {
       // Vẽ thanh boss 3 nấc (đè lên thanh boss cũ khi boss module active)

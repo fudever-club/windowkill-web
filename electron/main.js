@@ -85,8 +85,21 @@ function createMainWindow() {
     try {
       const u = new URL(url);
       if (u.protocol !== "file:") return false;
-      const p = path.normalize(decodeURIComponent(u.pathname));
-      return p === appRoot || p.startsWith(appRoot + path.sep);
+      let raw = decodeURIComponent(u.pathname);
+      if (process.platform === "win32") {
+        // Trên Windows, pathname của file URL có dạng "/C:/path" — nếu không
+        // bỏ dấu "/" đầu, path.normalize cho ra "\C:\path" và so sánh luôn sai.
+        const m = /^\/([a-zA-Z]:)(\/.*)?$/.exec(raw);
+        if (m) raw = m[1] + (m[2] || "/");
+      }
+      const p = path.normalize(raw);
+      const root = path.normalize(appRoot);
+      if (process.platform === "win32") {
+        // Windows không phân biệt hoa/thường trong đường dẫn
+        const pl = p.toLowerCase(), rl = root.toLowerCase();
+        return pl === rl || pl.startsWith(rl + path.sep);
+      }
+      return p === root || p.startsWith(root + path.sep);
     } catch {
       return false;
     }

@@ -3851,7 +3851,10 @@ $("btn-again").onclick = () => { AudioEngine.sfx.click(); resetGame(); };
 $("btn-restart").onclick = () => { AudioEngine.sfx.click(); resetGame(); };
 $("btn-resume").onclick = () => { AudioEngine.sfx.click(); pauseGame(false); };
 // H3: tách hàm đặt tên để radial mobile gọi được
-function quitToMenu() { try { window.close(); } catch (e) {} }
+// FIX 2026-10-05 (user báo nút home liệt trên mobile): window.close() chỉ đóng
+// được tab do script mở — browser chặn với tab thường → bấm không có tác dụng.
+// "Về menu" phải về launcher (index.html), không phải đóng tab.
+function quitToMenu() { location.href = "index.html"; }
 window.quitToMenu = quitToMenu;
 $("btn-quit").onclick = quitToMenu;
 $("btn-quit2").onclick = quitToMenu;

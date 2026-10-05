@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261005T055116Z-abc1860"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261005T064023Z-43a84e3"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -57,6 +57,7 @@ const CORE_ASSETS = [
   "js/sfx2.js",
   "js/stagefx.js",
   "js/stageobj.js", // Stage Identity item 3: objective phụ + huy hiệu theo ải
+  "js/stagemech.js", // Stage Mechanics: twist thưởng theo ải 1-5
   "js/upgrades2.js",
   "js/v2glue.js",
   "js/mobile.js",

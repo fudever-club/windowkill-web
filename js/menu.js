@@ -456,11 +456,20 @@
             const cards = Campaign.STAGES.map(st => {
               const lock = st.id > unlocked;
               const b = best[String(st.id)] || {};
+              // STAGE-OBJ: huy hiệu objective phụ (per profile) — hiện icon + tên ngắn khi đã đạt
+              let badgeRow = "";
+              try {
+                if (!lock && Campaign.hasStageBadge && Campaign.hasStageBadge(activeId, st.id) && window.StageObj) {
+                  const def = StageObj.def(st.id);
+                  const bname = vt("stageobj." + st.id + ".short", "");
+                  badgeRow = `<div style="font-size:12px;color:#ffd166;margin-top:2px">${def ? svgIcon(def.icon) : svgIcon("i-trophy")}${bname ? " " + escapeHtml(bname) : ""}</div>`;
+                }
+              } catch (e) {}
               return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
                 style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
                 <div style="font-weight:800">${lock ? svgIcon("i-lock") : svgIcon("i-window")} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
                 <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-                <div style="font-size:13px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>
+                <div style="font-size:13px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>${badgeRow}
               </button>`;
             }).join("");
             const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;

@@ -112,6 +112,8 @@
             if (e.hp <= 0 && !e.dead) {
               e.dead = true;
               if (G.kills != null) G.kills++;
+              // STAGE-OBJ: báo kill bởi gai ải 2 cho objective huy hiệu (game.js cắm G.onSpikeKill)
+              if (G && typeof G.onSpikeKill === "function") { try { G.onSpikeKill(e); } catch (err2) {} }
               burst(e.x, e.y, 10, ["#ff9a3c"], 200, G);
             }
           }

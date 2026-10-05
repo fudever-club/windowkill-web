@@ -3048,10 +3048,22 @@ function bossPersonaOf(w) {
     if (w >= BOSS_PERSONAS[i].wave) return BOSS_PERSONAS[i];
   return BOSS_PERSONAS[0];
 }
+/* Item 1 (stage BG wiring): ở campaign mode (V2.stageId 1-5) dùng stageId làm
+   sid cho BG.build để mỗi ải hiện đúng palette (BG PALETTES keyed 1-5);
+   trước đây chỉ đọc ACTS/G.act (ở campaign luôn = 1 vì wave trong ải chỉ
+   1-10) nên ải 2-5 không bao giờ hiện đúng palette. Endless (stageId = 0)
+   giữ nguyên behavior ACTS cũ; sid invalid → fallback 1. */
+function bgStageSid() {
+  try {
+    const st = window.V2 && V2.stageId;
+    if (Number.isInteger(st) && st >= 1 && st <= 5) return st;
+  } catch (e) {}
+  return (ACTS[(G.act || 1) - 1] || {}).bgStage || 1;
+}
 /* Rebuild background khi đổi ải / resize (được gọi sau khi G đã khởi tạo). */
 function refreshBG() {
   if (typeof BG === "undefined") return;
-  BG.build((ACTS[(G.act || 1) - 1] || {}).bgStage || 1, window.innerWidth, window.innerHeight); // MOBILE 2026-10-03: CSS px
+  BG.build(bgStageSid(), window.innerWidth, window.innerHeight); // MOBILE 2026-10-03: CSS px
 }
 let curTrack = "act1";
 function playActMusic() {
@@ -3067,6 +3079,10 @@ const PICKUP_DEFS = {
   "magnet":    { w: 22, use: s => { s.magnetT = 8; addFloat(s.x, s.y - 30, I18N.t("pickup.magnet_8s"), "#7df9ff", true); } },
   "overdrive": { w: 18, use: s => { s.overdriveT = 8; addFloat(s.x, s.y - 30, "OVERDRIVE 8s!", "#ffe14d", true); } },
   "shieldwin": { w: 18, can: () => G.wave >= 4, use: () => requestShield() }, // M3: cửa sổ khiên
+  // STAGE-OBJ ải 5: patch xanh nới vùng an toàn (GAME-DESIGN-DOC §4). w: 0 + can: false →
+  // KHÔNG vào bảng rớt random chung; chỉ spawn qua roll riêng trong killEnemy khi ải 5.
+  "patch":     { w: 0, can: () => false,
+                 use: () => { try { if (window.StageFX) StageFX.growPatch(G); } catch (e) {} } },
 };
 
 /* ---------------- spawn & wave ---------------- */
@@ -3487,7 +3503,15 @@ function startWave(n) {
         G.spawnQueue.sort(() => Math.random() - 0.5);
         G.spawnT = 0;
         V2.stageFxEnter();
-        setBanner(I18N.t("campaign.wave", { n: n, stage: V2.stageId }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
+        // Item 2: nghi thức vào ải — wave 1 mỗi ải campaign: banner tên ải +
+        // câu luật gắn mechanic + story "quét virus" (thay banner wave mặc định)
+        var ritualDone = false;
+        try { ritualDone = !!(V2.stageRitualEnter && V2.stageRitualEnter(n)); } catch (err2) {}
+        if (!ritualDone) {
+          setBanner(I18N.t("campaign.wave", { n: n, stage: V2.stageId }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
+        }
+        // STAGE-OBJ: reset objective phụ đầu run (wave 1) — tiến trình reset mỗi run
+        if (n === 1 && window.StageObj) { try { StageObj.begin(V2.stageId); } catch (er2) {} }
         return;
       }
     } catch (er) {}
@@ -3821,6 +3845,8 @@ function resetGame() {
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
   try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
+  // STAGE-OBJ: reset objective phụ mỗi run (startWave wave 1 reset lại lần nữa cho chắc)
+  try { if (window.StageObj) StageObj.begin(window.V2 ? V2.stageId : 0); } catch (e) {}
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
   // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
   // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.
@@ -3914,6 +3940,15 @@ function killEnemy(e) {
   }
   // VP1 glowparty: mỗi kill +1 gem
   if (G.vp1_glowParty) G.gems.push({ x: e.x, y: e.y - 10, vx: 0, vy: -60, v: 1, t: 0 });
+  // STAGE-OBJ: objective phụ theo ải — dark-kill (ải 4) / drift-kill (ải 3)
+  try { if (window.StageObj) StageObj.onKill(e); } catch (er) {}
+  // STAGE-OBJ ải 5 (theo GAME-DESIGN-DOC §4 — mechanic còn thiếu): quái rớt patch
+  // xanh nới vùng an toàn. Roll riêng 12%, KHÔNG vào bảng random chung (không tăng khó,
+  // chỉ thêm pickup có lợi + mục tiêu cho objective "Kỹ Sư Bản Vá").
+  try {
+    if (window.V2 && V2.stageId === 5 && window.StageFX && StageFX.activeId === "shrink" && Math.random() < 0.12)
+      G.pickups.push({ kind: "patch", x: e.x, y: e.y, t: 0 });
+  } catch (er) {}
   // rớt vật phẩm: 10% tổng, chia theo trọng số PICKUP_DEFS
   // REBALANCE v2.0: chill tăng tỉ lệ rớt heart/shield ~+50% (pickupBoost × trọng số + dropRateMul × tỉ lệ chung)
   const boost = DIFF.pickupBoost || 1;
@@ -4066,6 +4101,8 @@ function update(dt) {
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
+  // STAGE-OBJ: tick objective mỗi frame — trạng thái input cho drift detection (ải 3)
+  try { if (window.StageObj) StageObj.update(dt, ml > 0.05); } catch (er) {}
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
@@ -4377,6 +4414,7 @@ function update(dt) {
       G.gems.splice(i, 1); AudioEngine.sfx.gem();
       burst(gm.x, gm.y, 6, ["#7df9ff", "#fff"], 140);
       gainXp(gm.v + (s.xpPerGem || 0)); // §6: gem = 0 điểm, chỉ XP (Tham lam: +1 XP/gem)
+      try { if (window.StageObj) StageObj.onGem(); } catch (er) {} // STAGE-OBJ ải 1
       if (G.phase !== "play") return;
     }
   }
@@ -4394,6 +4432,7 @@ function update(dt) {
       G.pickups.splice(i, 1); AudioEngine.sfx.pickup();
       const pd = PICKUP_DEFS[p.kind];
       if (pd) pd.use(s);
+      try { if (window.StageObj) StageObj.onPickup(p.kind); } catch (er) {} // STAGE-OBJ ải 5 (patch)
       if (p.kind === "heart") wkBuzz(15); // HAPTIC (feat/mobile-quality): nhặt heart
       // v2.0: meta hook (achievement nhặt vật phẩm)
       if (window.V2) { try { V2.onPickup(p.kind); } catch (er) {} }
@@ -4498,6 +4537,13 @@ function render(now) {
       ctx.moveTo(p.x + 4, p.y - 13 + bob); ctx.lineTo(p.x - 7, p.y + 2 + bob); ctx.lineTo(p.x - 1, p.y + 2 + bob);
       ctx.lineTo(p.x - 4, p.y + 13 + bob); ctx.lineTo(p.x + 7, p.y - 2 + bob); ctx.lineTo(p.x + 1, p.y - 2 + bob);
       ctx.closePath(); ctx.fill();
+    } else if (p.kind === "patch") {
+      // STAGE-OBJ ải 5: patch xanh — vẽ tay (vuông xanh + dấu + trắng), không emoji
+      ctx.fillStyle = "#22c55e";
+      ctx.fillRect(p.x - 11, p.y - 11 + bob, 22, 22);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(p.x - 2.5, p.y - 8 + bob, 5, 16);
+      ctx.fillRect(p.x - 8, p.y - 2.5 + bob, 16, 5);
     } else {
       const pkIcon = p.kind === "heart" ? ["i-heart", "#ff5470", true] : p.kind === "shield" ? ["i-shield", "#38bdf8", false] : ["i-bomb", "#ff9d3f", false];
       if (window.HUDIcons) HUDIcons.draw(ctx, pkIcon[0], 24, pkIcon[1], p.x, p.y + bob, pkIcon[2]);

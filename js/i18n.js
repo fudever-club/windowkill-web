@@ -170,6 +170,9 @@
       "draft.patch_aria": "Mảnh vá: {name}",
       /* ----- game over ----- */
       "game.title": "WINDOWKILL: Web Edition — Chiến trường",
+      "game.laststand_name": "Cửa Sổ Cuối Cùng",
+      "game.laststand_banner": "CỬA SỔ CUỐI CÙNG!",
+      "game.laststand_sub": "+50% sát thương, +20% tốc bắn — mỗi kill vá +8px!",
       "game.hud_pause_aria": "Tạm dừng",
       "game.hud_glue_aria": "Bắn keo vá cửa sổ",
       "game.hud_full_aria": "Toàn màn hình",
@@ -341,6 +344,9 @@
       "draft.patch_aria": "Patch shard: {name}",
       /* ----- game over ----- */
       "game.title": "WINDOWKILL: Web Edition — Battlefield",
+      "game.laststand_name": "Last Stand",
+      "game.laststand_banner": "LAST STAND!",
+      "game.laststand_sub": "+50% damage, +20% fire rate — every kill patches +8px!",
       "game.hud_pause_aria": "Pause",
       "game.hud_glue_aria": "Fire glue to patch window",
       "game.hud_full_aria": "Fullscreen",

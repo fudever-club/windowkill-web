@@ -158,16 +158,17 @@ function drawFlash(x, w, h, flash, nowMs) {
   x.restore();
 }
 
-function draw(x, w, h, pct, flash, nowMs, pulse) {
+function draw(x, w, h, pct, flash, nowMs, pulse, boost) {
   var notch = notchFor(pct);
   if (!cache.cv || cache.notch !== notch || cache.w !== w || cache.h !== h) {
     cache.cv = build(w, h, notch);
     cache.notch = notch; cache.w = w; cache.h = h;
   }
   x.drawImage(cache.cv, 0, 0);
-  // B2.3: vignette đỏ khi yếu
-  if (pct < 0.35) {
+  // B2.3: vignette đỏ khi yếu — boost (Last Stand): đỏ rực ×2.4
+  if (pct < 0.35 || boost) {
     var a = reduced ? 0.12 : 0.10 + 0.08 * (pulse === undefined ? 0.5 : pulse);
+    if (boost) a = Math.min(0.5, a * 2.4);
     drawVignette(x, w, h, a);
   }
   drawFlash(x, w, h, flash, nowMs === undefined ? 0 : nowMs);

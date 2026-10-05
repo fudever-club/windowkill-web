@@ -53,21 +53,21 @@ const FNS = ["windowIntegrity", "lsDmgMul", "lsFireMul", "setLastStand",
   "lastStandTick", "lsOnKill", "heartbeatPulse"]
   .map((n) => extractFunction(gameSrc, n)).join("\n");
 
-/* Dựng context: winPct điều khiển được qua outerWidth.
- * Công thức: clamp((outerWidth - MIN_W) / (START_W - MIN_W)) với
- * MIN_W=250, START_W=980 → pct 0.29 ≈ outerWidth 462. */
+/* Dựng context: winPct điều khiển được qua outerWidth/outerHeight.
+ * Công thức (2 chiều, fix 2026-10-05): min(clamp((W-250)/730), clamp((H-190)/530)).
+ * pct 0.29 ≈ outerWidth 462 (khi cao còn đủ). */
 function makeCtx(overrides = {}) {
   const spies = { banner: [], stingers: [], grow: [], floats: [] };
   const G = { lastStand: false, phase: "play", ship: { dead: false } };
   const winCtrl = { ok: true };
-  const win = { outerWidth: 980 };
+  const win = { outerWidth: 980, outerHeight: 720 };
   const ctx = {
     console, Math,
     G, winCtrl,
     window: win,
     bounds: () => ({ x: 0, y: 0, w: 800, h: 600 }),
     clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
-    MIN_W: 250, START_W: 980,
+    MIN_W: 250, START_W: 980, MIN_H: 190, START_H: 720,
     setBanner: (t, sub) => spies.banner.push([t, sub]),
     I18N: { t: (k) => k },
     AudioEngine: { sfx: { stinger: (n) => spies.stingers.push(n) } },

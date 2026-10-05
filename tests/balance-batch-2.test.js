@@ -54,7 +54,7 @@ describe("windowIntegrity — min(2 chiều)", () => {
     assert.ok(depth === 0, `ngoặc mất cân bằng trong function ${name}`);
     return src.slice(m.index, i + 1);
   }
-  const FN = extractFunction(gameSrc, "windowIntegrity");
+  const FN = [extractFunction(gameSrc, "simMode"), extractFunction(gameSrc, "windowIntegrity")].join("\n");
 
   function makeCtx(overrides = {}) {
     const winCtrl = { ok: true };

@@ -49,7 +49,7 @@ function extractFunction(src, name) {
   return src.slice(m.index, i + 1);
 }
 
-const FNS = ["windowIntegrity", "lsDmgMul", "lsFireMul", "setLastStand",
+const FNS = ["simMode", "windowIntegrity", "lsDmgMul", "lsFireMul", "setLastStand",
   "lastStandTick", "lsOnKill", "heartbeatPulse"]
   .map((n) => extractFunction(gameSrc, n)).join("\n");
 

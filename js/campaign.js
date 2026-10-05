@@ -258,8 +258,42 @@
     if (k === "chill" || k === "hardcore" || k === "hard") return k === "hard" ? "hardcore" : k;
     return "normal";
   }
+  /* Mobile Assist (2026-10-05, CEO chốt số qua widget): tự động giảm nhẹ độ khó
+     trên mobile vì arena nhỏ (~360px vs 980px desktop) + touch kém chính xác.
+     Áp TẠI diffOf() nên mọi consumer (getWaveComp/getEndlessWave/getRunParams)
+     đều nhận số đã chỉnh — KHÔNG sửa difficulty.config.json, KHÔNG sửa số gốc.
+     - Tốc độ quái ×0.85, số lượng spawn ×0.8, gặm viền ×0.8
+     - Boss HP + sức tàu GIỮ NGUYÊN. Desktop không đổi hành vi. */
+  var MOBILE_ASSIST = { speedMult: 0.85, spawnCountMult: 0.8, chewDpsMult: 0.8 };
+  function isMobileDevice() {
+    try {
+      if (typeof document !== "undefined" && document.body &&
+          document.body.classList.contains("wk-coarse")) return true;
+      if (typeof window !== "undefined" && window.matchMedia &&
+          window.matchMedia("(pointer: coarse)").matches) return true;
+    } catch (e) {}
+    return false;
+  }
+  function mobileAssistEnabled() {
+    try {
+      var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
+      return !st || st.mobileAssist !== false; // mặc định BẬT
+    } catch (e) { return true; }
+  }
+  function mobileAssistActive() {
+    return isMobileDevice() && mobileAssistEnabled();
+  }
   function diffOf(key) {
-    return DIFFICULTY.difficulties[normalizeDiffKey(key)];
+    var d = DIFFICULTY.difficulties[normalizeDiffKey(key)];
+    if (!mobileAssistActive()) return d;
+    // shallow copy — KHÔNG mutate object gốc dùng chung
+    var out = {};
+    for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k)) out[k] = d[k];
+    out.monster_speed_mult = d.monster_speed_mult * MOBILE_ASSIST.speedMult;
+    out.spawn_count_mult = d.spawn_count_mult * MOBILE_ASSIST.spawnCountMult;
+    out.chew_dps_mult = d.chew_dps_mult * MOBILE_ASSIST.chewDpsMult;
+    out._mobileAssist = true; // marker cho test/debug
+    return out;
   }
   function isBossId(monster) {
     return monster === "boss_1" || monster === "boss_2" || monster === "boss_3" ||
@@ -635,6 +669,10 @@
     // difficulty
     getDifficulty: diffOf,
     normalizeDiffKey: normalizeDiffKey,
+    // Mobile Assist (2026-10-05) — expose cho test
+    mobileAssistActive: mobileAssistActive,
+    isMobileDevice: isMobileDevice,
+    MOBILE_ASSIST: MOBILE_ASSIST,
     getWaveComp: getWaveComp,
     isBossId: isBossId, // FIX C2b: v2glue cần để không fallback mini_boss_N → chaser
     getMinibossSpec: getMinibossSpec, // FIX C2b: engine resolve mini-boss entity thật

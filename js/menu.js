@@ -132,7 +132,7 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, mobileAssist: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   if (!["calm", "normal", "wild"].includes(settings.wjump)) settings.wjump = "normal"; // Item 4: repair corrupted wjump
   if (!["auto", "high", "balanced", "lite"].includes(settings.quality)) settings.quality = "auto"; // feat/mobile-quality: repair corrupted quality
@@ -150,6 +150,8 @@
     $("tgl-shake").classList.toggle("on", settings.shake); press($("tgl-shake"), settings.shake);
     const th = $("tgl-haptic");
     if (th) { th.classList.toggle("on", settings.haptic); press(th, settings.haptic); }
+    const tma = $("tgl-mobile-assist");
+    if (tma) { tma.classList.toggle("on", settings.mobileAssist !== false); press(tma, settings.mobileAssist !== false); }
     const ta = $("tgl-analytics");
     if (ta) { ta.classList.toggle("on", settings.analytics); press(ta, settings.analytics); }
     document.querySelectorAll("[data-diff]").forEach(b => { const sel = b.dataset.diff === settings.diff; b.classList.toggle("sel", sel); press(b, sel); });
@@ -211,6 +213,36 @@
     anchor.parentElement.insertAdjacentElement("afterend", row);
   }
   injectAnalyticsToggle();
+  /* Mobile Assist toggle (2026-10-05, CEO chốt): giảm nhẹ độ khó trên mobile.
+     Inject via DOM như analytics toggle vì index.html frozen. Mặc định BẬT. */
+  function injectMobileAssistToggle() {
+    if ($("tgl-mobile-assist")) return;
+    const anchor = $("tgl-haptic");
+    if (!anchor || !anchor.parentElement) return;
+    const row = document.createElement("div");
+    row.className = "setrow";
+    const label = document.createElement("span");
+    label.innerHTML = svgIcon("i-smartphone") + " ";
+    label.appendChild(document.createTextNode(I18N.t("settings.mobile_assist")));
+    label.title = I18N.t("settings.mobile_assist_desc");
+    const btn = document.createElement("button");
+    const on = settings.mobileAssist !== false;
+    btn.className = "tgl" + (on ? " on" : "");
+    btn.id = "tgl-mobile-assist";
+    btn.setAttribute("aria-label", I18N.t("settings.mobile_assist_aria"));
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = I18N.t("settings.mobile_assist_desc");
+    btn.onclick = () => {
+      settings.mobileAssist = !(settings.mobileAssist !== false);
+      saveSettings();
+      btn.classList.toggle("on", settings.mobileAssist);
+      btn.setAttribute("aria-pressed", settings.mobileAssist ? "true" : "false");
+      Analytics.track("settings_changed", { key: "mobileAssist", value: settings.mobileAssist });
+    };
+    row.appendChild(label); row.appendChild(btn);
+    anchor.parentElement.insertAdjacentElement("afterend", row);
+  }
+  injectMobileAssistToggle();
   $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); if (window.WKAudio) WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
   $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); if (window.Sfx2) { try { Sfx2.setEnabled(settings.sfx); } catch (e) {} } Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };

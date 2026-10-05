@@ -255,6 +255,48 @@ function fireGlueGun() {
   G.glueFlash = 0.3; // viền cửa sổ flash cyan 0.3s
   return true;
 }
+/* "Cửa Sổ Cuối Cùng" (Last Stand, CEO chốt 2026-10-05): khi cửa sổ <30%
+ * (death spiral — teo, không chỗ né, chờ thua), bật chế độ lật kèo:
+ * dmg +50%, tốc bắn +20%, mỗi kill vá +8px. Hysteresis: tắt khi hồi >35%
+ * (chống nhấp nháy) hoặc chết. Buff tính qua multiplier lúc dùng (không
+ * mutate stat) nên không lo stale khi nhặt upgrade giữa chừng. */
+function windowIntegrity() {
+  const b = bounds();
+  return winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
+                    : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+}
+function lsDmgMul() { return G.lastStand ? 1.5 : 1; }   // +50% sát thương
+function lsFireMul() { return G.lastStand ? 1.2 : 1; }  // +20% tốc bắn
+function setLastStand(on) {
+  if (!!G.lastStand === !!on) return; // idempotent: banner/stinger chỉ 1 lần
+  G.lastStand = !!on;
+  if (on) {
+    setBanner(I18N.t("game.laststand_banner"), I18N.t("game.laststand_sub"));
+    try { AudioEngine.sfx.stinger("gameOver"); } catch (e) {} // womp-womp cảnh báo
+  }
+}
+function lastStandTick() {
+  const s = G.ship;
+  if (G.phase !== "play" || !s || s.dead) { if (G.lastStand) setLastStand(false); return; }
+  const pct = windowIntegrity();
+  if (!G.lastStand && pct < 0.30) setLastStand(true);
+  else if (G.lastStand && pct > 0.35) setLastStand(false);
+}
+/* Mỗi kill khi Last Stand: vá ngay +8px. Tách hàm nhỏ để dễ test. */
+function lsOnKill(e) {
+  if (!G.lastStand) return false;
+  growWindow(8, 6);
+  addFloat(e.x, e.y - 40, "+8px", "#ff6b6b");
+  return true;
+}
+/* Nhịp tim Last Stand: lub-dub 2 nhịp/chu kỳ 0.9s — chỉ toán học,
+ * không gradient mỗi frame (rẻ). */
+function heartbeatPulse(nowMs) {
+  const t = (((nowMs / 900) % 1) + 1) % 1;
+  const lub = Math.exp(-Math.pow((t - 0.12) * 9, 2));
+  const dub = Math.exp(-Math.pow((t - 0.34) * 9, 2)) * 0.65;
+  return Math.min(1, lub + dub);
+}
 /* Item 3 — Sprint Round 2: tuning tập trung.
  * Mọi hằng số balance dưới đọc từ difficulty.config.json qua window.WK_TUNING
  * (js/tuning.js: embed fallback + fetch merge). Số dự phòng cuối = giá trị
@@ -3615,7 +3657,7 @@ function fireBullet() {
     const a = ang + (i - (s.streams - 1) / 2) * 0.13;
     G.bullets.push({ x: s.x + Math.cos(a) * 18, y: s.y + Math.sin(a) * 18,
       vx: Math.cos(a) * s.bulletSpd, vy: Math.sin(a) * s.bulletSpd,
-      r: 4, dmg: s.dmg, pierce: s.pierce + (G.vp1_starBullets ? 1 : 0), life: 1.15,
+      r: 4, dmg: s.dmg * lsDmgMul(), pierce: s.pierce + (G.vp1_starBullets ? 1 : 0), life: 1.15,
       star: !!G.vp1_starBullets }); // VP1 starbullets
   }
   // chớp nòng
@@ -3703,6 +3745,7 @@ function hurtShip(dmg, srcx, srcy) {
 function die(reason) {
   if (G.phase === "over") return;
   G.phase = "over";
+  if (G.lastStand) setLastStand(false); // tắt Last Stand khi chết
   // v2.0: meta (Mảnh Kính thưởng + achievement runEnd), tutorial hook
   if (window.V2) { try { V2.onGameOver(reason); } catch (er) {} }
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
@@ -3749,6 +3792,7 @@ function resetGame() {
     boss: null, spawnQueue: [], spawnT: 0, waveBreak: 1.4, waveClearShown: false,
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
+    lastStand: false, // "Cửa Sổ Cuối Cùng": reset khi chơi lại
     bombWave: 0, giantWave: 0, motherWave: 0,
     _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
@@ -3851,6 +3895,7 @@ function killEnemy(e) {
   if (window.Cinema) { try { Cinema.combo(G.combo); } catch (err) {} }
   else if (G.combo >= 5 && G.combo % 5 === 0) addFloat(e.x, e.y - 40, `🔥 COMBO x${G.combo}!`, "#f9a8d4", true);
   if (def && def.onDeath) def.onDeath(e); // vd splitter đẻ mini
+  lsOnKill(e); // "Cửa Sổ Cuối Cùng": mỗi kill vá ngay +8px cửa sổ
   // VP1 fireworks: kill nổ pháo hoa lớn nhiều màu
   if (G.vp1_fireworks) burst(e.x, e.y, 40, ["#ff5470", "#ffd166", "#7df9ff", "#c084fc", "#ffffff"], 420);
   // Endless Delight confetti: kill nổ giấy màu ăn mừng (trang trí, không đổi dmg)
@@ -3964,6 +4009,7 @@ function shipSlowMult() {
 function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
+  lastStandTick(); // "Cửa Sổ Cuối Cùng": bật/tắt theo % nguyên vẹn cửa sổ
   SatManager.poll(dt); SatManager.updateSims(dt); updateNests(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
@@ -4039,7 +4085,7 @@ function update(dt) {
   /* bắn */
   s.fireT -= dt;
   const wantFire = mouse.down || keys.Space || (ta && ta.fire);
-  if (wantFire && s.fireT <= 0) { s.fireT = s.fireInt * (s.overdriveT > 0 ? 0.55 : 1); fireBullet(); }
+  if (wantFire && s.fireT <= 0) { s.fireT = s.fireInt / lsFireMul() * (s.overdriveT > 0 ? 0.55 : 1); fireBullet(); }
 
   /* wave */
   if (G.spawnQueue.length) {
@@ -4763,7 +4809,8 @@ function render(now) {
   ctx.restore();
 
   // H1/B2: viền màn hình = thanh máu — decal notch cache (borderfx.js), flash xanh khi bắn vào viền
-  if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now, (Math.sin(now / 280) + 1) / 2);
+  if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now,
+    G.lastStand ? heartbeatPulse(now) : (Math.sin(now / 280) + 1) / 2, !!G.lastStand);
 
   /* ---------- HUD (H3: 2 cụm — pill trái + % nguyên vẹn phải) ---------- */
   ctx.textAlign = "left";

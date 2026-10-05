@@ -3723,7 +3723,7 @@ function fireBullet() {
 
 /* ---------------- pause / chết / reset ---------------- */
 function pauseGame(on) {
-  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); paintPauseWjump(); paintPauseQuality(); paintPauseMobileAssist(); }
+  if (on && G.phase === "play") { G.phase = "paused"; $("ov-pause").classList.add("show"); paintPauseWjump(); paintPauseQuality(); }
   else if (!on && G.phase === "paused") {
     G.phase = "play"; $("ov-pause").classList.remove("show"); lastT = performance.now();
   }
@@ -3771,37 +3771,6 @@ document.querySelectorAll("[data-quality]").forEach(function (b) {
     paintPauseQuality();
   };
 });
-/* Mobile Assist (2026-10-05, CEO chốt): toggle trong pause menu (game.html#ov-pause).
-   Đọc/ghi wk_settings.mobileAssist (mặc định BẬT). Áp dụng từ wave tiếp theo
-   vì Campaign.diffOf() đọc setting mỗi lần compose wave. */
-function mobileAssistOn() {
-  try {
-    var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
-    return !st || st.mobileAssist !== false;
-  } catch (e) { return true; }
-}
-function paintPauseMobileAssist() {
-  var on = mobileAssistOn();
-  var b = $("btn-pause-mobile-assist");
-  if (b) {
-    b.classList.toggle("sel", on);
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-  }
-}
-(function wirePauseMobileAssist() {
-  var b = $("btn-pause-mobile-assist");
-  if (!b || b.__wkWired) return;
-  b.__wkWired = true;
-  b.onclick = function () {
-    try {
-      var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
-      st.mobileAssist = !mobileAssistOn();
-      localStorage.setItem("wk_settings", JSON.stringify(st));
-    } catch (e) {}
-    if (typeof AudioEngine !== "undefined" && AudioEngine.sfx) { try { AudioEngine.sfx.click(); } catch (e) {} }
-    paintPauseMobileAssist();
-  };
-})();
 function hurtShip(dmg, srcx, srcy) {
   const s = G.ship;
   if (G.phase !== "play") return;

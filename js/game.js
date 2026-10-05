@@ -261,14 +261,37 @@ function fireGlueGun() {
  * dmg +50%, tốc bắn +20%, mỗi kill vá +8px. Hysteresis: tắt khi hồi >35%
  * (chống nhấp nháy) hoặc chết. Buff tính qua multiplier lúc dùng (không
  * mutate stat) nên không lo stale khi nhặt upgrade giữa chừng. */
+/* FIX P0 2026-10-05: Last Stand bật vĩnh viễn trên mobile portrait.
+ * windowIntegrity() hiệu chuẩn theo hằng số desktop START_W=980/MIN_W=250,
+ * trong khi arena mobile = viewport (360px) → boot đã 15.1% < 30% → banner +
+ * viền đỏ + buff thành trạng thái mặc định, hysteresis tắt không bao giờ đạt.
+ * Fix: hiệu chuẩn theo kích thước arena THỰC lúc bắt đầu run (G.arenaInit,
+ * chụp trong resetGame): pct = (current − MIN) / (init − MIN).
+ *  - Desktop (pointer fine, resizeTo thật): giữ START_W/START_H như cũ — không đổi hành vi.
+ *  - Sim/mobile: ref = viewport lúc reset → boot ở 100%, Last Stand chỉ bật
+ *    khi bị gặm teo thật. Súng Bắn Keo bị clamp bởi viewport là hành vi đúng — không đụng.
+ * Tín hiệu sim tại boot: winCtrl.ok==false (đã probe) HOẶC arena đã tạo HOẶC
+ * pointer thô (điện thoại/tablet — resizeTo luôn bị chặn nhưng probe 500ms
+ * chưa chạy kịp ở frame đầu). typeof-guard arena để test vm không vỡ. */
+function simMode() {
+  if (!winCtrl.ok) return true;
+  try { if (typeof arena !== "undefined" && arena !== null) return true; } catch (e) {}
+  try {
+    return !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  } catch (e) { return false; }
+}
 function windowIntegrity() {
   // BUGFIX 2026-10-05 (M22 playtest): % nguyên vẹn phải lấy chiều nguy hiểm hơn —
   // trước đây chỉ đo chiều RỘNG nên vỡ theo chiều CAO không có cảnh báo.
   const b = bounds();
-  const w = winCtrl.ok ? window.outerWidth : b.w;
-  const h = winCtrl.ok ? window.outerHeight : b.h;
-  const wPct = clamp((w - MIN_W) / (START_W - MIN_W), 0, 1);
-  const hPct = clamp((h - MIN_H) / (START_H - MIN_H), 0, 1);
+  const sim = simMode();
+  const w = sim ? b.w : window.outerWidth;
+  const h = sim ? b.h : window.outerHeight;
+  const init = (sim && typeof G !== "undefined" && G.arenaInit) || null;
+  const rw = init ? init.w : START_W;
+  const rh = init ? init.h : START_H;
+  const wPct = clamp((w - MIN_W) / Math.max(1, rw - MIN_W), 0, 1);
+  const hPct = clamp((h - MIN_H) / Math.max(1, rh - MIN_H), 0, 1);
   return Math.min(wPct, hPct);
 }
 function lsDmgMul() { return G.lastStand ? 1.5 : 1; }   // +50% sát thương
@@ -3863,6 +3886,14 @@ function resetGame() {
   // grow về cỡ ban đầu (growWindow tự cap ở START_W × 720).
   arena = null;
   try { growWindow(START_W, 720); } catch (e) {}
+  // FIX P0 2026-10-05: chụp kích thước arena THỰC lúc bắt đầu run để hiệu chuẩn
+  // windowIntegrity(). Desktop không dùng (giữ START_* như cũ). Mobile/sim:
+  // arena = null → bounds() = viewport → boot ở 100%, Last Stand chỉ bật khi
+  // bị gặm teo thật.
+  try {
+    const _b0 = bounds();
+    G.arenaInit = { w: _b0.w, h: _b0.h };
+  } catch (e) { G.arenaInit = null; }
   // §6.4.7: tooltip điểm 1 lần duy nhất sau update — "Điểm = tổng điểm gốc — không nhân."
   try {
     if (!localStorage.getItem("wk_score_tip_seen")) {

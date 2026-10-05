@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261005T064023Z-43a84e3"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261005T064816Z-639430f"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";

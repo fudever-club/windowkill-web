@@ -3541,6 +3541,8 @@ function startWave(n) {
         }
         // STAGE-OBJ: reset objective phụ đầu run (wave 1) — tiến trình reset mỗi run
         if (n === 1 && window.StageObj) { try { StageObj.begin(V2.stageId); } catch (er2) {} }
+        // STAGE-MECH: reset lại lần nữa cho chắc (giống StageObj)
+        if (n === 1 && window.StageMech) { try { StageMech.begin(V2.stageId); } catch (er3) {} }
         return;
       }
     } catch (er) {}
@@ -3907,6 +3909,8 @@ function resetGame() {
   try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
   // STAGE-OBJ: reset objective phụ mỗi run (startWave wave 1 reset lại lần nữa cho chắc)
   try { if (window.StageObj) StageObj.begin(window.V2 ? V2.stageId : 0); } catch (e) {}
+  // STAGE-MECH: reset twist thưởng theo ải mỗi run (gọi sau StageObj để chain đúng hook gai ải 2)
+  try { if (window.StageMech) StageMech.begin(window.V2 ? V2.stageId : 0); } catch (e2) {}
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
   // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
   // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.
@@ -4010,6 +4014,8 @@ function killEnemy(e) {
   if (G.vp1_glowParty) G.gems.push({ x: e.x, y: e.y - 10, vx: 0, vy: -60, v: 1, t: 0 });
   // STAGE-OBJ: objective phụ theo ải — dark-kill (ải 4) / drift-kill (ải 3)
   try { if (window.StageObj) StageObj.onKill(e); } catch (er) {}
+  // STAGE-MECH: twist thưởng theo ải — drift-kill ×2 (ải 3), dark-kill ×2 (ải 4)
+  try { if (window.StageMech) StageMech.onKill(e); } catch (er2) {}
   // STAGE-OBJ ải 5 (theo GAME-DESIGN-DOC §4 — mechanic còn thiếu): quái rớt patch
   // xanh nới vùng an toàn. Roll riêng 12%, KHÔNG vào bảng random chung (không tăng khó,
   // chỉ thêm pickup có lợi + mục tiêu cho objective "Kỹ Sư Bản Vá").
@@ -4060,6 +4066,8 @@ function killBoss() {
   G.score += pts; G.kills++;
   // v2.0: meta + tutorial hook
   if (window.V2) { try { V2.onBossKill(); } catch (er) {} }
+  // STAGE-MECH: ải 1 reboot tốt nghiệp khi hạ boss; ải 5 CTRL+Z nếu hạ trong lúc NULL hút
+  try { if (window.StageMech) StageMech.onBossKill(); } catch (er2) {}
   try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
   try { AudioEngine.sfx.stinger("victory"); } catch (e) {} // stinger victory khi hạ boss
   jxShake(12, 700, 10); windowJitter(30);
@@ -4171,6 +4179,8 @@ function update(dt) {
   const ml = hypot(mx, my);
   // STAGE-OBJ: tick objective mỗi frame — trạng thái input cho drift detection (ải 3)
   try { if (window.StageObj) StageObj.update(dt, ml > 0.05); } catch (er) {}
+  // STAGE-MECH: boss 25% HP ải 5 (NULL hút cửa sổ), chain drift ải 3, reboot flash ải 1
+  try { if (window.StageMech) StageMech.update(dt); } catch (er2) {}
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
@@ -4501,6 +4511,8 @@ function update(dt) {
       const pd = PICKUP_DEFS[p.kind];
       if (pd) pd.use(s);
       try { if (window.StageObj) StageObj.onPickup(p.kind); } catch (er) {} // STAGE-OBJ ải 5 (patch)
+      // STAGE-MECH: ải 5 nhặt patch → +5 gem thưởng "vá có công"
+      try { if (window.StageMech) StageMech.onPickup(p.kind, p); } catch (er2) {}
       if (p.kind === "heart") wkBuzz(15); // HAPTIC (feat/mobile-quality): nhặt heart
       // v2.0: meta hook (achievement nhặt vật phẩm)
       if (window.V2) { try { V2.onPickup(p.kind); } catch (er) {} }
@@ -5128,6 +5140,8 @@ function render(now) {
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
   }
+  // STAGE-MECH ải 1: flash xanh "reboot" khi hạ boss tốt nghiệp tân binh
+  try { if (window.StageMech) StageMech.drawFlash(ctx, W, H); } catch (erf) {}
   // touch sticks
   if (touch.active) {
     if (touch.moveId !== null) {

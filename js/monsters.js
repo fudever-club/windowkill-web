@@ -133,7 +133,7 @@ var MONSTER_REGISTRY = {
   warden: { id: "warden", nameVi: "Giáp Gương", role: "tanker phản xạ", color: "#cbd5e1",
     shape: "ngũ giác", r: 20, dmg: 0, xp: 5, gems: 60, behavior: "mirror",
     debutWave: 4, debutHintVi: "Đừng bắn mặt gương — vòng sau lưng, đạn xuyên bỏ qua gương.",
-    hpAt: hp1(w => 16 + w * 2.5), speedAt: sp1(() => 40),
+    hpAt: hp1(w => 10 + w * 2.5), speedAt: sp1(() => 40), // BALANCE 2026-10-05: debut wave 4 = 20 HP (26 gây bullet-sponge); giữ slope 2.5/wave
     weaknessVi: "Gương chỉ che mặt trước; xoay chậm 90°/s; hông/sau nhận ×1.5 dmg.",
     counterVi: "Vòng sau lưng; đạn xuyên; bắn vào viền gần nó để hất xoay lộ lưng." },
   glimmer: { id: "glimmer", nameVi: "Đom Đóm Vàng", role: "bonus chạy trốn", color: "#fbbf24",

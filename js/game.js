@@ -161,6 +161,7 @@ function wkBuzz(p) { try { if (window.WKBuzz) window.WKBuzz(p); } catch (e) {} }
 
 const MIN_W = 250, MIN_H = 190;      // cửa sổ nhỏ hơn -> vỡ
 const START_W = 980;
+const START_H = 720; // kích thước ban đầu 980×720 (xem growWindow(START_W, 720) lúc hồi size)
 
 /* ---------------- helpers ---------------- */
 // MOBILE 2026-10-03 (iPhone): canvas render theo devicePixelRatio để không bị mờ
@@ -261,9 +262,14 @@ function fireGlueGun() {
  * (chống nhấp nháy) hoặc chết. Buff tính qua multiplier lúc dùng (không
  * mutate stat) nên không lo stale khi nhặt upgrade giữa chừng. */
 function windowIntegrity() {
+  // BUGFIX 2026-10-05 (M22 playtest): % nguyên vẹn phải lấy chiều nguy hiểm hơn —
+  // trước đây chỉ đo chiều RỘNG nên vỡ theo chiều CAO không có cảnh báo.
   const b = bounds();
-  return winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
-                    : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+  const w = winCtrl.ok ? window.outerWidth : b.w;
+  const h = winCtrl.ok ? window.outerHeight : b.h;
+  const wPct = clamp((w - MIN_W) / (START_W - MIN_W), 0, 1);
+  const hPct = clamp((h - MIN_H) / (START_H - MIN_H), 0, 1);
+  return Math.min(wPct, hPct);
 }
 function lsDmgMul() { return G.lastStand ? 1.5 : 1; }   // +50% sát thương
 function lsFireMul() { return G.lastStand ? 1.2 : 1; }  // +20% tốc bắn
@@ -4503,10 +4509,8 @@ function render(now) {
     ctx.strokeRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
     ctx.restore();
   }
-  // H1/B3: % nguyên vẹn cửa sổ — viền diegetic vẽ ở cuối frame (trước HUD)
-  const winPct = winCtrl.ok
-    ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
-    : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+  // H1/B3: % nguyên vẹn cửa sổ — tính theo windowIntegrity() (min 2 chiều), viền diegetic vẽ ở cuối frame (trước HUD)
+  const winPct = windowIntegrity();
   // H3: font HUD dùng chung — khai báo ở đầu render để mọi section (kể cả floats) dùng được (tránh TDZ)
   const HUDFONT = (window.HUDIcons && HUDIcons.FONT) || '"Segoe UI", system-ui, -apple-system, sans-serif';
 
@@ -5156,8 +5160,7 @@ function cineInfo() { // OPT: tái dùng object, không alloc mỗi frame
 function wowMusicTick() {
   const s = G.ship; if (!s) return;
   const b = bounds();
-  const winPct = winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
-                            : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
+  const winPct = windowIntegrity();
   try {
     if (window.Cinema) {
       let st = "normal";
@@ -5204,11 +5207,7 @@ window.WKDie = function (reason) { die(reason); };
 // AUDIT 2026-10-02: % cửa sổ còn lại theo đúng công thức engine dùng (popup thật
 // theo outerWidth, arena ảo theo bounds) — v2glue cần cho thành tựu hạ boss.
 window.WKWinPct = function () {
-  try {
-    const b = bounds();
-    return winCtrl.ok ? clamp((window.outerWidth - MIN_W) / (START_W - MIN_W), 0, 1)
-                      : clamp((b.w - MIN_W) / (START_W - MIN_W), 0, 1);
-  } catch (e) { return 1; }
+  try { return windowIntegrity(); } catch (e) { return 1; }
 };
 window.WKDrawBossBar = function (d) {
   // thanh boss 3 nấc (§5.4): viền sáng + 3 khấc phase + tên

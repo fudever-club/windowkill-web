@@ -46,6 +46,11 @@ function readManifest() {
   return list;
 }
 
+// Toàn bộ game chạy trong 1 IIFE (khớp bản gốc trước khi tách):
+// mỗi module là fragment, KHÔNG tự bọc IIFE để node --check từng file được.
+const IIFE_OPEN = '"use strict";\n(() => {\n';
+const IIFE_CLOSE = "})();\n"; // module cuối đã kết thúc bằng newline
+
 function build() {
   const files = readManifest();
   const chunks = files.map(f => {
@@ -53,8 +58,8 @@ function build() {
     if (!fs.existsSync(p)) throw new Error(`thiếu source module: js/game/${f}`);
     return fs.readFileSync(p, "utf8");
   });
-  // Mỗi source file kết thúc bằng đúng 1 newline; nối trực tiếp.
-  return GENERATED_NOTICE + chunks.join("");
+  // Mỗi source file kết thúc bằng đúng 1 newline; nối trực tiếp trong IIFE.
+  return GENERATED_NOTICE + IIFE_OPEN + chunks.join("") + IIFE_CLOSE;
 }
 
 function main() {

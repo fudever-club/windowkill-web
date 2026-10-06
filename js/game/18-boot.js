@@ -44,6 +44,8 @@ function loop(now) {
   if (musicT >= 0.5) { musicT = 0; wowMusicTick(); }
   perfTick(rawDt); // OPT: adaptive quality
   render(now);
+  // QA overlay (?qa=1) — vẽ sau render, không chạm gameplay
+  if (window.QAOverlay) { try { QAOverlay.frame(rawDt); } catch (e) {} }
   requestAnimationFrame(loop);
 }
 

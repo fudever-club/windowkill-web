@@ -24,7 +24,13 @@ const SatManager = (() => {
 
   function request(role, opts = {}) {
     if (SAT_MODE === "off") return null; // mechanic không trigger (caller spawn thường thay thế)
-    if (sats.size + queue.length >= MAX_SATS) return null;
+    // M5–M10 websim (2026-10-06): quota chỉ đếm sat CÒN SỐNG. Sat đã dead vẫn nằm
+    // trong map tới 350ms (chờ hiệu ứng vỡ) — đếm cả nó khiến spawn mới fail câm:
+    // giant bị phá khi drone khiên còn sống → chỉ tách 1 minion; lovers merge khi
+    // còn sat khác → superlove request null, mất siêu-popup sau banner "BÙM!".
+    let live = 0;
+    for (const s of sats.values()) if (!s.dead) live++;
+    if (live + queue.length >= MAX_SATS) return null;
     const o = Object.assign({ hp: 6, color: "#8b2fc9", label: I18N.t("sat.generic"), w: 340, h: 220 }, opts);
     const sat = { id: "sat" + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       role, hp: Math.max(1, o.hp | 0), maxHp: Math.max(1, o.hp | 0),
@@ -223,6 +229,7 @@ const SatManager = (() => {
   };
   /* vẽ cửa sổ mô phỏng (khung OS giả) */
   function drawSims() {
+    const t0 = performance.now(); // dùng chung cho pulse/vệt sáng, tránh gọi nhiều lần
     for (const s of sats.values()) {
       if (!s.sim || s.dead && s.shatterT <= 0) continue;
       if (s.role === "shield" && s.sim) { drawShieldDrone(s); continue; } // M3: drone khiên bay quanh tàu
@@ -259,6 +266,22 @@ const SatManager = (() => {
       ctx.beginPath(); roundRect(s.x, s.y + 26, s.sw, s.sh - 26, [0, 0, 8, 8]); ctx.clip();
       drawSimContent(s);
       ctx.restore();
+      // M9/M10 websim (2026-10-06): vẽ vùng hiệu lực quanh khung GIẢ.
+      // drawSatFields() bỏ qua sat sim nên trên web vùng gương 85px / hố đen 240px
+      // "tàng hình" — player không thấy để né/đừng bắn vào. Vẽ vòng đứt nét mờ
+      // cùng style với bản popup thật, không đổi balance.
+      if (!s.dead && (s.role === "mirror" || s.role === "blackhole")) {
+        const zR = s.role === "mirror" ? 85 : 240;
+        const zc = s.role === "mirror" ? "#67e8f9" : "#7c3aed";
+        const zp = 0.5 + 0.3 * Math.sin(t0 / 400);
+        ctx.save();
+        ctx.globalAlpha = 0.13 + zp * 0.08;
+        ctx.strokeStyle = zc; ctx.lineWidth = 2;
+        ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t0 / 60;
+        ctx.beginPath(); ctx.arc(s.x + s.sw / 2, s.y + s.sh / 2, zR, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
       // thanh HP (rework 2026-10-04: mảnh kính hiện HP của chính nó — destructible)
       const hpf = clamp(s.hp / s.maxHp, 0, 1);
       ctx.fillStyle = "#ffffff18"; ctx.fillRect(s.x + 10, s.y + s.sh - 12, s.sw - 20, 5);

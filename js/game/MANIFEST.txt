@@ -18,4 +18,5 @@
 17-render.js
 19-onboard.js
 20-telemetry.js
+21-qaoverlay.js
 18-boot.js

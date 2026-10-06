@@ -407,8 +407,6 @@
       "upg.streams.desc": "Bắn thêm một tia (tối đa 4).",
       "upg.damage.name": "Sát thương +1",
       "upg.damage.desc": "Mỗi viên đạn đau hơn.",
-      "upg.speed.name": "Tốc độ +18%",
-      "upg.speed.desc": "Tàu lanh lẹ hơn.",
       "upg.hp.name": "+1 máu & hồi 1",
       "upg.hp.desc": "Tăng máu tối đa, hồi ngay 1 tim.",
       "upg.pierce.name": "Đạn xuyên +1",
@@ -417,12 +415,6 @@
       "upg.magnet.desc": "Hút gem từ xa hơn.",
       "upg.thorns.name": "Giáp gai",
       "upg.thorns.desc": "Va chạm hất văng quái và gây sát thương.",
-      "upg.greed.name": "Tham lam",
-      "upg.greed.desc": "Mỗi gem cho thêm +1 XP.",
-      "upg.bulletspeed.name": "Đạn siêu tốc",
-      "upg.bulletspeed.desc": "+25% tốc độ & tầm bay đạn.",
-      "upg.luck.name": "May mắn",
-      "upg.luck.desc": "+50% tỉ lệ rớt vật phẩm.",
       "upg.ice.name": "Đạn băng",
       "upg.ice.desc": "Quái trúng đạn bị làm chậm 1.5s.",
       /* ----- nâng cấp v2 (js/upgrades2.js) — N4: EN đầy đủ ----- */
@@ -730,25 +722,13 @@
       "onboard.knock": "Bốp! Hất văng!",
     },
     en: {
-      /* ----- 12 draft upgrades ----- */
-      /* ----- onboard: wave 0 (60s scripted, 19-onboard.js) ----- */
-      "onboard.skip": "Skip ▸",
-      "onboard.title": "WAVE 0 — TUTORIAL",
-      "onboard.s0": "Don't let them chew through the window. Shoot!",
-      "onboard.s1": "A purple monster latched on — it's chewing the window!",
-      "onboard.s2": "Shoot the edge to knock it off!",
-      "onboard.s3": "Grab the gem — just fly into it!",
-      "onboard.s4": "Again — 2 purple monsters! Shoot the edge!",
-      "onboard.s5": "Great! Ready to fight — WAVE 1!",
-      "onboard.knock": "Bonk! Knocked off!",
+      /* ----- 8 draft upgrades (cắt từ 12 — CEO 2026-10-06) ----- */
       "upg.firerate.name": "Fire rate +30%",
       "upg.firerate.desc": "Shoot faster.",
       "upg.streams.name": "+1 bullet stream",
       "upg.streams.desc": "Fire an extra stream (max 4).",
       "upg.damage.name": "Damage +1",
       "upg.damage.desc": "Every bullet hits harder.",
-      "upg.speed.name": "Speed +18%",
-      "upg.speed.desc": "A nippier ship.",
       "upg.hp.name": "+1 max HP & heal 1",
       "upg.hp.desc": "Raise max HP and heal 1 heart right away.",
       "upg.pierce.name": "Pierce +1",
@@ -757,12 +737,6 @@
       "upg.magnet.desc": "Pull gems from farther away.",
       "upg.thorns.name": "Spiky armor",
       "upg.thorns.desc": "Collisions knock monsters back and hurt them.",
-      "upg.greed.name": "Greed",
-      "upg.greed.desc": "Each gem gives +1 more XP.",
-      "upg.bulletspeed.name": "Hyper bullets",
-      "upg.bulletspeed.desc": "+25% bullet speed & range.",
-      "upg.luck.name": "Luck",
-      "upg.luck.desc": "+50% item drop rate.",
       "upg.ice.name": "Ice bullets",
       "upg.ice.desc": "Hit monsters are slowed for 1.5s.",
       /* ----- upgrades v2 (js/upgrades2.js) — N4: full EN ----- */
@@ -1058,6 +1032,16 @@
       "juice.shard_float2": "+ glass shards",
       "juice.pickup_shield": "Shield!",
       "juice.level_up": "LEVEL UP {level}!", /* FIX 2026-10-04 "LEVEL UP undefined!": banner via i18n + numeric guard */
+      /* ----- onboard: wave 0 (60s scripted, 19-onboard.js) ----- */
+      "onboard.skip": "Skip ▸",
+      "onboard.title": "WAVE 0 — TUTORIAL",
+      "onboard.s0": "Don't let them chew through the window. Shoot!",
+      "onboard.s1": "A purple monster latched on — it's chewing the window!",
+      "onboard.s2": "Shoot the edge to knock it off!",
+      "onboard.s3": "Grab the gem — just fly into it!",
+      "onboard.s4": "Again — 2 purple monsters! Shoot the edge!",
+      "onboard.s5": "Great! Ready to fight — WAVE 1!",
+      "onboard.knock": "Bonk! Knocked off!",
     }
   };
 

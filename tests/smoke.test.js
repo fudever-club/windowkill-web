@@ -80,9 +80,9 @@ describe("hằng số gameplay (game.js)", () => {
     assert.match(src, /\bnormal:\s*\{/);
     assert.match(src, /DIFFS\.hard\s*=\s*DIFFS\.hardcore/);
   });
-  it("đủ 12 nâng cấp", () => {
+  it("đủ 8 nâng cấp (cắt từ 12 — CEO 2026-10-06)", () => {
     const n = (src.match(/\bico:/g) || []).length;
-    assert.equal(n, 12, `tìm thấy ${n} nâng cấp, kỳ vọng 12`);
+    assert.equal(n, 8, `tìm thấy ${n} nâng cấp, kỳ vọng 8`);
   });
   it("đủ 6 loại quái", () => {
     for (const t of ["chaser", "chewer", "tank", "dasher", "splitter", "mini"]) {

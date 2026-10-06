@@ -1,4 +1,9 @@
 /* =====================================================================
+   GENERATED FILE — KHÔNG SỬA TRỰC TIẾP.
+   Nguồn: js/game/*.js (thứ tự trong js/game/MANIFEST.txt).
+   Sửa source rồi chạy: node scripts/build-game.js
+   ===================================================================== */
+/* =====================================================================
    WINDOWKILL: Web Edition — arena engine
    Twin-stick shooter trong popup. Cửa sổ popup CHÍNH LÀ máu:
    quái tím bám viền -> window.resizeTo() gặm nhỏ; đạn bắn vào viền ->

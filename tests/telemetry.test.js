@@ -180,17 +180,25 @@ describe("S2 telemetry call sites (js/game.js)", () => {
       "track phải đặt trước early-return của V2/boss wave");
   });
 
-  it("die() gọi trackDeathCause với mapDeathCause(reason)", () => {
+  it("die() gọi Telemetry.log(\"death\") với reason/wave/score", () => {
     const body = extractFnBody(src, "function die(reason)");
-    assert.ok(body.includes("trackDeathCause("), "die phải gọi trackDeathCause");
-    assert.ok(body.includes("mapDeathCause(reason)"), "die phải map reason qua mapDeathCause");
+    assert.ok(body.includes('Telemetry.log("death"'), "die phải gọi Telemetry.log(\"death\", ...)");
+    assert.ok(body.includes("reason"), "phải truyền reason (module tự map → cause)");
     assert.ok(body.includes("G.wave") && body.includes("G.score"), "phải truyền wave + score");
   });
 
-  it("applyDraftPick() gọi trackUpgradeChosen với id/wave/level", () => {
+  it("applyDraftPick() gọi Telemetry.log(\"upgrade_chosen\") với id/wave/level", () => {
     const body = extractFnBody(src, "function applyDraftPick(u)");
-    assert.ok(body.includes("trackUpgradeChosen("), "applyDraftPick phải gọi trackUpgradeChosen");
+    assert.ok(body.includes('Telemetry.log("upgrade_chosen"'), "applyDraftPick phải gọi Telemetry.log(\"upgrade_chosen\", ...)");
+    assert.ok(body.includes("upgrade_id"), "phải truyền upgrade_id");
     assert.ok(body.includes("G.wave"), "phải truyền wave");
     assert.ok(body.includes("G.level"), "phải truyền level");
+  });
+
+  it("quitToMenu() gọi Telemetry.log(\"wave_quit\") với phase/wave", () => {
+    const body = extractFnBody(src, "function quitToMenu()");
+    assert.ok(body.includes('Telemetry.log("wave_quit"'), "quitToMenu phải gọi Telemetry.log(\"wave_quit\", ...)");
+    assert.ok(body.includes("phase"), "phải truyền phase (module tự bỏ khi phase===\"over\")");
+    assert.ok(body.includes("G.wave"), "phải truyền wave");
   });
 });

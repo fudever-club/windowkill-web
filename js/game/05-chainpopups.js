@@ -923,7 +923,6 @@ function updateMirrors(dt) {
     if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
     const _ma = mirrorAnchor(sat); sat._mx = _ma.x; sat._my = _ma.y; // OPT: cache anchor 1 lần/frame cho mirrorReflect
     if (sat.sim) { // gương lững lờ trôi cho khó ngắm
-      sat.steerT = (sat.steerT || 0);
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 45; sat.vy = Math.sin(a) * 45; }
       bounceSimSat(sat, 1, dt);
     }
@@ -1021,12 +1020,26 @@ function updateBlackholes(dt) {
     // hút quái xung quanh (xoáy trôn ốc)
     // OPT: dist2 kiểm tra tầm trước — chỉ sqrt khi quái đã trong vùng hút
     const R2 = R * R;
+    // M9 websim (2026-10-06): không nhả (spit) NGAY trong vòng lặp hút — spitVacuum()
+    // push quái mới vào G.enemies đang được iterate → quái vừa nhả bị nuốt lại cùng
+    // frame, và trường hợp xấu lặp spit vô hạn treo game. Gom cờ, nhả sau vòng lặp.
+    let needSpit = false;
     for (const e of G.enemies) {
       if (e.dead || e.type === "boss") continue;
       const dx = p.x - e.x, dy = p.y - e.y, d2 = dx * dx + dy * dy;
       if (d2 < R2) {
         const d = Math.sqrt(d2);
-        if (d > 1) {
+        if (d < 26) {
+          // M9 websim (2026-10-06): quái lọt đúng tâm (d ≤ 1) trước đây kẹt vĩnh viễn
+          // vì nhánh hút nằm trong `if (d > 1)` — đưa check nuốt ra ngoài để luôn nuốt.
+          e.dead = true; // nuốt: mất luôn, không điểm/kill
+          sat.swallowed.push(e.type);
+          burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+          AudioEngine.sfx.slurp();
+          wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
+          addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
+          if (sat.swallowed.length >= 3) needSpit = true;
+        } else {
           const pull = (1 - d / R) * 640;
           const inv = 1 / d;
           e.x += dx * inv * pull * dt;
@@ -1034,15 +1047,6 @@ function updateBlackholes(dt) {
           // xoáy tiếp tuyến cho vui mắt
           e.x += -dy * inv * pull * 0.45 * dt;
           e.y += dx * inv * pull * 0.45 * dt;
-          if (d < 26) {
-            e.dead = true; // nuốt: mất luôn, không điểm/kill
-            sat.swallowed.push(e.type);
-            burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
-            AudioEngine.sfx.slurp();
-            wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
-            addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
-            if (sat.swallowed.length >= 3) spitVacuum(sat);
-          }
         }
       }
     }
@@ -1052,11 +1056,9 @@ function updateBlackholes(dt) {
     for (let i = G.gems.length - 1; i >= 0; i--) {
       const gm = G.gems[i];
       const gdx = p.x - gm.x, gdy = p.y - gm.y, gd = Math.hypot(gdx, gdy);
-      if (gd < R && gd > 1) {
-        const pull = (1 - gd / R) * 480;
-        gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
-        gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
+      if (gd < R) {
         if (gd < 26) {
+          // (2026-10-06) cùng fix kẹt tâm như quái ở trên: gem lọt đúng tâm luôn bị xử lý
           AudioEngine.sfx.slurp();
           if (hardVac) { // Khắc nghiệt: nuốt mất luôn
             G.gems.splice(i, 1);
@@ -1068,12 +1070,16 @@ function updateBlackholes(dt) {
             gm.vx = Math.cos(ga) * 420; gm.vy = Math.sin(ga) * 420;
             burst(gm.x, gm.y, 6, ["#7df9ff", "#ffffff"], 160);
           }
+        } else {
+          const pull = (1 - gd / R) * 480;
+          gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
+          gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
         }
       }
     }
     // nhả định kỳ mỗi 7s
     sat.spitT = (sat.spitT === undefined ? 7 : sat.spitT) - dt;
-    if (sat.spitT <= 0) spitVacuum(sat);
+    if (needSpit || sat.spitT <= 0) spitVacuum(sat);
     // khung giả lững lờ
     if (sat.sim) {
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 35; sat.vy = Math.sin(a) * 35; }

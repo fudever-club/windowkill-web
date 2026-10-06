@@ -2630,19 +2630,17 @@ function burst(x, y, n, colors, spd = 260) {
   }
 }
 
-/* ---------------- nâng cấp (12 món) ---------------- */
+/* ---------------- nâng cấp (8 món — cắt từ 12 theo quyết định CEO 2026-10-06:
+   mỗi món còn lại phải đổi lối chơi thật; 4 món chỉ +chỉ số/kinh tế vô hình
+   (speed, bulletspeed, greed, luck) bị loại để giảm choice paralysis) ---------------- */
 const UPS = [
   { ico: "i-fire", t: I18N.t("upg.firerate.name"), d: I18N.t("upg.firerate.desc"), apply: s => s.fireInt *= 0.77 },
   { ico: "i-split", t: I18N.t("upg.streams.name"), d: I18N.t("upg.streams.desc"), apply: s => s.streams = Math.min(4, s.streams + 1), can: s => s.streams < 4 },
   { ico: "i-bomb", t: I18N.t("upg.damage.name"), d: I18N.t("upg.damage.desc"), apply: s => s.dmg += 1 },
-  { ico: "i-rocket", t: I18N.t("upg.speed.name"), d: I18N.t("upg.speed.desc"), apply: s => s.speed *= 1.18 },
   { ico: "i-heart", t: I18N.t("upg.hp.name"), d: I18N.t("upg.hp.desc"), apply: s => { s.maxHp += 1; s.hp = Math.min(s.maxHp, s.hp + 1); } },
   { ico: "i-pierce", t: I18N.t("upg.pierce.name"), d: I18N.t("upg.pierce.desc"), apply: s => s.pierce += 1 },
   { ico: "i-magnet", t: I18N.t("upg.magnet.name"), d: I18N.t("upg.magnet.desc"), apply: s => s.magnet *= 1.6 },
   { ico: "i-shield", t: I18N.t("upg.thorns.name"), d: I18N.t("upg.thorns.desc"), apply: s => s.thorns += 1 },
-  { ico: "i-gem", t: I18N.t("upg.greed.name"), d: I18N.t("upg.greed.desc"), apply: s => { s.xpPerGem = (s.xpPerGem || 0) + 1; } },
-  { ico: "i-bolt", t: I18N.t("upg.bulletspeed.name"), d: I18N.t("upg.bulletspeed.desc"), apply: s => s.bulletSpd *= 1.25 },
-  { ico: "i-clover", t: I18N.t("upg.luck.name"), d: I18N.t("upg.luck.desc"), apply: s => s.dropMul *= 1.5 },
   { ico: "i-snow", t: I18N.t("upg.ice.name"), d: I18N.t("upg.ice.desc"), apply: s => s.slow = 1.5 },
 ];
 /* M22: icon cho 6 nâng cấp v2 (sprite sẵn có trong game.html) + số slot draft bảo đảm */

@@ -598,13 +598,7 @@ const SatManager = (() => {
 
   function request(role, opts = {}) {
     if (SAT_MODE === "off") return null; // mechanic không trigger (caller spawn thường thay thế)
-    // M5–M10 websim (2026-10-06): quota chỉ đếm sat CÒN SỐNG. Sat đã dead vẫn nằm
-    // trong map tới 350ms (chờ hiệu ứng vỡ) — đếm cả nó khiến spawn mới fail câm:
-    // giant bị phá khi drone khiên còn sống → chỉ tách 1 minion; lovers merge khi
-    // còn sat khác → superlove request null, mất siêu-popup sau banner "BÙM!".
-    let live = 0;
-    for (const s of sats.values()) if (!s.dead) live++;
-    if (live + queue.length >= MAX_SATS) return null;
+    if (sats.size + queue.length >= MAX_SATS) return null;
     const o = Object.assign({ hp: 6, color: "#8b2fc9", label: I18N.t("sat.generic"), w: 340, h: 220 }, opts);
     const sat = { id: "sat" + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       role, hp: Math.max(1, o.hp | 0), maxHp: Math.max(1, o.hp | 0),
@@ -803,7 +797,6 @@ const SatManager = (() => {
   };
   /* vẽ cửa sổ mô phỏng (khung OS giả) */
   function drawSims() {
-    const t0 = performance.now(); // dùng chung cho pulse/vệt sáng, tránh gọi nhiều lần
     for (const s of sats.values()) {
       if (!s.sim || s.dead && s.shatterT <= 0) continue;
       if (s.role === "shield" && s.sim) { drawShieldDrone(s); continue; } // M3: drone khiên bay quanh tàu
@@ -840,22 +833,6 @@ const SatManager = (() => {
       ctx.beginPath(); roundRect(s.x, s.y + 26, s.sw, s.sh - 26, [0, 0, 8, 8]); ctx.clip();
       drawSimContent(s);
       ctx.restore();
-      // M9/M10 websim (2026-10-06): vẽ vùng hiệu lực quanh khung GIẢ.
-      // drawSatFields() bỏ qua sat sim nên trên web vùng gương 85px / hố đen 240px
-      // "tàng hình" — player không thấy để né/đừng bắn vào. Vẽ vòng đứt nét mờ
-      // cùng style với bản popup thật, không đổi balance.
-      if (!s.dead && (s.role === "mirror" || s.role === "blackhole")) {
-        const zR = s.role === "mirror" ? 85 : 240;
-        const zc = s.role === "mirror" ? "#67e8f9" : "#7c3aed";
-        const zp = 0.5 + 0.3 * Math.sin(t0 / 400);
-        ctx.save();
-        ctx.globalAlpha = 0.13 + zp * 0.08;
-        ctx.strokeStyle = zc; ctx.lineWidth = 2;
-        ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t0 / 60;
-        ctx.beginPath(); ctx.arc(s.x + s.sw / 2, s.y + s.sh / 2, zR, 0, Math.PI * 2); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
       // thanh HP (rework 2026-10-04: mảnh kính hiện HP của chính nó — destructible)
       const hpf = clamp(s.hp / s.maxHp, 0, 1);
       ctx.fillStyle = "#ffffff18"; ctx.fillRect(s.x + 10, s.y + s.sh - 12, s.sw - 20, 5);
@@ -2092,6 +2069,7 @@ function updateMirrors(dt) {
     if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
     const _ma = mirrorAnchor(sat); sat._mx = _ma.x; sat._my = _ma.y; // OPT: cache anchor 1 lần/frame cho mirrorReflect
     if (sat.sim) { // gương lững lờ trôi cho khó ngắm
+      sat.steerT = (sat.steerT || 0);
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 45; sat.vy = Math.sin(a) * 45; }
       bounceSimSat(sat, 1, dt);
     }
@@ -2189,26 +2167,12 @@ function updateBlackholes(dt) {
     // hút quái xung quanh (xoáy trôn ốc)
     // OPT: dist2 kiểm tra tầm trước — chỉ sqrt khi quái đã trong vùng hút
     const R2 = R * R;
-    // M9 websim (2026-10-06): không nhả (spit) NGAY trong vòng lặp hút — spitVacuum()
-    // push quái mới vào G.enemies đang được iterate → quái vừa nhả bị nuốt lại cùng
-    // frame, và trường hợp xấu lặp spit vô hạn treo game. Gom cờ, nhả sau vòng lặp.
-    let needSpit = false;
     for (const e of G.enemies) {
       if (e.dead || e.type === "boss") continue;
       const dx = p.x - e.x, dy = p.y - e.y, d2 = dx * dx + dy * dy;
       if (d2 < R2) {
         const d = Math.sqrt(d2);
-        if (d < 26) {
-          // M9 websim (2026-10-06): quái lọt đúng tâm (d ≤ 1) trước đây kẹt vĩnh viễn
-          // vì nhánh hút nằm trong `if (d > 1)` — đưa check nuốt ra ngoài để luôn nuốt.
-          e.dead = true; // nuốt: mất luôn, không điểm/kill
-          sat.swallowed.push(e.type);
-          burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
-          AudioEngine.sfx.slurp();
-          wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
-          addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
-          if (sat.swallowed.length >= 3) needSpit = true;
-        } else {
+        if (d > 1) {
           const pull = (1 - d / R) * 640;
           const inv = 1 / d;
           e.x += dx * inv * pull * dt;
@@ -2216,6 +2180,15 @@ function updateBlackholes(dt) {
           // xoáy tiếp tuyến cho vui mắt
           e.x += -dy * inv * pull * 0.45 * dt;
           e.y += dx * inv * pull * 0.45 * dt;
+          if (d < 26) {
+            e.dead = true; // nuốt: mất luôn, không điểm/kill
+            sat.swallowed.push(e.type);
+            burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+            AudioEngine.sfx.slurp();
+            wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
+            addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
+            if (sat.swallowed.length >= 3) spitVacuum(sat);
+          }
         }
       }
     }
@@ -2225,9 +2198,11 @@ function updateBlackholes(dt) {
     for (let i = G.gems.length - 1; i >= 0; i--) {
       const gm = G.gems[i];
       const gdx = p.x - gm.x, gdy = p.y - gm.y, gd = Math.hypot(gdx, gdy);
-      if (gd < R) {
+      if (gd < R && gd > 1) {
+        const pull = (1 - gd / R) * 480;
+        gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
+        gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
         if (gd < 26) {
-          // (2026-10-06) cùng fix kẹt tâm như quái ở trên: gem lọt đúng tâm luôn bị xử lý
           AudioEngine.sfx.slurp();
           if (hardVac) { // Khắc nghiệt: nuốt mất luôn
             G.gems.splice(i, 1);
@@ -2239,16 +2214,12 @@ function updateBlackholes(dt) {
             gm.vx = Math.cos(ga) * 420; gm.vy = Math.sin(ga) * 420;
             burst(gm.x, gm.y, 6, ["#7df9ff", "#ffffff"], 160);
           }
-        } else {
-          const pull = (1 - gd / R) * 480;
-          gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
-          gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
         }
       }
     }
     // nhả định kỳ mỗi 7s
     sat.spitT = (sat.spitT === undefined ? 7 : sat.spitT) - dt;
-    if (needSpit || sat.spitT <= 0) spitVacuum(sat);
+    if (sat.spitT <= 0) spitVacuum(sat);
     // khung giả lững lờ
     if (sat.sim) {
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 35; sat.vy = Math.sin(a) * 35; }
@@ -2659,17 +2630,19 @@ function burst(x, y, n, colors, spd = 260) {
   }
 }
 
-/* ---------------- nâng cấp (8 món — cắt từ 12 theo quyết định CEO 2026-10-06:
-   mỗi món còn lại phải đổi lối chơi thật; 4 món chỉ +chỉ số/kinh tế vô hình
-   (speed, bulletspeed, greed, luck) bị loại để giảm choice paralysis) ---------------- */
+/* ---------------- nâng cấp (12 món) ---------------- */
 const UPS = [
   { ico: "i-fire", t: I18N.t("upg.firerate.name"), d: I18N.t("upg.firerate.desc"), apply: s => s.fireInt *= 0.77 },
   { ico: "i-split", t: I18N.t("upg.streams.name"), d: I18N.t("upg.streams.desc"), apply: s => s.streams = Math.min(4, s.streams + 1), can: s => s.streams < 4 },
   { ico: "i-bomb", t: I18N.t("upg.damage.name"), d: I18N.t("upg.damage.desc"), apply: s => s.dmg += 1 },
+  { ico: "i-rocket", t: I18N.t("upg.speed.name"), d: I18N.t("upg.speed.desc"), apply: s => s.speed *= 1.18 },
   { ico: "i-heart", t: I18N.t("upg.hp.name"), d: I18N.t("upg.hp.desc"), apply: s => { s.maxHp += 1; s.hp = Math.min(s.maxHp, s.hp + 1); } },
   { ico: "i-pierce", t: I18N.t("upg.pierce.name"), d: I18N.t("upg.pierce.desc"), apply: s => s.pierce += 1 },
   { ico: "i-magnet", t: I18N.t("upg.magnet.name"), d: I18N.t("upg.magnet.desc"), apply: s => s.magnet *= 1.6 },
   { ico: "i-shield", t: I18N.t("upg.thorns.name"), d: I18N.t("upg.thorns.desc"), apply: s => s.thorns += 1 },
+  { ico: "i-gem", t: I18N.t("upg.greed.name"), d: I18N.t("upg.greed.desc"), apply: s => { s.xpPerGem = (s.xpPerGem || 0) + 1; } },
+  { ico: "i-bolt", t: I18N.t("upg.bulletspeed.name"), d: I18N.t("upg.bulletspeed.desc"), apply: s => s.bulletSpd *= 1.25 },
+  { ico: "i-clover", t: I18N.t("upg.luck.name"), d: I18N.t("upg.luck.desc"), apply: s => s.dropMul *= 1.5 },
   { ico: "i-snow", t: I18N.t("upg.ice.name"), d: I18N.t("upg.ice.desc"), apply: s => s.slow = 1.5 },
 ];
 /* M22: icon cho 6 nâng cấp v2 (sprite sẵn có trong game.html) + số slot draft bảo đảm */
@@ -5204,6 +5177,322 @@ function render(now) {
   }
 }
 
+/* =====================================================================
+   19-onboard.js — WAVE 0 ONBOARDING (scripted, ~60 giây)
+   FU-DEVER Game Studio · Game Design + Dev
+
+   VẤN ĐỀ (P0 retention): người mới chết wave 1-2 mà không hiểu vì sao.
+
+   THIẾT KẾ (CEO chốt): dạy đúng 1 câu duy nhất —
+   "Đừng để quái gặm hết cửa sổ. Bắn!" — qua CHƠI THỬ CÓ HƯỚNG DẪN,
+   không chữ dài, không menu nhiều lớp. Wave 0 scripted ~56s, 5 bước
+   (mỗi bước 1 micro-skill; id bước = key message onboard.<id>):
+     s0 "intro"  (8s):  hook 1 câu + spawn 1 chewer chậm ngay viền
+     s1 "chewer" (15s): chewer bám viền → highlight viền đỏ nhấp nháy;
+                        msg động: đã bám → s1 "đang gặm!", chưa → s2
+                        "bắn vào viền để hất văng" (micro-skill 1)
+     s3 "gem"    (12s): nhặt gem đầu tiên (micro-skill 2)
+     s4 "encore" (18s): 2 chewer — lặp lại bài học cho chắc
+     s5 "done"   (3s):  payoff → thả wave-break → engine tự startWave(1)
+
+   - Mỗi step qua SỚM khi người chơi làm đúng (hất văng/giết/nhặt gem),
+     timeout tự qua → tổng ≤ ~56s dù người chơi AFK.
+   - Quái scripted: chewer hp 3, speed ×0.5, gặm chậm; hết step là dọn
+     (không để gặm nát cửa sổ người mới).
+   - Bỏ qua: nút "Bỏ qua ▸" trong coach-mark bar, bất cứ lúc nào.
+   - Người cũ: localStorage wk_onboard_v1 → KHÔNG BAO GIỜ chạy lại.
+     ?onboard=1 ép chạy (QA/review), ?onboard=0 tắt hẳn.
+   - Tương thích tutorial 10-beat cũ (js/tutorial.js): chạy song song,
+     không đụng beat/timeout của nó; wave 0 giữ G.wave = 0 nên script
+     wave-1 của tutorial cũ không bị kích hoạt sớm.
+
+   ĐẤU NỐI (hook tối thiểu trong 18-boot.js):
+     loop():  if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }
+     boot():  if (window.Onboard) { try { Onboard.maybeStart(); } catch (e) {} }
+
+   API: window.Onboard = { maybeStart, tick, skip, isActive, isDone }
+   ===================================================================== */
+
+/* ---------- storage / query ---------- */
+var OB_KEY = "wk_onboard_v1";
+var OB_QS = (function () { try { return new URLSearchParams(location.search); } catch (e) { return null; } })();
+function obQs(name) { try { return OB_QS ? OB_QS.get(name) : null; } catch (e) { return null; } }
+function obLsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+function obLsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+
+/* ---------- i18n (fallback khi I18N chưa sẵn — vd test node) ---------- */
+var OB_FALLBACK = {
+  "onboard.skip":   { vi: "Bỏ qua ▸", en: "Skip ▸" },
+  "onboard.title":  { vi: "WAVE 0 — HƯỚNG DẪN", en: "WAVE 0 — TUTORIAL" },
+  "onboard.s0":     { vi: "Đừng để quái gặm hết cửa sổ. Bắn!", en: "Don't let them chew through the window. Shoot!" },
+  "onboard.s1":     { vi: "Quái tím bám viền — nó đang gặm cửa sổ!", en: "A purple monster latched on — it's chewing the window!" },
+  "onboard.s2":     { vi: "Bắn vào viền để hất nó văng ra!", en: "Shoot the edge to knock it off!" },
+  "onboard.s3":     { vi: "Nhặt mảnh kính — bay vào là tự nhặt!", en: "Grab the gem — just fly into it!" },
+  "onboard.s4":     { vi: "Lại nào — 2 con quái tím! Bắn vào viền!", en: "Again — 2 purple monsters! Shoot the edge!" },
+  "onboard.s5":     { vi: "Tuyệt! Sẵn sàng chiến đấu — WAVE 1!", en: "Great! Ready to fight — WAVE 1!" },
+  "onboard.knock":  { vi: "Bốp! Hất văng!", en: "Bonk! Knocked off!" },
+};
+function obLang() {
+  try {
+    if (typeof I18N !== "undefined" && I18N && typeof I18N.getLang === "function") {
+      return I18N.getLang() === "en" ? "en" : "vi";
+    }
+  } catch (e) {}
+  return "vi";
+}
+function obT(key) {
+  try {
+    if (typeof I18N !== "undefined" && I18N && typeof I18N.t === "function") {
+      var v = I18N.t(key);
+      if (v != null && v !== key) return v;
+    }
+  } catch (e) {}
+  var fb = OB_FALLBACK[key];
+  return fb ? fb[obLang()] : key;
+}
+
+/* ---------- DOM helpers (guard cho test node) ---------- */
+function obEl(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+function obShowOverlay() {
+  var bar = obEl("onboard-bar"); if (bar) bar.hidden = false;
+}
+function obHideOverlay() {
+  var bar = obEl("onboard-bar"); if (bar) bar.hidden = true;
+  var edge = obEl("onboard-edge"); if (edge) edge.style.display = "none";
+}
+function obSetMsg(stepId) {
+  var el = obEl("onboard-msg"); if (!el) return;
+  el.textContent = obT("onboard." + stepId);
+}
+
+/* ---------- state ---------- */
+/* id bước = key message onboard.<id>; s2 chỉ là biến thể msg của s1 (chưa bám viền) */
+var OB_STEPS = ["s0", "s1", "s3", "s4", "s5"];
+/* thời lượng tối đa mỗi bước (giây) — tổng 8+15+12+18+3 = 56s */
+var OB_DUR = { s0: 8, s1: 15, s3: 12, s4: 18, s5: 3 };
+var OB = {
+  active: false, done: false, step: 0, t: 0, stepT: 0,
+  spawned: [],        // quái chewer scripted của wave 0
+  knocked: 0,         // số lần hất văng trong step hiện tại
+  xp0: 0,             // xp lúc vào step gem
+  bannerShown: false,
+};
+
+/* ---------- spawn ---------- */
+function obSpawnChewer() {
+  var b = null;
+  try { b = bounds(); } catch (e) {}
+  if (!b) return null;
+  var edge = ["top", "bottom", "left", "right"][(Math.random() * 4) | 0];
+  var x, y;
+  if (edge === "top") { x = b.x + b.w * (0.3 + Math.random() * 0.4); y = b.y + 4; }
+  else if (edge === "bottom") { x = b.x + b.w * (0.3 + Math.random() * 0.4); y = b.y + b.h - 4; }
+  else if (edge === "left") { x = b.x + 4; y = b.y + b.h * (0.3 + Math.random() * 0.4); }
+  else { x = b.x + b.w - 4; y = b.y + b.h * (0.3 + Math.random() * 0.4); }
+  var e = null;
+  try { e = spawnEnemyAt("chewer", x, y); } catch (err) { e = null; }
+  if (e) {
+    e.speed *= 0.5;   // chậm một nửa — người mới kịp phản ứng
+    e.ob0 = true;     // đánh dấu quái scripted của wave 0
+    e._obLatch = null;
+    OB.spawned.push(e);
+  }
+  return e;
+}
+/* dọn quái scripted còn sót khi qua step / skip / finish — lặng lẽ, không thưởng */
+function obClearScripted(fun) {
+  try {
+    for (var i = 0; i < OB.spawned.length; i++) {
+      var e = OB.spawned[i];
+      if (e && !e.dead) {
+        e.dead = true;
+        if (fun) { try { burst(e.x, e.y, 10, ["#c084fc", "#ffffff"], 220); } catch (er) {} }
+      }
+    }
+  } catch (e) {}
+  OB.spawned.length = 0;
+}
+function obAliveSpawned() {
+  var n = 0;
+  try { for (var i = 0; i < OB.spawned.length; i++) if (OB.spawned[i] && !OB.spawned[i].dead) n++; } catch (e) {}
+  return n;
+}
+
+/* ---------- step machine ---------- */
+function obEnterStep(idx) {
+  OB.step = idx; OB.stepT = 0; OB.knocked = 0;
+  var id = OB_STEPS[idx];
+  /* dọn quái scripted còn sót — TRỪ khi vào s1 (giữ lại con chewer của s0
+     để làm bài học "bắn vào viền") */
+  if (id !== "s1") obClearScripted(false);
+  if (id === "s0") {
+    if (!OB.bannerShown) {
+      OB.bannerShown = true;
+      try { setBanner(obT("onboard.title"), ""); } catch (e) {}
+    }
+    obSpawnChewer();
+  } else if (id === "s3") {
+    /* vào bước gem: ghi nhận xp; nếu sân chưa có gem (vd quái bị timeout dọn),
+       thả 1 gem gần tàu để bài học luôn chạy được */
+    try { OB.xp0 = (typeof G !== "undefined" && G) ? (G.xp | 0) : 0; } catch (e) { OB.xp0 = 0; }
+    var needGem = true;
+    try { needGem = !(G && G.gems && G.gems.length); } catch (e) {}
+    if (needGem) {
+      try {
+        var b = bounds(), s = G.ship;
+        var gx = s ? s.x + 90 : b.x + b.w / 2, gy = s ? s.y : b.y + b.h / 2;
+        if (typeof window !== "undefined" && window.WKSpawnGems) window.WKSpawnGems(1, gx, gy);
+        else G.gems.push({ x: gx, y: gy, vx: 0, vy: -40, v: 1, t: 0 });
+      } catch (e) {}
+    }
+  } else if (id === "s4") {
+    obSpawnChewer(); obSpawnChewer();
+  }
+  /* msg step s1 động theo trạng thái bám viền (xem obUpdate) */
+  if (id !== "s1") obSetMsg(id);
+  else obSetMsg("s2");
+}
+/* kiểm tra hất văng: chewer từng bám viền (latched) mà giờ tuột ra nhưng còn sống */
+function obPollKnock() {
+  try {
+    for (var i = 0; i < OB.spawned.length; i++) {
+      var e = OB.spawned[i];
+      if (!e || e.dead) continue;
+      var was = e._obLatch || null, now = e.latched || null;
+      if (was && !now) {
+        OB.knocked++;
+        try { addFloat(e.x, e.y - 20, obT("onboard.knock"), "#c084fc", true); } catch (er) {}
+      }
+      e._obLatch = now;
+    }
+  } catch (e) {}
+}
+function obUpdate() {
+  var id = OB_STEPS[OB.step];
+  obPollKnock();
+  /* msg động step s1: đã bám viền → báo gặm; chưa → nhắc bắn vào viền */
+  if (id === "s1") {
+    var latched = false;
+    try { for (var i = 0; i < OB.spawned.length; i++) if (OB.spawned[i] && !OB.spawned[i].dead && OB.spawned[i].latched) { latched = true; break; } } catch (e) {}
+    obSetMsg(latched ? "s1" : "s2");
+  }
+  var advance = false;
+  if (id === "s1") {
+    /* qua khi hất văng hoặc giết được con chewer */
+    if (OB.knocked > 0 || obAliveSpawned() === 0) advance = true;
+  } else if (id === "s3") {
+    /* qua khi nhặt gem (xp tăng) */
+    try { if (G && (G.xp | 0) > OB.xp0) advance = true; } catch (e) {}
+  } else if (id === "s4") {
+    if (OB.knocked > 0 && obAliveSpawned() === 0) advance = true;
+    else if (obAliveSpawned() === 0 && OB.stepT > 2) advance = true; // giết sạch cả 2
+  }
+  /* s5 (payoff): KHÔNG qua ngay — hiện message đủ OB_DUR.s5 rồi mới finish
+     (timeout chung bên dưới lo việc này) */
+  if (!advance && OB.stepT >= OB_DUR[id]) advance = true; // timeout → tự qua
+  if (advance) {
+    if (OB.step + 1 >= OB_STEPS.length) { obFinish(false); return; }
+    obEnterStep(OB.step + 1);
+  }
+}
+
+/* ---------- highlight viền bị gặm ---------- */
+function obEdgeHighlight() {
+  var el = obEl("onboard-edge");
+  if (!el) return;
+  var edge = null;
+  try {
+    for (var i = 0; i < OB.spawned.length; i++) {
+      var e = OB.spawned[i];
+      if (e && !e.dead && e.latched) { edge = e.latched; break; }
+    }
+  } catch (er) {}
+  if (!edge || !OB.active) { el.style.display = "none"; return; }
+  var b = null;
+  try { b = bounds(); } catch (er) {}
+  if (!b) { el.style.display = "none"; return; }
+  var T = 12, css = "";
+  if (edge === "top") css = "left:" + b.x + "px;top:" + (b.y - T / 2) + "px;width:" + b.w + "px;height:" + T + "px;";
+  else if (edge === "bottom") css = "left:" + b.x + "px;top:" + (b.y + b.h - T / 2) + "px;width:" + b.w + "px;height:" + T + "px;";
+  else if (edge === "left") css = "left:" + (b.x - T / 2) + "px;top:" + b.y + "px;width:" + T + "px;height:" + b.h + "px;";
+  else css = "left:" + (b.x + b.w - T / 2) + "px;top:" + b.y + "px;width:" + T + "px;height:" + b.h + "px;";
+  el.style.cssText = "display:block;position:fixed;z-index:55;pointer-events:none;" + css;
+  el.style.display = "block"; // tường minh cho chắc (test stub không parse cssText)
+}
+
+/* ---------- public API ---------- */
+function obStartSteps() {
+  OB.active = true; OB.done = false; OB.step = 0; OB.t = 0; OB.stepT = 0;
+  OB.spawned.length = 0; OB.knocked = 0; OB.xp0 = 0; OB.bannerShown = false;
+  obShowOverlay();
+  obEnterStep(0);
+}
+function obMaybeStart() {
+  if (OB.active || OB.done) return;
+  try {
+    var q = obQs("onboard");
+    if (q === "0") return;                                     // ?onboard=0: tắt hẳn
+    if (q !== "1" && obLsGet(OB_KEY) === "1") return;           // người cũ: không ép chơi lại
+  } catch (e) {}
+  try {
+    if (typeof G === "undefined" || !G) return;
+    if (G.wave !== 0 || G.phase !== "play") return;             // chỉ chạy ở đầu run mới
+  } catch (e) { return; }
+  obStartSteps();
+}
+function obFinish(skipped) {
+  if (!OB.active) return;
+  OB.active = false; OB.done = true;
+  obLsSet(OB_KEY, "1");                                        // nhớ: đã học xong
+  obClearScripted(true);
+  obHideOverlay();
+  /* thả wave-break: engine tự gọi startWave(1) trong ~1s (kèm vá cửa sổ + hồi 1 HP) */
+  try {
+    if (typeof G !== "undefined" && G && G.wave === 0 && G.phase === "play" && G.waveBreak > 1.2) {
+      G.waveBreak = 1.2;
+    }
+  } catch (e) {}
+}
+function obSkip() {
+  if (!OB.active) return;
+  try { if (typeof AudioEngine !== "undefined" && AudioEngine && AudioEngine.sfx) AudioEngine.sfx.click(); } catch (e) {}
+  obFinish(true);
+}
+function obTick(dt) {
+  if (!OB.active) return;
+  var g = null;
+  try { g = (typeof G !== "undefined") ? G : null; } catch (e) {}
+  if (!g) return;
+  if (g.phase !== "play") return;                              // pause/draft/over → đóng băng
+  if (g.wave !== 0) { obFinish(false); return; }               // an toàn: đã sang wave khác
+  dt = Math.min(Math.max(dt || 0, 0), 0.25);
+  if (g.time < OB.t - 0.5) { obStartSteps(); return; }         // resetGame giữa chừng → chạy lại từ đầu
+  OB.t += dt; OB.stepT += dt;
+  /* giữ wave-break: không cho engine nổ startWave(1) khi đang học */
+  try { if (g.waveBreak < 2.0) g.waveBreak = 2.0; } catch (e) {}
+  obUpdate(dt);
+  obEdgeHighlight();
+}
+function obIsActive() { return !!OB.active; }
+function obIsDone() { return !!OB.done || obLsGet(OB_KEY) === "1"; }
+
+/* đấu nối DOM: nút Bỏ qua + đổi ngôn ngữ giữa chừng */
+try {
+  var _obSkipBtn = obEl("onboard-skip");
+  if (_obSkipBtn && _obSkipBtn.addEventListener) _obSkipBtn.addEventListener("click", function () { obSkip(); });
+} catch (e) {}
+try {
+  if (typeof window !== "undefined" && window.addEventListener) {
+    window.addEventListener("wk:lang", function () { if (OB.active) obSetMsg(OB_STEPS[OB.step]); });
+  }
+} catch (e) {}
+
+if (typeof window !== "undefined") {
+  window.Onboard = {
+    maybeStart: obMaybeStart, tick: obTick, skip: obSkip,
+    isActive: obIsActive, isDone: obIsDone, finish: obFinish,
+  };
+}
 /* ---------------- loop & boot ---------------- */
 // OPT: FPS monitor + adaptive quality tiers — hạ nấc khi máy yếu (js/quality.js).
 // Logic ngưỡng nằm trong WKQuality.onFpsSample: chỉ hạ khi < 35fps 2s liên tiếp
@@ -5233,6 +5522,8 @@ function loop(now) {
   if (G.phase === "play" && !cineLocked) update(dt);
   // v2.0: Tutorial / Bosses module / StageFX
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
+  // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0
+  if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }
   // WOW: FX clock — warning/materialize/death-anim/particles chạy kể cả khi pause
   if (window.Juice) { try { Juice.updateFx(rawDt); } catch (e) {} }
   // WOW: Cinema clock — banner/combo/boss cine/heartbeat/trail (tự đọc info.player)
@@ -5339,6 +5630,9 @@ window.WKDrawBossBar = function (d) {
 if (window.V2) { try { V2.preboot(); } catch (e) {} }
 resetGame();
 if (window.V2) { try { V2.boot({ profileId: PROFILE_ID, diffKey: DIFF_KEY }); } catch (e) {} }
+// WAVE 0 onboarding: người mới (chưa có flag wk_onboard_v1) → chạy wave 0
+// scripted thay vì vào wave 1 ngay; ?onboard=1 ép chạy, ?onboard=0 tắt.
+if (window.Onboard) { try { Onboard.maybeStart(); } catch (e) {} }
 // Phụ lục A node 9 — Trợ lý kỹ thuật: mở 1 draft ngay đầu run cho người đã mua
 if (window.V2 && V2.runMods && V2.runMods.freeUpgrade && G.phase === "play") {
   try { openDraft(); } catch (e) {}

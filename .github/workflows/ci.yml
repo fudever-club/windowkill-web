@@ -21,10 +21,15 @@ jobs:
       - name: Syntax check (node --check)
         run: |
           set -e
-          for f in js/*.js server/src/*.js scripts/*.js tests/*.test.js; do
+          for f in js/*.js js/game/*.js server/src/*.js scripts/*.js tests/*.test.js; do
             echo "check $f"
             node --check "$f"
           done
+
+      - name: game.js build freshness check (js/game/* → js/game.js)
+        # js/game.js là GENERATED từ js/game/*.js (scripts/build-game.js).
+        # Step này bắt trường hợp sửa source mà quên rebuild.
+        run: node scripts/build-game.js --check
 
       - name: SW cache version check (auto-stamp)
         # sw.js VERSION do máy stamp (scripts/bump-sw.js, via pre-commit hook).

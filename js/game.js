@@ -3,14 +3,14 @@
    Nguồn: js/game/*.js (thứ tự trong js/game/MANIFEST.txt).
    Sửa source rồi chạy: node scripts/build-game.js
    ===================================================================== */
+"use strict";
+(() => {
 /* =====================================================================
    WINDOWKILL: Web Edition — arena engine
    Twin-stick shooter trong popup. Cửa sổ popup CHÍNH LÀ máu:
    quái tím bám viền -> window.resizeTo() gặm nhỏ; đạn bắn vào viền ->
    window.moveBy() đẩy cửa sổ bay + hất văng quái bám.
    ===================================================================== */
-"use strict";
-(() => {
 /* Ẩn ảnh bị lỗi tải (thay cho inline onerror — tương thích CSP script-src 'self') */
 document.querySelectorAll("img[data-hide-onerror]").forEach(img => {
   img.addEventListener("error", () => { img.style.display = "none"; });

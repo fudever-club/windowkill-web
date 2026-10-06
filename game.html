@@ -39,6 +39,17 @@
   .menu-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
   .stat-line { color: #9db8d9; font-size: 15px; line-height: 2; }
   .stat-line b { color: #fde68a; }
+  /* WAVE 0 onboarding (19-onboard.js): coach-mark bar + highlight viền bị gặm */
+  #onboard-bar { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+    z-index: 56; display: flex; align-items: center; gap: 10px; background: #0d1626ee;
+    border: 1px solid #0080FF88; border-radius: 12px; padding: 8px 12px; font-size: 14px;
+    color: #eaf4ff; max-width: min(92vw, 560px); box-shadow: 0 8px 28px #000a; }
+  #onboard-bar[hidden] { display: none; }
+  #onboard-msg { line-height: 1.4; }
+  #onboard-skip { white-space: nowrap; min-height: 44px; }
+  #onboard-edge { display: none; position: fixed; z-index: 55; pointer-events: none; border-radius: 6px;
+    background: #ff3b5c; box-shadow: 0 0 18px 5px #ff3b5c99; animation: obEdgePulse 0.9s ease-in-out infinite; }
+  @keyframes obEdgePulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -260,6 +271,12 @@
 <div id="arena-wrap">
   <canvas id="game-canvas"></canvas>
   <canvas id="fx-shatter" aria-hidden="true"></canvas>
+  <!-- WAVE 0 onboarding (19-onboard.js): coach-mark + highlight viền bị gặm -->
+  <div id="onboard-bar" hidden>
+    <span id="onboard-msg" data-i18n="onboard.s0">Đừng để quái gặm hết cửa sổ. Bắn!</span>
+    <button id="onboard-skip" class="btn-ghost" data-i18n="onboard.skip">Bỏ qua ▸</button>
+  </div>
+  <div id="onboard-edge" aria-hidden="true"></div>
 
   <div class="overlay" id="ov-draft">
     <h2><svg class="ic" aria-hidden="true"><use href="#i-levelup"/></svg> <span data-i18n="draft.title">LÊN CẤP! Chọn 1 nâng cấp</span></h2>

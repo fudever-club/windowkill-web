@@ -710,6 +710,16 @@
       "juice.shard_float2": "+ Mảnh Kính",
       "juice.pickup_shield": "Khiên!",
       "juice.level_up": "LÊN CẤP {level}!", /* FIX 2026-10-04 "LÊN CẤP undefined!": banner qua i18n + guard số */
+      /* ----- onboard: wave 0 (60s scripted, 19-onboard.js) ----- */
+      "onboard.skip": "Bỏ qua ▸",
+      "onboard.title": "WAVE 0 — HƯỚNG DẪN",
+      "onboard.s0": "Đừng để quái gặm hết cửa sổ. Bắn!",
+      "onboard.s1": "Quái tím bám viền — nó đang gặm cửa sổ!",
+      "onboard.s2": "Bắn vào viền để hất nó văng ra!",
+      "onboard.s3": "Nhặt mảnh kính — bay vào là tự nhặt!",
+      "onboard.s4": "Lại nào — 2 con quái tím! Bắn vào viền!",
+      "onboard.s5": "Tuyệt! Sẵn sàng chiến đấu — WAVE 1!",
+      "onboard.knock": "Bốp! Hất văng!",
     },
     en: {
       /* ----- 8 draft upgrades (cắt từ 12 — CEO 2026-10-06) ----- */
@@ -1022,6 +1032,16 @@
       "juice.shard_float2": "+ glass shards",
       "juice.pickup_shield": "Shield!",
       "juice.level_up": "LEVEL UP {level}!", /* FIX 2026-10-04 "LEVEL UP undefined!": banner via i18n + numeric guard */
+      /* ----- onboard: wave 0 (60s scripted, 19-onboard.js) ----- */
+      "onboard.skip": "Skip ▸",
+      "onboard.title": "WAVE 0 — TUTORIAL",
+      "onboard.s0": "Don't let them chew through the window. Shoot!",
+      "onboard.s1": "A purple monster latched on — it's chewing the window!",
+      "onboard.s2": "Shoot the edge to knock it off!",
+      "onboard.s3": "Grab the gem — just fly into it!",
+      "onboard.s4": "Again — 2 purple monsters! Shoot the edge!",
+      "onboard.s5": "Great! Ready to fight — WAVE 1!",
+      "onboard.knock": "Bonk! Knocked off!",
     }
   };
 

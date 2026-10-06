@@ -27,6 +27,8 @@ function loop(now) {
   if (G.phase === "play" && !cineLocked) update(dt);
   // v2.0: Tutorial / Bosses module / StageFX
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
+  // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0
+  if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }
   // WOW: FX clock — warning/materialize/death-anim/particles chạy kể cả khi pause
   if (window.Juice) { try { Juice.updateFx(rawDt); } catch (e) {} }
   // WOW: Cinema clock — banner/combo/boss cine/heartbeat/trail (tự đọc info.player)
@@ -133,6 +135,9 @@ window.WKDrawBossBar = function (d) {
 if (window.V2) { try { V2.preboot(); } catch (e) {} }
 resetGame();
 if (window.V2) { try { V2.boot({ profileId: PROFILE_ID, diffKey: DIFF_KEY }); } catch (e) {} }
+// WAVE 0 onboarding: người mới (chưa có flag wk_onboard_v1) → chạy wave 0
+// scripted thay vì vào wave 1 ngay; ?onboard=1 ép chạy, ?onboard=0 tắt.
+if (window.Onboard) { try { Onboard.maybeStart(); } catch (e) {} }
 // Phụ lục A node 9 — Trợ lý kỹ thuật: mở 1 draft ngay đầu run cho người đã mua
 if (window.V2 && V2.runMods && V2.runMods.freeUpgrade && G.phase === "play") {
   try { openDraft(); } catch (e) {}

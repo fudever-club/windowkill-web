@@ -124,12 +124,7 @@ function die(reason) {
   windowJitter(30); jxShake(12, 700, 10); // WOW tier: boss chết / player die
   if (bus) bus.postMessage({ type: "gameover", profileId: PROFILE_ID, score: G.score, wave: G.wave, act: G.act,
     kills: G.kills, time: Math.round(G.time), timeSec: Math.round(G.time), diff: DIFF_KEY, reason: reasonTxt });
-  // Sprint Round 2 telemetry: nguyên nhân chết (map reason -> enum), phục vụ histogram wave game-over
-  try {
-    if (window.WKAnalytics && typeof window.WKAnalytics.trackDeathCause === "function")
-      window.WKAnalytics.trackDeathCause(window.WKAnalytics.mapDeathCause(reason),
-        { wave: G.wave, score: G.score, difficulty: DIFF_KEY });
-  } catch (e) {}
+  try { Telemetry.log("death", { reason, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} // telemetry FUN: nguyên nhân chết (map reason→cause trong module)
   $("over-title").textContent = reasonTxt;
   $("over-score").textContent = I18N.t("gameover.score_line", { score: I18N.fmtNum(G.score), wave: G.wave });
   $("over-stats").innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-skull"/></svg> ` + I18N.t("gameover.stats", { kills: `<b>${G.kills}</b>`, level: `<b>${G.level}</b>`, time: `<b>${Math.round(G.time)}s</b>`, diff: `<b>${DIFF.label}</b>` });
@@ -229,7 +224,7 @@ $("btn-resume").onclick = () => { AudioEngine.sfx.click(); pauseGame(false); };
 // FIX 2026-10-05 (user báo nút home liệt trên mobile): window.close() chỉ đóng
 // được tab do script mở — browser chặn với tab thường → bấm không có tác dụng.
 // "Về menu" phải về launcher (index.html), không phải đóng tab.
-function quitToMenu() { location.href = "index.html"; }
+function quitToMenu() { try { Telemetry.log("wave_quit", { phase: G.phase, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} location.href = "index.html"; } // telemetry FUN: wave quit (module tự bỏ khi phase==="over" — đã chết thì death đã log)
 window.quitToMenu = quitToMenu;
 $("btn-quit").onclick = quitToMenu;
 $("btn-quit2").onclick = quitToMenu;

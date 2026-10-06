@@ -33,11 +33,7 @@ function applyDraftPick(u) {
   const res = u.apply(G.ship);
   if (u._u2 && res === null) return; // món v2 bị khóa/trùng tại thời điểm áp → không tính đã nhận
   noteUpgradeTaken(u._draftId || u.t || u.ico);
-  // Sprint Round 2 telemetry: upgrade đã chọn trong draft (không ảnh hưởng gameplay)
-  try {
-    if (window.WKAnalytics && typeof window.WKAnalytics.trackUpgradeChosen === "function")
-      window.WKAnalytics.trackUpgradeChosen(u._draftId || u.t || u.ico, { wave: G.wave, level: G.level });
-  } catch (e) {}
+  try { Telemetry.log("upgrade_chosen", { upgrade_id: u._draftId || u.t || u.ico, wave: G.wave, level: G.level }); } catch (e) {} // telemetry FUN: pick-rate draft (local-first, fail-silent)
 }
 function openDraft() {
   G.phase = "draft";

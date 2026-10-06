@@ -17,4 +17,5 @@
 16-update.js
 17-render.js
 19-onboard.js
+20-telemetry.js
 18-boot.js

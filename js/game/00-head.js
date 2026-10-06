@@ -4,8 +4,6 @@
    quái tím bám viền -> window.resizeTo() gặm nhỏ; đạn bắn vào viền ->
    window.moveBy() đẩy cửa sổ bay + hất văng quái bám.
    ===================================================================== */
-"use strict";
-(() => {
 /* Ẩn ảnh bị lỗi tải (thay cho inline onerror — tương thích CSP script-src 'self') */
 document.querySelectorAll("img[data-hide-onerror]").forEach(img => {
   img.addEventListener("error", () => { img.style.display = "none"; });

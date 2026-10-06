@@ -139,4 +139,3 @@ if (window.V2 && V2.runMods && V2.runMods.freeUpgrade && G.phase === "play") {
 }
 if (bus) bus.postMessage({ type: "arena-open" });
 requestAnimationFrame(loop);
-})();

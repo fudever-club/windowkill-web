@@ -598,13 +598,7 @@ const SatManager = (() => {
 
   function request(role, opts = {}) {
     if (SAT_MODE === "off") return null; // mechanic không trigger (caller spawn thường thay thế)
-    // M5–M10 websim (2026-10-06): quota chỉ đếm sat CÒN SỐNG. Sat đã dead vẫn nằm
-    // trong map tới 350ms (chờ hiệu ứng vỡ) — đếm cả nó khiến spawn mới fail câm:
-    // giant bị phá khi drone khiên còn sống → chỉ tách 1 minion; lovers merge khi
-    // còn sat khác → superlove request null, mất siêu-popup sau banner "BÙM!".
-    let live = 0;
-    for (const s of sats.values()) if (!s.dead) live++;
-    if (live + queue.length >= MAX_SATS) return null;
+    if (sats.size + queue.length >= MAX_SATS) return null;
     const o = Object.assign({ hp: 6, color: "#8b2fc9", label: I18N.t("sat.generic"), w: 340, h: 220 }, opts);
     const sat = { id: "sat" + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       role, hp: Math.max(1, o.hp | 0), maxHp: Math.max(1, o.hp | 0),
@@ -803,7 +797,6 @@ const SatManager = (() => {
   };
   /* vẽ cửa sổ mô phỏng (khung OS giả) */
   function drawSims() {
-    const t0 = performance.now(); // dùng chung cho pulse/vệt sáng, tránh gọi nhiều lần
     for (const s of sats.values()) {
       if (!s.sim || s.dead && s.shatterT <= 0) continue;
       if (s.role === "shield" && s.sim) { drawShieldDrone(s); continue; } // M3: drone khiên bay quanh tàu
@@ -840,22 +833,6 @@ const SatManager = (() => {
       ctx.beginPath(); roundRect(s.x, s.y + 26, s.sw, s.sh - 26, [0, 0, 8, 8]); ctx.clip();
       drawSimContent(s);
       ctx.restore();
-      // M9/M10 websim (2026-10-06): vẽ vùng hiệu lực quanh khung GIẢ.
-      // drawSatFields() bỏ qua sat sim nên trên web vùng gương 85px / hố đen 240px
-      // "tàng hình" — player không thấy để né/đừng bắn vào. Vẽ vòng đứt nét mờ
-      // cùng style với bản popup thật, không đổi balance.
-      if (!s.dead && (s.role === "mirror" || s.role === "blackhole")) {
-        const zR = s.role === "mirror" ? 85 : 240;
-        const zc = s.role === "mirror" ? "#67e8f9" : "#7c3aed";
-        const zp = 0.5 + 0.3 * Math.sin(t0 / 400);
-        ctx.save();
-        ctx.globalAlpha = 0.13 + zp * 0.08;
-        ctx.strokeStyle = zc; ctx.lineWidth = 2;
-        ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t0 / 60;
-        ctx.beginPath(); ctx.arc(s.x + s.sw / 2, s.y + s.sh / 2, zR, 0, Math.PI * 2); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
       // thanh HP (rework 2026-10-04: mảnh kính hiện HP của chính nó — destructible)
       const hpf = clamp(s.hp / s.maxHp, 0, 1);
       ctx.fillStyle = "#ffffff18"; ctx.fillRect(s.x + 10, s.y + s.sh - 12, s.sw - 20, 5);
@@ -2092,6 +2069,7 @@ function updateMirrors(dt) {
     if (performance.now() - sat.born > 40000) { SatManager.kill(sat.id, "timeout"); continue; }
     const _ma = mirrorAnchor(sat); sat._mx = _ma.x; sat._my = _ma.y; // OPT: cache anchor 1 lần/frame cho mirrorReflect
     if (sat.sim) { // gương lững lờ trôi cho khó ngắm
+      sat.steerT = (sat.steerT || 0);
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 45; sat.vy = Math.sin(a) * 45; }
       bounceSimSat(sat, 1, dt);
     }
@@ -2189,26 +2167,12 @@ function updateBlackholes(dt) {
     // hút quái xung quanh (xoáy trôn ốc)
     // OPT: dist2 kiểm tra tầm trước — chỉ sqrt khi quái đã trong vùng hút
     const R2 = R * R;
-    // M9 websim (2026-10-06): không nhả (spit) NGAY trong vòng lặp hút — spitVacuum()
-    // push quái mới vào G.enemies đang được iterate → quái vừa nhả bị nuốt lại cùng
-    // frame, và trường hợp xấu lặp spit vô hạn treo game. Gom cờ, nhả sau vòng lặp.
-    let needSpit = false;
     for (const e of G.enemies) {
       if (e.dead || e.type === "boss") continue;
       const dx = p.x - e.x, dy = p.y - e.y, d2 = dx * dx + dy * dy;
       if (d2 < R2) {
         const d = Math.sqrt(d2);
-        if (d < 26) {
-          // M9 websim (2026-10-06): quái lọt đúng tâm (d ≤ 1) trước đây kẹt vĩnh viễn
-          // vì nhánh hút nằm trong `if (d > 1)` — đưa check nuốt ra ngoài để luôn nuốt.
-          e.dead = true; // nuốt: mất luôn, không điểm/kill
-          sat.swallowed.push(e.type);
-          burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
-          AudioEngine.sfx.slurp();
-          wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
-          addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
-          if (sat.swallowed.length >= 3) needSpit = true;
-        } else {
+        if (d > 1) {
           const pull = (1 - d / R) * 640;
           const inv = 1 / d;
           e.x += dx * inv * pull * dt;
@@ -2216,6 +2180,15 @@ function updateBlackholes(dt) {
           // xoáy tiếp tuyến cho vui mắt
           e.x += -dy * inv * pull * 0.45 * dt;
           e.y += dx * inv * pull * 0.45 * dt;
+          if (d < 26) {
+            e.dead = true; // nuốt: mất luôn, không điểm/kill
+            sat.swallowed.push(e.type);
+            burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
+            AudioEngine.sfx.slurp();
+            wkBuzz([30, 25, 30]); // HAPTIC (feat/mobile-quality): bị hố đen hút
+            addFloat(p.x + rand(-20, 20), p.y - 24, I18N.t("sat.vacuum_suck"), "#c084fc");
+            if (sat.swallowed.length >= 3) spitVacuum(sat);
+          }
         }
       }
     }
@@ -2225,9 +2198,11 @@ function updateBlackholes(dt) {
     for (let i = G.gems.length - 1; i >= 0; i--) {
       const gm = G.gems[i];
       const gdx = p.x - gm.x, gdy = p.y - gm.y, gd = Math.hypot(gdx, gdy);
-      if (gd < R) {
+      if (gd < R && gd > 1) {
+        const pull = (1 - gd / R) * 480;
+        gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
+        gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
         if (gd < 26) {
-          // (2026-10-06) cùng fix kẹt tâm như quái ở trên: gem lọt đúng tâm luôn bị xử lý
           AudioEngine.sfx.slurp();
           if (hardVac) { // Khắc nghiệt: nuốt mất luôn
             G.gems.splice(i, 1);
@@ -2239,16 +2214,12 @@ function updateBlackholes(dt) {
             gm.vx = Math.cos(ga) * 420; gm.vy = Math.sin(ga) * 420;
             burst(gm.x, gm.y, 6, ["#7df9ff", "#ffffff"], 160);
           }
-        } else {
-          const pull = (1 - gd / R) * 480;
-          gm.x += gdx / gd * pull * dt; gm.y += gdy / gd * pull * dt;
-          gm.x += -gdy / gd * pull * 0.45 * dt; gm.y += gdx / gd * pull * 0.45 * dt; // xoáy trôn ốc
         }
       }
     }
     // nhả định kỳ mỗi 7s
     sat.spitT = (sat.spitT === undefined ? 7 : sat.spitT) - dt;
-    if (needSpit || sat.spitT <= 0) spitVacuum(sat);
+    if (sat.spitT <= 0) spitVacuum(sat);
     // khung giả lững lờ
     if (sat.sim) {
       if (!sat.vx) { const a = Math.random() * Math.PI * 2; sat.vx = Math.cos(a) * 35; sat.vy = Math.sin(a) * 35; }
@@ -2694,11 +2665,7 @@ function applyDraftPick(u) {
   const res = u.apply(G.ship);
   if (u._u2 && res === null) return; // món v2 bị khóa/trùng tại thời điểm áp → không tính đã nhận
   noteUpgradeTaken(u._draftId || u.t || u.ico);
-  // Sprint Round 2 telemetry: upgrade đã chọn trong draft (không ảnh hưởng gameplay)
-  try {
-    if (window.WKAnalytics && typeof window.WKAnalytics.trackUpgradeChosen === "function")
-      window.WKAnalytics.trackUpgradeChosen(u._draftId || u.t || u.ico, { wave: G.wave, level: G.level });
-  } catch (e) {}
+  try { Telemetry.log("upgrade_chosen", { upgrade_id: u._draftId || u.t || u.ico, wave: G.wave, level: G.level }); } catch (e) {} // telemetry FUN: pick-rate draft (local-first, fail-silent)
 }
 function openDraft() {
   G.phase = "draft";
@@ -3879,12 +3846,7 @@ function die(reason) {
   windowJitter(30); jxShake(12, 700, 10); // WOW tier: boss chết / player die
   if (bus) bus.postMessage({ type: "gameover", profileId: PROFILE_ID, score: G.score, wave: G.wave, act: G.act,
     kills: G.kills, time: Math.round(G.time), timeSec: Math.round(G.time), diff: DIFF_KEY, reason: reasonTxt });
-  // Sprint Round 2 telemetry: nguyên nhân chết (map reason -> enum), phục vụ histogram wave game-over
-  try {
-    if (window.WKAnalytics && typeof window.WKAnalytics.trackDeathCause === "function")
-      window.WKAnalytics.trackDeathCause(window.WKAnalytics.mapDeathCause(reason),
-        { wave: G.wave, score: G.score, difficulty: DIFF_KEY });
-  } catch (e) {}
+  try { Telemetry.log("death", { reason, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} // telemetry FUN: nguyên nhân chết (map reason→cause trong module)
   $("over-title").textContent = reasonTxt;
   $("over-score").textContent = I18N.t("gameover.score_line", { score: I18N.fmtNum(G.score), wave: G.wave });
   $("over-stats").innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-skull"/></svg> ` + I18N.t("gameover.stats", { kills: `<b>${G.kills}</b>`, level: `<b>${G.level}</b>`, time: `<b>${Math.round(G.time)}s</b>`, diff: `<b>${DIFF.label}</b>` });
@@ -3984,7 +3946,7 @@ $("btn-resume").onclick = () => { AudioEngine.sfx.click(); pauseGame(false); };
 // FIX 2026-10-05 (user báo nút home liệt trên mobile): window.close() chỉ đóng
 // được tab do script mở — browser chặn với tab thường → bấm không có tác dụng.
 // "Về menu" phải về launcher (index.html), không phải đóng tab.
-function quitToMenu() { location.href = "index.html"; }
+function quitToMenu() { try { Telemetry.log("wave_quit", { phase: G.phase, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} location.href = "index.html"; } // telemetry FUN: wave quit (module tự bỏ khi phase==="over" — đã chết thì death đã log)
 window.quitToMenu = quitToMenu;
 $("btn-quit").onclick = quitToMenu;
 $("btn-quit2").onclick = quitToMenu;
@@ -5520,6 +5482,254 @@ if (typeof window !== "undefined") {
     isActive: obIsActive, isDone: obIsDone, finish: obFinish,
   };
 }
+/* WINDOWKILL — Telemetry "FUN" tối thiểu (local-first, ẩn danh).
+ *
+ * Vấn đề: pick-rate upgrade, wave quit, nguyên nhân chết đang mù → mọi quyết
+ * định balance là cảm tính. Module này là chokepoint duy nhất: game code chỉ
+ * gọi Telemetry.log(...) (1 dòng/hook), mọi chuyện còn lại ở đây.
+ *
+ * =====================================================================
+ * SCHEMA EVENT (v1) — 3 loại tối thiểu:
+ *
+ * 1. "upgrade_chosen" — draft pick-rate (cái nào được chọn + wave).
+ *    fields: upgrade_id (string, sanitize về [A-Za-z0-9_-]{1,64} theo server),
+ *            wave (int), level (int).
+ *    upload: POST /api/events type "upgrade_chosen" (đã có từ Sprint R2).
+ *
+ * 2. "wave_quit" — người chơi thoát giữa run (pause → "Về menu"), ở wave mấy.
+ *    fields: wave, score, kills, duration_s, difficulty, level.
+ *    upload: server CHƯA có type riêng → map sang POST /api/events type
+ *            "game_over" (score/wave/difficulty/duration_s đều hợp lệ).
+ *            Dashboard suy ra quit = game_over KHÔNG kèm death_cause cùng run
+ *            (die() luôn gửi kèm death_cause; quit thì không).
+ *            Follow-up đề xuất: thêm type "wave_quit" vào server/src/validate.js
+ *            + deploy backend, rồi bỏ mapping này.
+ *
+ * 3. "death" — game over + nguyên nhân chết.
+ *    fields: cause ∈ {"enemy","window","unknown"}, wave, score, kills,
+ *            duration_s, difficulty, level.
+ *    cause mapping: die("window") → "window"  (gặm viền: arena bị quái gặm vỡ);
+ *                   die("ship")   → "enemy"   (hết máu: đạn/quái/boss/kamikaze);
+ *                   khác          → "unknown".
+ *    upload: POST /api/events type "death_cause" (đã có từ Sprint R2).
+ *    Lưu ý: hurtShip(dmg,x,y) hiện KHÔNG truyền killer info nên chưa tách được
+ *    đạn quái / boss / kamikaze — server đã chừa sẵn enum "boss","kamikaze",
+ *    "chewer" cho instrumentation sâu hơn (follow-up: thread killer qua
+ *    hurtShip → die(reason)).
+ *
+ * Mọi event đều gắn: sid (session id NGẪU NHIÊN mỗi lần load trang —
+ * crypto.getRandomValues, không liên quan profile), ts (ms), v (schema v1).
+ * TUYỆT ĐỐI KHÔNG thu thập: tên, email, device fingerprint, profile id thô.
+ * (Server còn strip mọi field lạ — chỉ field trong whitelist mới tới DB.)
+ * =====================================================================
+ *
+ * Kiến trúc local-first:
+ *   log() → check consent → validate/normalize → queue (memory) →
+ *   persist localStorage (throttle 5s, cap 200 event) →
+ *   forward sang window.WKAnalytics (pipeline sẵn có: batch 15s + sendBeacon
+ *   → /api/events, fail-silent).
+ * - Mất mạng / WKAnalytics chưa sẵn sàng: event nằm lại localStorage, retry ở
+ *   flush sau (30s) / lần load trang sau. KHÔNG crash game — log() không bao
+ *   giờ throw (mọi thứ bọc try/catch, fail-silent).
+ * - Tôn trọng setting analytics hiện có: CHỈ log khi
+ *   window.WKAnalytics.isEnabled() (1 chokepoint — tôn trọng DNT + toggle
+ *   "Thống kê ẩn danh" (localStorage wk_analytics) + portal mode). Tắt là
+ *   không log, không persist, queue cũ bị dọn.
+ * - Perf: không chạy per-frame; localStorage write throttle; queue cap;
+ *   upload dùng sendBeacon/keepalive của pipeline sẵn có.
+ *
+ * API: Telemetry.log(type, data) -> true (đã nhận) / false (bỏ qua).
+ *      Telemetry.flush() — ép handoff batch đang chờ (dùng cho pagehide/test).
+ *      window.WKTelemetry — tham chiếu debug/test.
+ */
+const Telemetry = (() => {
+  const LS_KEY = "wk_telemetry_v1";
+  const SCHEMA_V = 1;
+  const MAX_QUEUE = 200;          // chặn localStorage phình
+  const PERSIST_THROTTLE_MS = 5000;
+  const FLUSH_INTERVAL_MS = 30000;
+  const DIFFS = ["chill", "normal", "hard"];
+
+  let sid = null;                 // session id ngẫu nhiên, 1 lần/load trang
+  let queue = [];                 // event chờ handoff (mirror của localStorage)
+  let lastPersist = 0;
+  let persistTimer = 0;
+  let flushTimer = 0;
+
+  function getSid() {
+    if (sid) return sid;
+    try {
+      const b = new Uint8Array(8);
+      if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+        window.crypto.getRandomValues(b);
+      } else {
+        for (let i = 0; i < 8; i++) b[i] = Math.floor(Math.random() * 256);
+      }
+      sid = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+    } catch (e) {
+      sid = "rnd" + Math.floor(Math.random() * 1e12).toString(36);
+    }
+    return sid;
+  }
+
+  /* Consent: 1 chokepoint duy nhất — tái dùng logic sẵn có của js/analytics.js
+   * (DNT + toggle wk_analytics + portal mode). Không có pipeline → fail-closed
+   * (không log) để không bao giờ ghi lén khi user đã tắt. */
+  function enabled() {
+    try {
+      const A = window.WKAnalytics;
+      if (A && typeof A.isEnabled === "function") return !!A.isEnabled();
+    } catch (e) {}
+    return false;
+  }
+
+  const int0 = (v) => {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) ? Math.max(0, n) : 0;
+  };
+  const level1 = (v) => Math.max(1, int0(v) || 1);
+  const diffOf = (v) => (DIFFS.indexOf(v) >= 0 ? v : "normal");
+  /* sanitize đúng pattern server [A-Za-z0-9_-]{1,64} (copy từ js/analytics.js) */
+  const sanitizeId = (v) => String(v == null ? "" : v)
+    .replace(/[^A-Za-z0-9_-]/g, "-").replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 64);
+
+  /* die(reason) -> cause enum (khớp server/src/validate.js DEATH_CAUSES) */
+  function mapCause(reason) {
+    if (reason === "window") return "window"; // gặm viền: arena bị gặm vỡ
+    if (reason === "ship") return "enemy";    // hết máu
+    return "unknown";
+  }
+
+  /* Validate + normalize theo schema v1. Trả null = event không hợp lệ → bỏ. */
+  function normalize(type, data) {
+    const d = (data && typeof data === "object") ? data : {};
+    const base = { v: SCHEMA_V, sid: getSid(), ts: Date.now() };
+    if (type === "upgrade_chosen") {
+      const id = sanitizeId(d.upgrade_id);
+      if (!id) return null;
+      return { type, ...base, upgrade_id: id, wave: int0(d.wave), level: level1(d.level) };
+    }
+    if (type === "wave_quit") {
+      if (d.phase === "over") return null; // đã chết → death đã log, tránh double-count
+      return { type, ...base,
+        wave: int0(d.wave), score: int0(d.score), kills: int0(d.kills),
+        duration_s: int0(d.duration_s), difficulty: diffOf(d.difficulty), level: level1(d.level) };
+    }
+    if (type === "death") {
+      return { type, ...base, cause: mapCause(d.reason),
+        wave: int0(d.wave), score: int0(d.score), kills: int0(d.kills),
+        duration_s: int0(d.duration_s), difficulty: diffOf(d.difficulty), level: level1(d.level) };
+    }
+    return null; // type lạ → bỏ, không bao giờ gửi rác lên server
+  }
+
+  /* Handoff 1 event sang pipeline upload sẵn có (js/analytics.js → /api/events).
+   * Chỉ dùng type trong whitelist server — 1 event xấu reject cả batch nên
+   * KHÔNG bao giờ forward type lạ. Trả true = đã handoff. */
+  function forward(ev) {
+    try {
+      const A = window.WKAnalytics;
+      if (!A || typeof A.isEnabled !== "function" || !A.isEnabled()) return false;
+      if (ev.type === "upgrade_chosen" && typeof A.trackUpgradeChosen === "function") {
+        A.trackUpgradeChosen(ev.upgrade_id, { wave: ev.wave, level: ev.level });
+        return true;
+      }
+      if (ev.type === "death" && typeof A.trackDeathCause === "function") {
+        A.trackDeathCause(ev.cause, { wave: ev.wave, score: ev.score, difficulty: ev.difficulty });
+        return true;
+      }
+      if (ev.type === "wave_quit" && typeof A.track === "function") {
+        // server chưa có "wave_quit" → map sang "game_over" (xem schema trên đầu file)
+        A.track("game_over", { score: ev.score, wave: ev.wave,
+          difficulty: ev.difficulty, duration_s: ev.duration_s });
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function persistNow() {
+    lastPersist = Date.now();
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(queue.slice(-MAX_QUEUE)));
+    } catch (e) {} // quota đầy / private mode → bỏ qua, memory queue vẫn chạy
+  }
+
+  function persistThrottled() {
+    const now = Date.now();
+    if (now - lastPersist >= PERSIST_THROTTLE_MS) { persistNow(); return; }
+    if (!persistTimer) {
+      try {
+        persistTimer = setTimeout(() => { persistTimer = 0; persistNow(); }, PERSIST_THROTTLE_MS);
+      } catch (e) {}
+    }
+  }
+
+  function rehydrate() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) queue = arr.filter((e) => e && typeof e.type === "string").slice(-MAX_QUEUE);
+    } catch (e) { queue = []; }
+  }
+
+  /* Ép handoff toàn bộ queue đang chờ. Event chưa handoff được giữ lại
+   * localStorage để retry — không mất khi mất mạng. */
+  function flush() {
+    flushTimer = 0;
+    if (!queue.length) return;
+    try {
+      if (!enabled()) { queue = []; persistNow(); return; } // user vừa tắt → dọn
+      // local-first: offline thì giữ nguyên trong localStorage, retry sau —
+      // onLine=false chắc chắn mất mạng; true thì để pipeline beacon tự xử lý
+      try { if (typeof navigator !== "undefined" && navigator && navigator.onLine === false) { persistNow(); return; } } catch (e) {}
+      const rest = [];
+      for (const ev of queue) { if (!forward(ev)) rest.push(ev); }
+      queue = rest.slice(-MAX_QUEUE);
+      persistNow();
+    } catch (e) {}
+  }
+
+  function scheduleFlush(ms) {
+    if (flushTimer) return;
+    try { flushTimer = setTimeout(flush, Math.max(0, ms | 0)); } catch (e) {}
+  }
+
+  /* Entry point duy nhất cho game code. Không bao giờ throw. */
+  function log(type, data) {
+    try {
+      if (!enabled()) return false;
+      const ev = normalize(type, data);
+      if (!ev) return false;
+      queue.push(ev);
+      if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+      persistThrottled();
+      scheduleFlush(1000); // handoff nhanh cho pipeline, không đợi batch 15s
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* init: nhặt event còn sót từ session trước (tắt trang khi mất mạng) */
+  try {
+    rehydrate();
+    scheduleFlush(2000);
+    if (typeof setInterval === "function") setInterval(flush, FLUSH_INTERVAL_MS);
+    if (typeof document !== "undefined" && document && typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", () => { try { if (document.hidden) flush(); } catch (e) {} });
+    }
+    if (typeof window !== "undefined" && window && typeof window.addEventListener === "function") {
+      window.addEventListener("pagehide", flush);
+    }
+  } catch (e) {}
+
+  const api = { log, flush, ready: true,
+    /* test/debug hooks (không dùng trong game): */
+    _queue: () => queue.slice(), _lsKey: LS_KEY, _mapCause: mapCause };
+  try { window.WKTelemetry = api; } catch (e) {}
+  return api;
+})();
 /* ---------------- loop & boot ---------------- */
 // OPT: FPS monitor + adaptive quality tiers — hạ nấc khi máy yếu (js/quality.js).
 // Logic ngưỡng nằm trong WKQuality.onFpsSample: chỉ hạ khi < 35fps 2s liên tiếp
@@ -5549,8 +5759,6 @@ function loop(now) {
   if (G.phase === "play" && !cineLocked) update(dt);
   // v2.0: Tutorial / Bosses module / StageFX
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
-  // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0
-  if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }
   // WOW: FX clock — warning/materialize/death-anim/particles chạy kể cả khi pause
   if (window.Juice) { try { Juice.updateFx(rawDt); } catch (e) {} }
   // WOW: Cinema clock — banner/combo/boss cine/heartbeat/trail (tự đọc info.player)
@@ -5657,9 +5865,6 @@ window.WKDrawBossBar = function (d) {
 if (window.V2) { try { V2.preboot(); } catch (e) {} }
 resetGame();
 if (window.V2) { try { V2.boot({ profileId: PROFILE_ID, diffKey: DIFF_KEY }); } catch (e) {} }
-// WAVE 0 onboarding: người mới (chưa có flag wk_onboard_v1) → chạy wave 0
-// scripted thay vì vào wave 1 ngay; ?onboard=1 ép chạy, ?onboard=0 tắt.
-if (window.Onboard) { try { Onboard.maybeStart(); } catch (e) {} }
 // Phụ lục A node 9 — Trợ lý kỹ thuật: mở 1 draft ngay đầu run cho người đã mua
 if (window.V2 && V2.runMods && V2.runMods.freeUpgrade && G.phase === "play") {
   try { openDraft(); } catch (e) {}

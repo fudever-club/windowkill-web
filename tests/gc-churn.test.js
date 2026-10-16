@@ -180,8 +180,8 @@ describe("game.js — không còn alloc nóng đã biết", () => {
     const perFrameFors = (GAME.match(/for \(const \w+ of SatManager\.values\(\)\)/g) || []).length;
     assert.ok(perFrameFors >= 10, `kỳ vọng ≥10 vòng values(), thấy ${perFrameFors}`);
     assert.ok(!/for \(const \w+ of SatManager\.list\(\)\)/.test(GAME), "vẫn còn for-of SatManager.list()");
-    assert.ok(GAME.includes("motherChickCount"), "thiếu motherChickCount");
-    assert.ok(GAME.includes("motherChickCount(sat.id) < 2"), "updateMothers chưa dùng bản đếm");
+    // RFC nest-removal (2026-10-17): M5 bị xóa → motherChickCount/updateMothers
+    // không còn tồn tại; 2 assertions cũ đã xóa khỏi file này.
   });
 });
 

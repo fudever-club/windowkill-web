@@ -1,10 +1,15 @@
-/* WINDOWKILL — regression test cho simulation M5–M10 trên web (node:test, không cần browser).
+/* WINDOWKILL — regression test cho simulation vệ tinh M6/M7/M9/M10 trên web
+ * (node:test, không cần browser).
  *
- * BỐI CẢNH: CEO quyết định KHÔNG gate chain-popup M5–M10 — mở simulation ngay trên web.
- * File này dựng cả 3 module (00-head, 04-satellite, 05-chainpopups) trong vm với stub
+ * LỊCH SỬ: file này từng cover dải mechanic rộng hơn. RFC nest-removal
+ * (2026-10-17) đã xóa 3 mechanic vệ tinh cũ — các suite đó đã bị xóa khỏi file này.
+ * CHỈ GIỮ: M6 (một thành hai), M7 (tình yêu sét đánh), M9 (máy hút bụi),
+ * M10 (gương thần) + quota sat + vẽ/click khung giả.
+ *
+ * File dựng cả 3 module (00-head, 04-satellite, 05-chainpopups) trong vm với stub
  * browser tối thiểu (SAT_MODE=sim như web thật) rồi chạy full vòng đời từng mechanic.
  *
- * LỖI ĐÃ SỬA (2026-10-06, nhánh ws/m5m10-websim):
+ * LỖI ĐÃ SỬA (giữ lại làm regression):
  *  1. Quota 3 sat đếm cả sat ĐÃ CHẾT (còn nằm trong map 350ms chờ hiệu ứng vỡ):
  *     - M6: giant bị phá khi drone khiên còn sống → chỉ tách 1 minion thay vì 2.
  *     - M7: lovers merge khi còn sat khác → superlove request null, mất siêu-popup.
@@ -118,13 +123,13 @@ beforeEach(() => { W = makeWorld(); });
 const live = (role) => W.run(`SatManager.list().filter(s => s.role === "${role}" && !s.dead)`);
 const dmgTimes = (id, n) => { for (let i = 0; i < n; i++) W.run(`SatManager.damage("${id}")`); };
 
-describe("m5m10-websim: môi trường giả lập", () => {
+describe("sat-websim: môi trường giả lập", () => {
   it("web (non-Electron) luôn chạy SAT_MODE=sim", () => {
     assert.equal(W.run("SAT_MODE"), "sim");
   });
 
-  it("mọi sat M5–M10 spawn ra đều là khung giả (sim), có vị trí hữu hạn", () => {
-    for (const batch of [["bomb", "giant", "mother"], ["lover", "mirror", "blackhole"]]) {
+  it("mọi sat còn lại (M6/M7/M9/M10) spawn ra đều là khung giả (sim), có vị trí hữu hạn", () => {
+    for (const batch of [["giant", "lover"], ["mirror", "blackhole"]]) {
       for (const role of batch) {
         const s = W.run(`SatManager.request("${role}", { hp: 6, color: "#ffffff", label: "${role}", w: 200, h: 140 })`);
         assert.ok(s, `${role}: request không được null`);
@@ -137,29 +142,7 @@ describe("m5m10-websim: môi trường giả lập", () => {
   });
 });
 
-describe("m5m10-websim: M8 Quả Bom Cười", () => {
-  it("hết fuse 15s → nổ: mỗi quả nhả 5–6 mini + hất tàu, không crash", () => {
-    W.run("maybeTriggerBomb(8)");
-    assert.equal(live("bomb").length, 2);
-    assert.ok(live("bomb").every((s) => s.fuseT === 15));
-    W.run("updateBombs(15.5)");
-    assert.equal(live("bomb").length, 0, "nổ xong phải chết");
-    const minis = W.G.enemies.filter((e) => e.type === "mini").length;
-    assert.ok(minis >= 10 && minis <= 12, `2 quả nổ phải nhả 10–12 mini, được ${minis}`);
-    assert.ok(Math.abs(W.G.ship.kbvx) + Math.abs(W.G.ship.kbvy) > 0, "tàu phải bị hất văng");
-  });
-
-  it("click phá kịp (8 dmg) → +2 gem +500 điểm", () => {
-    W.run("maybeTriggerBomb(9)");
-    const id = live("bomb")[0].id;
-    dmgTimes(id, 8);
-    assert.equal(W.run(`SatManager.list().find(s => s.id === "${id}").dead`), true, "quả bị click 8 lần phải chết");
-    assert.equal(W.G.gems.length, 2);
-    assert.equal(W.G.score, 500);
-  });
-});
-
-describe("m5m10-websim: M6 Một Thành Hai", () => {
+describe("sat-websim: M6 Một Thành Hai", () => {
   it("giant bị phá khi còn sat khác sống → vẫn tách đủ 2 minion (quota không đếm xác)", () => {
     W.run(`SatManager.request("shield", { hp: 999, color: "#38bdf8", label: "shield", w: 260, h: 200 })`);
     W.run("maybeTriggerGiant(11)");
@@ -181,20 +164,7 @@ describe("m5m10-websim: M6 Một Thành Hai", () => {
   });
 });
 
-describe("m5m10-websim: M5 Mẹ Gà Đẻ Trứng", () => {
-  it("mẹ đẻ con sau 3s, con nhả mini, tối đa 2 con", () => {
-    W.run("maybeTriggerMother(10)");
-    assert.equal(live("mother").length, 1);
-    W.run("updateMothers(3.1)");
-    assert.equal(live("chick").length, 1);
-    W.run("updateChicks(2.1)");
-    assert.equal(W.G.enemies.filter((e) => e.type === "mini").length, 1, "con nhả mini sau ~2s");
-    W.run("updateMothers(20)");
-    assert.equal(live("chick").length, 2, "mẹ chỉ giữ tối đa 2 con");
-  });
-});
-
-describe("m5m10-websim: M7 Tình Yêu Sét Đánh", () => {
+describe("sat-websim: M7 Tình Yêu Sét Đánh", () => {
   it("2 lovers trôi về nhau → merge thành superlove kể cả khi còn sat khác (quota không đếm xác)", () => {
     W.run("maybeTriggerLove(12)");
     assert.equal(live("lover").length, 2);
@@ -216,7 +186,7 @@ describe("m5m10-websim: M7 Tình Yêu Sét Đánh", () => {
   });
 });
 
-describe("m5m10-websim: M10 Gương Thần", () => {
+describe("sat-websim: M10 Gương Thần", () => {
   it("đạn bay vào vùng 85px → phản thành đạn địch; ngoài vùng → không", () => {
     W.run("maybeTriggerMirror(10)");
     assert.equal(live("mirror").length, 1);
@@ -234,7 +204,7 @@ describe("m5m10-websim: M10 Gương Thần", () => {
   });
 });
 
-describe("m5m10-websim: M9 Máy Hút Bụi", () => {
+describe("sat-websim: M9 Máy Hút Bụi", () => {
   it("quái lọt đúng tâm (d ≤ 1) vẫn bị nuốt — không kẹt vĩnh viễn", () => {
     W.run("maybeTriggerVacuum(21)");
     assert.equal(live("blackhole").length, 1);
@@ -270,12 +240,12 @@ describe("m5m10-websim: M9 Máy Hút Bụi", () => {
   });
 });
 
-describe("m5m10-websim: vẽ + click khung giả", () => {
-  it("drawSims vẽ được mọi role M5–M10 (+M3/M4) không throw", () => {
+describe("sat-websim: vẽ + click khung giả", () => {
+  it("drawSims vẽ được mọi role còn lại (+M3/M4) không throw", () => {
     const roles = [
-      ["nest", "{}"], ["debris", "{ hp: 3 }"], ["bomb", "{ hp: 8 }"],
+      ["debris", "{ hp: 3 }"],
       ["giant", "{ hp: 8 }"], ["minion", "{ hp: 4, enraged: true }"],
-      ["mother", "{ hp: 8 }"], ["chick", "{ hp: 4 }"], ["lover", "{ hp: 5 }"],
+      ["lover", "{ hp: 5 }"],
       ["superlove", "{ hp: 10 }"], ["mirror", "{ hp: 6 }"], ["blackhole", "{ hp: 8 }"],
       ["shield", "{ hp: 999 }"], ["fragment", "{ hp: 4 }"],
     ];
@@ -284,8 +254,6 @@ describe("m5m10-websim: vẽ + click khung giả", () => {
       const s = W.run(`SatManager.request("${role}", Object.assign({ hp: 6, color: "#ffffff", label: "${role}", w: 200, h: 140 }, ${extra}))`);
       assert.ok(s, `${role}: request null`);
       W.run(`(() => { const s = SatManager.list()[0];
-        if (s.role === "bomb") s.fuseT = 10;
-        if (s.role === "chick") { s.hopPh = 1; s.enrageT = 5; }
         if (s.role === "lover") s.heartbroken = true;
         if (s.role === "debris") s.warnT = 0.5;
         if (s.role === "fragment") { s.fphase = "telegraph"; s.tedge = "left"; }
@@ -306,7 +274,7 @@ describe("m5m10-websim: vẽ + click khung giả", () => {
   });
 
   it("hitSim: click trúng khung giả trừ 1 HP; click ngoài không trúng", () => {
-    W.run(`SatManager.request("bomb", { hp: 8, color: "#ff5722", label: "bomb", w: 300, h: 220 })`);
+    W.run(`SatManager.request("debris", { hp: 8, color: "#ff5a5a", label: "debris", w: 300, h: 220 })`);
     const r = W.run(`(() => { const s = SatManager.list()[0];
       const hit = SatManager.hitSim(s.x + s.sw / 2, s.y + s.sh / 2);
       const miss = SatManager.hitSim(-9999, -9999);
@@ -318,9 +286,9 @@ describe("m5m10-websim: vẽ + click khung giả", () => {
   });
 });
 
-describe("m5m10-websim: quota sat", () => {
+describe("sat-websim: quota sat", () => {
   it("tối đa 3 sat sống; sat đã chết không chiếm quota", () => {
-    const mk = () => W.run(`SatManager.request("bomb", { hp: 8, color: "#ff5722", label: "b", w: 200, h: 140 })`);
+    const mk = () => W.run(`SatManager.request("debris", { hp: 8, color: "#ff5a5a", label: "d", w: 200, h: 140 })`);
     const a = mk(), b = mk(), c = mk();
     assert.ok(a && b && c, "3 sat đầu phải spawn được");
     assert.equal(mk(), null, "sat thứ 4 phải bị chặn");

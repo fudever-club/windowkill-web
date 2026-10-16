@@ -14,7 +14,7 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
   const MAX_SATS = 3;
-  const PRI = { fragment: 0, debris: 1, nest: 2, shield: 3, lover: 4, superlove: 4, mirror: 5, blackhole: 6 }; // hàng đợi ưu tiên
+  const PRI = { fragment: 0, debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
   const queue = [];
   const sats = new Map(); // id -> sat
   let permAsked = false, pollT = 0, blockedWarned = false;
@@ -219,11 +219,10 @@ const SatManager = (() => {
 
   // DESIGN-SYSTEM v1.1 §8 — tint title bar mô phỏng theo role (giữ tương phản thấp)
   const ROLE_TB_TINT = {
-    nest: ["#3a1d5c", "#190b2c"], fragment: ["#274b63", "#10222f"],
+    fragment: ["#274b63", "#10222f"],
     shield: ["#1d3a52", "#0c1c2c"], debris: ["#4a1d1d", "#260d0d"],
     giant: ["#1d4224", "#0d2112"], minion: ["#2d4416", "#141f0a"],
-    mother: ["#4d2f0d", "#261505"], chick: ["#4d4211", "#261f09"],
-    bomb: ["#4d2113", "#270f08"], lover: ["#4d1428", "#270a14"],
+    lover: ["#4d1428", "#270a14"],
     superlove: ["#521226", "#2a0a13"], mirror: ["#1f3a46", "#0d1a21"],
     blackhole: ["#22133d", "#0f0820"],
   };
@@ -358,19 +357,7 @@ const SatManager = (() => {
 
   function drawSimContent(s) {
     const cx = s.x + s.sw / 2, cy = s.y + 26 + (s.sh - 26) / 2, t = performance.now();
-    if (s.role === "nest") {
-      ctx.fillStyle = "#120a24"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      for (let i = 0; i < 5; i++) {
-        const a = i / 5 * Math.PI * 2, pulse = 1 + 0.16 * Math.sin(t / 420 + i * 1.7);
-        const x = cx + Math.cos(a) * s.sw * 0.26, y = cy + Math.sin(a) * s.sh * 0.2, r = 11 * pulse;
-        const g = ctx.createRadialGradient(x, y, 1, x, y, r);
-        g.addColorStop(0, "#e9a8ff"); g.addColorStop(0.55, s.color); g.addColorStop(1, "#3b0764");
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, a, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "rgba(255,80,80,.9)";
-        ctx.beginPath(); ctx.arc(x, y - r * 0.2, 2, 0, Math.PI * 2); ctx.fill();
-      }
-    } else if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá
+    if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá
       ctx.fillStyle = "#140a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const wob = Math.sin(t / 180) * 0.12;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
@@ -386,24 +373,6 @@ const SatManager = (() => {
       ctx.restore();
       ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
-    } else if (s.role === "bomb") { // M8
-      const urgent = (s.fuseT === undefined ? 15 : s.fuseT) <= 3;
-      const blink = Math.floor(t / (urgent ? 120 : 300)) % 2 === 0;
-      ctx.fillStyle = blink ? "#3a0d02" : "#1c0701"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const r = Math.min(s.sw, s.sh - 26) * 0.22;
-      ctx.fillStyle = "#2b2f36"; ctx.beginPath(); ctx.arc(cx, cy - 8, r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#4a5058"; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - 8 - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#c98a3a"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(cx + r * 0.6, cy - 8 - r * 0.7);
-      ctx.quadraticCurveTo(cx + r * 1.2, cy - 8 - r * 1.5, cx + r * 0.9, cy - 8 - r * 1.9); ctx.stroke();
-      const sp = (Math.sin(t / 70) + 1) / 2;
-      ctx.fillStyle = `rgba(255,${140 + Math.floor(80 * sp)},40,.95)`;
-      ctx.beginPath(); ctx.arc(cx + r * 0.9, cy - 8 - r * 1.9, 4 + 3 * sp, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = urgent ? "#ff3b30" : "#ffd166"; ctx.font = "700 44px system-ui";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(Math.max(0, Math.ceil(s.fuseT === undefined ? 15 : s.fuseT))), cx, cy + r * 1.15);
-      ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui";
-      ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
     } else if (s.role === "giant") { // M6
       ctx.fillStyle = "#0a1a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, "#4caf50", false, t);
@@ -415,42 +384,6 @@ const SatManager = (() => {
       drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, enr ? "#ff5252" : "#8bc34a", enr, t);
       ctx.fillStyle = enr ? "#ff8f8f" : "#c5f0a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(enr ? I18N.t("sat.giant_angry") : I18N.t("sat.giant_idle"), cx, s.y + s.sh - 22);
-    } else if (s.role === "mother") { // M5
-      ctx.fillStyle = "#241105"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const r = Math.min(s.sw, s.sh - 26) * 0.26;
-      ctx.fillStyle = "#ff9800";
-      ctx.beginPath(); ctx.ellipse(cx, cy + 8, r * 1.15, r * 0.85, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffa726";
-      ctx.beginPath(); ctx.arc(cx + r * 0.72, cy - r * 0.55, r * 0.45, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#e53935";
-      for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(cx + r * 0.72 + i * r * 0.28, cy - r * 0.98, r * 0.16, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = "#1a1a1a";
-      ctx.beginPath(); ctx.arc(cx + r * 0.84, cy - r * 0.6, r * 0.07, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffca28";
-      ctx.beginPath(); ctx.moveTo(cx + r * 1.12, cy - r * 0.55); ctx.lineTo(cx + r * 1.38, cy - r * 0.42); ctx.lineTo(cx + r * 1.12, cy - r * 0.3); ctx.closePath(); ctx.fill();
-      const flap = Math.sin(t / 240) * 0.5;
-      ctx.save(); ctx.translate(cx - r * 0.35, cy + 8); ctx.rotate(-0.4 + flap * 0.3);
-      ctx.fillStyle = "#f57c00"; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-      ctx.fillStyle = "#ffd9a0"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(I18N.t("sat.mother_lay_telegraph"), cx, s.y + s.sh - 22);
-    } else if (s.role === "chick") { // M5
-      const enr = (s.enrageT || 0) > 0;
-      ctx.fillStyle = enr ? "#200808" : "#1d1503"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const hop = Math.abs(Math.sin(t / 280 + (s.hopPh || 0))) * (enr ? 26 : 16);
-      const cr = Math.min(s.sw, s.sh - 26) * (enr ? 0.3 : 0.24);
-      ctx.fillStyle = enr ? "#ff8a65" : "#ffd54f";
-      ctx.beginPath(); ctx.arc(cx, cy - hop, cr, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#1a1a1a";
-      ctx.beginPath(); ctx.arc(cx - cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2);
-      ctx.arc(cx + cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ff9800";
-      ctx.beginPath(); ctx.moveTo(cx - cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx + cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx, cy - hop + cr * 0.32); ctx.closePath(); ctx.fill();
-      if (enr) {
-        ctx.fillStyle = "#ff5252";
-        ctx.beginPath(); ctx.arc(cx - cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.arc(cx + cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.fillStyle = enr ? "#ff8f8f" : "#ffe9a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(enr ? I18N.t("sat.chick_angry") : I18N.t("sat.chick_idle"), cx, s.y + s.sh - 22);
     } else if (s.role === "lover") { // M7: người yêu — trái tim đập thình thịch
       const hb = !!(s.heartbroken);
       ctx.fillStyle = hb ? "#2a0a12" : "#2a0a1a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
@@ -588,7 +521,6 @@ const SatManager = (() => {
   }
 
   return { request, flush, poll, closeAll, count, list, values, anyRole, damage, kill, hitSim, drawSims, updateSims,
-    send: (id, msg) => post(id, msg), // M8: gửi sat-tick cho popup thật
     steer: (id, vx, vy) => post(id, { type: "sat-steer", id, vx, vy }),
     warn: (id) => post(id, { type: "sat-warn", id }) };
 })();

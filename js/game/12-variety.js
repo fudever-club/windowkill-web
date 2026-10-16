@@ -310,8 +310,7 @@ function startWave(n) {
     const vp1ev = vp1RollEvent(n);
     if (vp1ev) vp1TriggerEvent(vp1ev, n);
   }
-  maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
-  maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
+  maybeTriggerGiant(n); // M6
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? I18N.t("banner.wave1") : pickSub();
   // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)

@@ -1,71 +1,3 @@
-/* ---------------- M1 — Ổ QUÁI BAY (Nest Window) ---------------- */
-function nestSpawnPoint(sat) {
-  // vị trí ổ trong tọa độ screen → đổi sang arena, spawn ở viền gần nhất
-  let cx, cy;
-  if (sat.sim) { cx = sat.x + sat.sw / 2; cy = sat.y + sat.sh / 2; }
-  else {
-    cx = (sat.x + sat.w / 2) - window.screenX;
-    cy = (sat.y + sat.h / 2) - window.screenY;
-  }
-  return nearestEdgePoint(clamp(cx, 0, window.innerWidth), clamp(cy, 0, window.innerHeight));
-}
-
-function onNestClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-    // đóng tay: ổ vỡ tung, nhả tối đa 4 con dồn (risk/reward)
-    const n = Math.min(4, Math.max(0, sat.opts.maxSpawns - sat.spawned));
-    for (let i = 0; i < n; i++) {
-      const type = sat.opts.pool[(Math.random() * sat.opts.pool.length) | 0];
-      spawnEnemyAt(type, p.x + rand(-40, 40), p.y + rand(-40, 40));
-    }
-    addFloat(p.x, p.y - 24, I18N.t("sat.nest_burst"), "#ff7ad9", true);
-    AudioEngine.sfx.bigboom();
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 26, ["#c084fc", "#8b2fc9", "#fff"], 320);
-    addFloat(p.x, p.y - 24, I18N.t("sat.nest_killed"), "#c084fc", true);
-  }
-  // "timeout": tự rút êm, không phạt
-}
-
-function updateNests(dt) {
-  const now = performance.now();
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "nest" || sat.dead) continue;
-    if (now - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; } // TTL 60s
-    sat.spawnT -= dt;
-    if (sat.spawnT <= 0 && sat.spawned < sat.opts.maxSpawns) {
-      sat.spawnT = sat.opts.spawnEvery;
-      sat.spawned++;
-      const type = sat.opts.pool[(Math.random() * sat.opts.pool.length) | 0];
-      const p = nestSpawnPoint(sat);
-      spawnEnemyAt(type, p.x, p.y);
-      AudioEngine.sfx.shrink();
-      addFloat(p.x, p.y - 20, I18N.t("sat.nest_released"), "#c084fc");
-    }
-  }
-}
-
-function maybeTriggerNest(n) {
-  if (SAT_MODE === "off" || SatManager.anyRole("nest")) return;
-  const act = actOf(n);
-  const want = (act === 1 && n >= 6) || (act === 3 && n > 0 && n % 5 === 0);
-  if (!want) return;
-  const sat = SatManager.request("nest", {
-    hp: 6, color: "#8b2fc9", label: I18N.t("sat.nest_label"), w: 340, h: 220,
-    spawnEvery: 6, pool: ["chewer", "chaser"], maxSpawns: 8,
-    onClose: onNestClose,
-  });
-  if (sat) {
-    sat.spawnT = 2; // nhả con đầu sau 2s
-    setBanner(I18N.t("sat.nest_spawn"), "");
-  } else {
-    // SAT_MODE=off hoặc hết quota: spawn thường tương đương, giữ cân bằng
-    const p1 = edgeSpawn(), p2 = edgeSpawn();
-    spawnEnemyAt("chewer", p1.x, p1.y); spawnEnemyAt("chewer", p2.x, p2.y);
-  }
-}
-
 /* ---------------- M3 — CỬA SỔ KHIÊN (Shield Window) ----------------
  * Pickup "shieldwin" (wave 4+): gọi cửa sổ khiên xanh bám cạnh cửa sổ chính.
  * - Popup thật: mỗi 0.5s moveTo giữ khoảng cách 16px bên phải cửa sổ chính.
@@ -266,12 +198,20 @@ function drawCracks() {
   }
 }
 
-/* ---------------- M8 — QUẢ BOM CƯỜI (Bomb Window) ----------------
- * Act 2+, wave ≥ 8, mỗi wave tối đa 2 quả, không cùng lúc với M5.
- * Đếm ngược 15s (số to trong popup qua sat-tick + khung giả vẽ số).
- * Hết giờ → nổ: 5-6 mini + hất tàu văng. Phá kịp (8 click) → +2 gem +500.
- * ĐÓNG TAY = nổ ngay, toàn dasher. Fallback: khung giả nhấp nháy đỏ-cam. */
-/* nảy khung giả */
+/* -------- helpers chung (M6/M7/M9/M10) -------- */
+/* điểm spawn quanh vệ tinh: tọa độ screen → đổi sang arena, lấy viền gần nhất
+ * (đổi tên từ hàm cũ trong block M1; vẫn dùng bởi M6/M7/M10/M9) */
+function satSpawnPoint(sat) {
+  let cx, cy;
+  if (sat.sim) { cx = sat.x + sat.sw / 2; cy = sat.y + sat.sh / 2; }
+  else {
+    cx = (sat.x + sat.w / 2) - window.screenX;
+    cy = (sat.y + sat.h / 2) - window.screenY;
+  }
+  return nearestEdgePoint(clamp(cx, 0, window.innerWidth), clamp(cy, 0, window.innerHeight));
+}
+
+/* nảy khung giả (trước đây nằm trong block M8) */
 function bounceSimSat(s, mul, dt) {
   s.x += s.vx * mul * dt; s.y += s.vy * mul * dt;
   const b = bounds();
@@ -288,75 +228,6 @@ function knockShip(fx, fy, power) {
   const p = Math.min(power, 700);
   s.kbvx = (s.kbvx || 0) + dx / d * p;
   s.kbvy = (s.kbvy || 0) + dy / d * p;
-}
-
-function explodeBomb(sat, manual) {
-  if (sat.exploded) return;
-  sat.exploded = true;
-  const p = nestSpawnPoint(sat);
-  const n = 5 + (Math.random() < 0.5 ? 1 : 0);
-  const type = manual ? "dasher" : "mini";
-  for (let i = 0; i < n; i++) spawnEnemyAt(type, p.x + rand(-60, 60), p.y + rand(-60, 60));
-  knockShip(p.x, p.y, 460);
-  burst(p.x, p.y, 40, ["#ff5722", "#ff9800", "#ffd166", "#ffffff"], 420);
-  jxShake(10, 400, 8); windowJitter(26);
-  AudioEngine.sfx.bigboom();
-  addFloat(p.x, p.y - 30, manual ? I18N.t("sat.bomb_tick") : I18N.t("sat.bomb_boom"), "#ff5722", true);
-}
-
-function onBombClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-    explodeBomb(sat, true);
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 24, ["#ff9800", "#ffd166", "#ffffff"], 300);
-    for (let i = 0; i < 2; i++) {
-      const a = Math.random() * Math.PI * 2;
-      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
-    }
-    G.score += 500;
-    addFloat(p.x, p.y - 30, I18N.t("sat.bomb_killed"), "#ffd166", true);
-    AudioEngine.sfx.pickup();
-  }
-
-}
-
-function updateBombs(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "bomb" || sat.dead) continue;
-    sat.fuseT -= dt;
-    const secs = Math.max(0, Math.ceil(sat.fuseT));
-    if (secs !== sat.tickLast) {
-      sat.tickLast = secs;
-      if (!sat.sim) SatManager.send(sat.id, { type: "sat-tick", id: sat.id, t: secs }); // popup thật hiện số
-      AudioEngine.sfx.click();
-    }
-    if (sat.fuseT <= 0) {
-      explodeBomb(sat, false);
-      SatManager.kill(sat.id, "exploded");
-    }
-  }
-}
-
-function maybeTriggerBomb(n) {
-  if (n < 8 || G.bombWave === n) return;
-  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
-  G.bombWave = n;
-  let made = 0;
-  for (let i = 0; i < 2; i++) {
-    const sat = SatManager.request("bomb", {
-      hp: 8, color: "#ff5722", label: I18N.t("sat.bomb_label"), w: 300, h: 220,
-      onClose: onBombClose,
-    });
-    if (sat) { made++; sat.fuseT = 15; sat.tickLast = -1; }
-    else break;
-  }
-  if (made > 0) {
-    setBanner(I18N.t("sat.bomb_spawn"), "");
-    AudioEngine.sfx.wave();
-  } else if (SAT_MODE === "off") {
-    spawnEnemy("dasher"); spawnEnemy("dasher");
-  }
 }
 
 /* ---------------- M6 — MỘT THÀNH HAI (Giant/Minion) ----------------
@@ -387,7 +258,7 @@ function liveMinion(exceptId) {
 }
 
 function onGiantClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   if (mode === "killed" || mode === "manual") {
     const enraged = mode === "manual";
     burst(p.x, p.y, 30, ["#4caf50", "#8bc34a", "#ffffff"], 340);
@@ -400,7 +271,7 @@ function onGiantClose(mode, sat) {
 }
 
 function onMinionClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   if (mode === "manual") {
     const other = liveMinion(sat.id);
     if (other) {
@@ -447,7 +318,7 @@ function updateMinions(dt) {
     sat.spawnT -= dt;
     if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
       sat.spawnT = interval; sat.spawned++;
-      const p = nestSpawnPoint(sat);
+      const p = satSpawnPoint(sat);
       spawnEnemyAt("mini", p.x + rand(-30, 30), p.y + rand(-30, 30));
       AudioEngine.sfx.shrink();
     }
@@ -471,141 +342,6 @@ function maybeTriggerGiant(n) {
   }
 }
 
-/* ---------------- M5 — MẸ GÀ ĐẺ TRỨNG VÀNG (Mother/Chick) ----------------
- * Act 2+, wave ≥ 7, mỗi wave 1 lần, cần ≥ 2 slot trống (mẹ + 2 con = 3 popup).
- * Mẹ mỗi 8s đẻ 1 con (tối đa 2); con nhảy tưng tưng, mỗi 5s nhả 1 mini.
- * Phá MẸ → con "NỔI GIẬN MẤT MẸ": to x1.5, nhanh x2, nhả x2 trong 10s rồi tự vỡ
- * (rơi gem an ủi). ĐÓNG TAY mẹ = con giận + mất 1 HP. ĐÓNG TAY con = nổ, 2 mini. */
-function motherChicks(motherId) {
-  return SatManager.list().filter(s => s.role === "chick" && !s.dead && s.motherId === motherId);
-}
-// GC-2026-10: bản đếm không alloc cho check per-frame trong updateMothers
-function motherChickCount(motherId) {
-  let n = 0;
-  for (const s of SatManager.values()) if (s.role === "chick" && !s.dead && s.motherId === motherId) n++;
-  return n;
-}
-
-function enrageChicks(motherId, msg) {
-  const chicks = motherChicks(motherId);
-  for (const c of chicks) c.enrageT = 10;
-  if (chicks.length) {
-    const p = nestSpawnPoint(chicks[0]);
-    addFloat(p.x, p.y - 30, msg, "#ff9800", true);
-    AudioEngine.sfx.boss();
-  }
-}
-
-function onMotherClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "killed") {
-    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
-    enrageChicks(sat.id, I18N.t("sat.chick_enraged"));
-  } else if (mode === "manual") {
-    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
-    enrageChicks(sat.id, I18N.t("sat.chick_manual"));
-    hurtShip(1, p.x, p.y);
-  }
-
-}
-
-function onChickClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-
-    burst(p.x, p.y, 22, ["#ffd54f", "#ff9800", "#ffffff"], 320);
-    spawnEnemyAt("mini", p.x - 22, p.y);
-    spawnEnemyAt("mini", p.x + 22, p.y);
-    addFloat(p.x, p.y - 26, I18N.t("sat.chick_dead"), "#ffd54f", true);
-    AudioEngine.sfx.boom();
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 14, ["#ffd54f", "#ffffff"], 240);
-    AudioEngine.sfx.hit();
-  }
-
-}
-
-function layChick(mother) {
-  const sat = SatManager.request("chick", {
-    hp: 4, color: "#ffd54f", label: I18N.t("sat.chick_label"), w: 170, h: 120,
-    onClose: onChickClose,
-  });
-  if (!sat) return null;
-  sat.motherId = mother.id;
-  const sp = 90 + Math.random() * 60, a = Math.random() * Math.PI * 2;
-  sat.vx = Math.cos(a) * sp; sat.vy = Math.sin(a) * sp;
-  sat.spawnT = 2; sat.spawned = 0; sat.maxSpawns = 8; sat.enrageT = 0;
-  sat.hopPh = Math.random() * 9;
-  if (sat.sim && mother.sim) {
-    const b = bounds();
-    sat.x = clamp(mother.x + mother.sw / 2 - sat.sw / 2 + rand(-70, 70), b.x, Math.max(b.x, b.x + b.w - sat.sw));
-    sat.y = clamp(mother.y + mother.sh / 2 - sat.sh / 2 + rand(-50, 50), b.y, Math.max(b.y, b.y + b.h - sat.sh));
-  }
-  const p = nestSpawnPoint(mother);
-  addFloat(p.x, p.y - 20, I18N.t("sat.mother_lay"), "#ffd54f");
-  AudioEngine.sfx.pickup();
-  return sat;
-}
-
-function updateMothers(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "mother" || sat.dead) continue;
-    if (performance.now() - sat.born > 75000) { SatManager.kill(sat.id, "timeout"); continue; }
-    sat.layT = (sat.layT === undefined ? 3 : sat.layT) - dt;
-    if (sat.layT <= 0) {
-      if (motherChickCount(sat.id) < 2) layChick(sat);
-      sat.layT = 8;
-    }
-  }
-}
-
-function updateChicks(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "chick" || sat.dead) continue;
-    const enraged = sat.enrageT > 0;
-    if (enraged) {
-      sat.enrageT -= dt;
-      if (sat.enrageT <= 0) {
-
-        const p = nestSpawnPoint(sat);
-        G.gems.push({ x: p.x, y: p.y, vx: rand(-90, 90), vy: rand(-90, 90), v: 1, t: rand(0, 9) });
-        addFloat(p.x, p.y - 24, I18N.t("sat.chick_calm"), "#ffd54f");
-        burst(p.x, p.y, 16, ["#ffd54f", "#ffffff"], 220);
-        AudioEngine.sfx.pickup();
-        SatManager.kill(sat.id, "timeout");
-        continue;
-      }
-    }
-    const speedMul = enraged ? 2 : 1;
-    if (sat.sim) bounceSimSat(sat, speedMul, dt);
-    sat.spawnT -= dt;
-    if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
-      sat.spawnT = enraged ? 2.5 : 5; sat.spawned++;
-      const p = nestSpawnPoint(sat);
-      spawnEnemyAt("mini", p.x + rand(-24, 24), p.y + rand(-24, 24));
-      AudioEngine.sfx.shrink();
-    }
-  }
-}
-
-function maybeTriggerMother(n) {
-  if (n < 10 || G.motherWave === n) return;
-  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
-  if (SatManager.count() > 1) return;
-  G.motherWave = n;
-  const sat = SatManager.request("mother", {
-    hp: 8, color: "#ff9800", label: I18N.t("sat.mother_label"), w: 340, h: 240,
-    onClose: onMotherClose,
-  });
-  if (sat) {
-    sat.layT = 3;
-    setBanner(I18N.t("sat.mother_spawn"), "");
-    AudioEngine.sfx.pickup();
-  } else if (SAT_MODE === "off") {
-    spawnEnemy("chewer"); spawnEnemy("chewer");
-  }
-}
-
 /* ---------------- M7 — TÌNH YÊU SÉT ĐÁNH (Lightning Love) ----------------
  * Act 2+, wave ≥ 12, mỗi wave 1 lần, cần cả 3 slot trống.
  * 2 popup "người yêu" (5 HP) trôi về phía nhau; chạm nhau → "BÙM! TÌNH YÊU SÉT ĐÁNH!"
@@ -625,7 +361,7 @@ function loverScreen(sat) {
 
 function loverAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -862,7 +598,7 @@ function maybeTriggerLove(n) {
  * Fallback: khung giả — vùng gương vẽ quanh khung. */
 function mirrorAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -954,7 +690,7 @@ function maybeTriggerMirror(n) {
  * Fallback: khung giả vẽ hố đen + vòng xoáy hút. */
 function vacAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -1032,6 +768,10 @@ function updateBlackholes(dt) {
         if (d < 26) {
           // M9 websim (2026-10-06): quái lọt đúng tâm (d ≤ 1) trước đây kẹt vĩnh viễn
           // vì nhánh hút nằm trong `if (d > 1)` — đưa check nuốt ra ngoài để luôn nuốt.
+          // RFC nest-removal (edge 7): snatcher bị nuốt khi đang ôm gem → gem văng ra,
+          // không bị nuốt mất (swallow không qua killEnemy nên onDeath không chạy).
+          if (e.type === "snatcher" && e.carried && e.carried.length && typeof releaseSnatcherGems === "function")
+            releaseSnatcherGems(e, true);
           e.dead = true; // nuốt: mất luôn, không điểm/kill
           sat.swallowed.push(e.type);
           burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);

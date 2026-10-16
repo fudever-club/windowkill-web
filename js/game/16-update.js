@@ -158,11 +158,10 @@ function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
   lastStandTick(); // "Cửa Sổ Cuối Cùng": bật/tắt theo % nguyên vẹn cửa sổ
-  SatManager.poll(dt); SatManager.updateSims(dt); updateNests(dt); // multi-window P1a
+  SatManager.poll(dt); SatManager.updateSims(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
-  if (typeof updateBombs === "function") updateBombs(dt);
-  if (typeof updateMinions === "function") { updateMinions(dt); updateMothers(dt); updateChicks(dt); }
+  if (typeof updateMinions === "function") { updateMinions(dt); }
   if (typeof updateLovers === "function") { updateLovers(dt); updateSuperlove(dt); } // M7
   if (typeof updateMirrors === "function") updateMirrors(dt); // M10
   if (typeof updateBlackholes === "function") updateBlackholes(dt); // M9

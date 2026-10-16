@@ -232,6 +232,45 @@ function render(now) {
         ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "11px sans-serif";
         ctx.fillText("HỌP", 0, -e.r - 8);
       }
+    } else if (e.type === "snatcher") {
+      // RFC nest-removal: TRỘM VẶT CHẠY LÀNG — body tím + mặt nạ đen + túi gem sau lưng
+      const flee = e.phase === "flee";
+      ctx.translate(0, Math.sin(e.t * 9) * 2); // nhún nhảy ranh mãnh
+      ctx.fillStyle = "#b08968"; // túi vải sau lưng
+      ctx.beginPath(); ctx.arc(-e.r * 0.95, e.r * 0.35, e.r * 0.55, 0, Math.PI * 2); ctx.fill();
+      const bag = e.carried || []; // gem đã cướp — hình thoi nhỏ trên miệng túi
+      for (let gi = 0; gi < bag.length; gi++) {
+        const gx = -e.r * 0.95 + (gi - 1) * 7, gy = e.r * 0.35 - e.r * 0.55 - 5;
+        ctx.fillStyle = ["#7df9ff", "#ffd166", "#c084fc"][gi % 3];
+        ctx.beginPath();
+        ctx.moveTo(gx, gy - 5); ctx.lineTo(gx + 4, gy); ctx.lineTo(gx, gy + 5); ctx.lineTo(gx - 4, gy);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = slow ? "#7dd3fc" : e.color; // body tròn tím
+      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a2e"; // dải mặt nạ đen
+      ctx.fillRect(-e.r * 0.85, -e.r * 0.35, e.r * 1.7, e.r * 0.55);
+      const look = Math.sin(e.t * 5) * e.r * 0.18; // mắt láo liên
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(-e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2);
+      ctx.arc(e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a2e";
+      ctx.beginPath();
+      ctx.arc(-e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2);
+      ctx.arc(e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = 2; ctx.lineCap = "round"; // cười ranh mãnh
+      ctx.beginPath(); ctx.arc(0, e.r * 0.25, e.r * 0.35, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
+      if (flee) { // giọt mồ hôi lo lắng khi chạy trốn
+        const swy = (Math.sin(e.t * 6) + 1) / 2 * 3;
+        ctx.fillStyle = "#7dd3fc";
+        ctx.beginPath(); ctx.arc(e.r * 0.95, -e.r * 0.9 + swy, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(e.r * 0.95, -e.r * 0.9 - 4 + swy);
+        ctx.lineTo(e.r * 0.95 - 4.5, -e.r * 0.9 + 2 + swy);
+        ctx.lineTo(e.r * 0.95 + 4.5, -e.r * 0.9 + 2 + swy);
+        ctx.closePath(); ctx.fill();
+      }
     } else {
       // fallback: quái mới chưa có nhánh vẽ riêng vẫn chạy được — hình tròn màu registry
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;

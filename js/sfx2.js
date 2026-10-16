@@ -31,7 +31,7 @@ function ac() {
     if (!AC) return null;
     _ctx = new AC();
     _master = _ctx.createGain();
-    _master.gain.value = 0.85;
+    _master.gain.value = 0.85 * _vol;
     var comp = _ctx.createDynamicsCompressor();
     comp.threshold.value = -18; comp.ratio.value = 6;
     _master.connect(comp); comp.connect(_ctx.destination);
@@ -45,6 +45,13 @@ function resume() {
 }
 function setEnabled(v) { _enabled = !!v; }
 function isEnabled() { return _enabled; }
+/* FEAT 2026-10-17: volume hiệu ứng (0..1) — user setting sfxVol; mặc định 0.3 (giảm ~65% so với 0.85 cũ). */
+var _vol = 0.3;
+function setVolume(v) {
+  v = +v; if (!(v >= 0)) v = 0; if (v > 1) v = 1;
+  _vol = v;
+  if (_master) { try { _master.gain.value = 0.85 * _vol; } catch (e) {} }
+}
 function noiseBuf(a) {
   if (!_noiseBuf) {
     var len = Math.floor(a.sampleRate * 1.5);
@@ -97,7 +104,7 @@ function ready() {
 var PENTA = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.7, 1318.5];
 
 var Sfx2 = {
-  resume: resume, setEnabled: setEnabled, isEnabled: isEnabled,
+  resume: resume, setEnabled: setEnabled, isEnabled: isEnabled, setVolume: setVolume,
 
   /** multikill(n): arpeggio trưởng leo theo n — càng nhiều kill càng lên cao. */
   multikill: function (n) {

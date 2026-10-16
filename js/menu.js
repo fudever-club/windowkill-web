@@ -132,7 +132,7 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, shake: true, haptic: true, mobileAssist: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, musicVol: 0.5, sfxVol: 0.3, shake: true, haptic: true, mobileAssist: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   if (!["calm", "normal", "wild"].includes(settings.wjump)) settings.wjump = "normal"; // Item 4: repair corrupted wjump
   if (!["auto", "high", "balanced", "lite"].includes(settings.quality)) settings.quality = "auto"; // feat/mobile-quality: repair corrupted quality
@@ -152,6 +152,9 @@
     if (th) { th.classList.toggle("on", settings.haptic); press(th, settings.haptic); }
     const tma = $("tgl-mobile-assist");
     if (tma) { tma.classList.toggle("on", settings.mobileAssist !== false); press(tma, settings.mobileAssist !== false); }
+    /* FEAT 2026-10-17: đồng bộ thanh trượt âm lượng với settings đã lưu */
+    const vm = $("vol-music"); if (vm) vm.value = Math.round(clampVol(settings.musicVol, 0.5) * 100);
+    const vs = $("vol-sfx"); if (vs) vs.value = Math.round(clampVol(settings.sfxVol, 0.3) * 100);
     const ta = $("tgl-analytics");
     if (ta) { ta.classList.toggle("on", settings.analytics); press(ta, settings.analytics); }
     document.querySelectorAll("[data-diff]").forEach(b => { const sel = b.dataset.diff === settings.diff; b.classList.toggle("sel", sel); press(b, sel); });
@@ -243,14 +246,27 @@
     anchor.parentElement.insertAdjacentElement("afterend", row);
   }
   injectMobileAssistToggle();
+  const clampVol = (v, fb) => { v = +v; if (!(v >= 0)) return fb; if (v > 1) return 1; return v; };
+  /* FEAT 2026-10-17: đẩy âm lượng đã lưu xuống mọi engine (nhạc nền file BGM + synth AudioEngine + Sfx2). */
+  function applyVolumes() {
+    const mv = clampVol(settings.musicVol, 0.5), sv = clampVol(settings.sfxVol, 0.3);
+    settings.musicVol = mv; settings.sfxVol = sv;
+    if (window.BGM) { try { BGM.setVolume(mv); } catch (e) {} }
+    if (window.AudioEngine) { try { AudioEngine.setSettings({ musicVol: mv, sfxVol: sv }); } catch (e) {} }
+    if (window.Sfx2 && Sfx2.setVolume) { try { Sfx2.setVolume(sv); } catch (e) {} }
+  }
   $("tgl-music").onclick = (e) => { settings.music = !settings.music; saveSettings(); paintToggles(); if (window.BGM) BGM.setEnabled(settings.music); if (window.WKAudio) WKAudio.setMusic(settings.music); Analytics.track("settings_changed", { key: "music", value: settings.music }); };
   $("tgl-sfx").onclick = () => { settings.sfx = !settings.sfx; saveSettings(); paintToggles(); if (window.WKAudio) WKAudio.setSfx(settings.sfx); if (window.Sfx2) { try { Sfx2.setEnabled(settings.sfx); } catch (e) {} } Analytics.track("settings_changed", { key: "sfx", value: settings.sfx }); };
+  const volMusic = $("vol-music"), volSfx = $("vol-sfx");
+  if (volMusic) volMusic.addEventListener("input", () => { settings.musicVol = clampVol(volMusic.value / 100, 0.5); saveSettings(); applyVolumes(); });
+  if (volSfx) volSfx.addEventListener("input", () => { settings.sfxVol = clampVol(volSfx.value / 100, 0.3); saveSettings(); applyVolumes(); });
   $("tgl-shake").onclick = () => { settings.shake = !settings.shake; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "shake", value: settings.shake }); };
   const thBtn = $("tgl-haptic");
   if (thBtn) thBtn.onclick = () => { settings.haptic = !settings.haptic; saveSettings(); paintToggles(); Analytics.track("settings_changed", { key: "haptic", value: settings.haptic }); };
   document.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { settings.diff = b.dataset.diff; saveSettings(); paintToggles(); renderScores(); Analytics.track("settings_changed", { key: "diff", value: settings.diff }); });
   if (window.WKAudio) { WKAudio.setMusic(settings.music); WKAudio.setSfx(settings.sfx); }
   if (window.BGM) { try { BGM.init(); BGM.setEnabled(settings.music); } catch (e) {} } // BGM: nhạc nền file thật
+  applyVolumes(); // FEAT 2026-10-17: áp âm lượng đã lưu ngay khi mở menu
 
   /* ---------- high scores & stats (per profile) ---------- */
   const DIFF_LABEL = {

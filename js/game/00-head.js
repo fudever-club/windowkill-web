@@ -76,6 +76,15 @@ let musicOn = qp.get("music") === "1"; // AUDIT 2026-10-02: trạng thái nhạc
 // caller nào nên tắt SFX ở menu vẫn nghe tiếng multikill/levelup/shield của sfx2.
 if (window.Sfx2) { try { Sfx2.setEnabled(qp.get("sfx") === "1"); } catch (e) {} }
 if (window.BGM) { try { BGM.init(); BGM.setEnabled(qp.get("music") === "1"); } catch (e) {} } // BGM: nhạc nền file thật, tiếp tục từ menu
+/* FEAT 2026-10-17: áp âm lượng đã lưu (wk_settings.musicVol/sfxVol) cho mọi engine khi vào game */
+try {
+  const vst = JSON.parse(localStorage.getItem("wk_settings") || "{}");
+  const cv = (v, fb) => { v = +v; if (!(v >= 0)) return fb; return v > 1 ? 1 : v; };
+  const mv = cv(vst.musicVol, 0.5), sv = cv(vst.sfxVol, 0.3);
+  AudioEngine.setSettings({ musicVol: mv, sfxVol: sv });
+  if (window.Sfx2 && Sfx2.setVolume) Sfx2.setVolume(sv);
+  if (window.BGM && BGM.setVolume) BGM.setVolume(mv);
+} catch (e) {}
 // BGM handoff: game chạy ở popup riêng, tab menu (opener) vẫn mở nền → bảo opener tạm nhường nhạc, khỏi chồng 2 bài
 try {
   if (window.opener && !window.opener.closed && window.opener.BGM && typeof window.opener.BGM.suspend === "function") {

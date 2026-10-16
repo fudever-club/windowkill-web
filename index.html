@@ -62,6 +62,8 @@
   .tgl::before { content:''; position: absolute; inset: -8px -6px; }
   .tgl::after { content:''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
   .tgl.on { background: #0080FF; } .tgl.on::after { left: 27px; }
+  /* FEAT 2026-10-17: thanh trượt âm lượng trong Cài đặt */
+  .volrow input[type="range"] { width: 130px; accent-color: #0080FF; cursor: pointer; }
   #hs-list { font-size: 14.5px; color: #c8dcf5; line-height: 2; }
   /* CTA web→desktop (Sprint R2 item 5): card Desktop Edition — tone thân thiện,
      dễ thấy nhưng không áp đảo nút CHƠI NGAY; ẩn mặc định cho tới khi menu.js bật. */
@@ -491,7 +493,9 @@
 
     <h3><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg> <span data-i18n="settings.title">Cài đặt</span></h3>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg> <span data-i18n="settings.music">Nhạc nền</span></span><button class="tgl" id="tgl-music" data-i18n-aria="settings.music_aria" aria-label="Bật/tắt nhạc nền"></button></div>
+    <div class="setrow volrow"><span><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg> <span data-i18n="settings.music_vol">Độ to nhạc nền</span></span><input type="range" id="vol-music" min="0" max="100" step="1" value="50" data-i18n-aria="settings.music_vol" aria-label="Độ to nhạc nền"></div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg> <span data-i18n="settings.sfx">Hiệu ứng âm thanh</span></span><button class="tgl" id="tgl-sfx" data-i18n-aria="settings.sfx_aria" aria-label="Bật/tắt hiệu ứng âm thanh"></button></div>
+    <div class="setrow volrow"><span><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg> <span data-i18n="settings.sfx_vol">Độ to hiệu ứng</span></span><input type="range" id="vol-sfx" min="0" max="100" step="1" value="30" data-i18n-aria="settings.sfx_vol" aria-label="Độ to hiệu ứng"></div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-vibrate"/></svg> <span data-i18n="settings.shake">Rung cửa sổ khi trúng đòn</span></span><button class="tgl" id="tgl-shake" data-i18n-aria="settings.shake_aria" aria-label="Bật/tắt rung cửa sổ"></button></div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg> <span data-i18n="settings.haptic">Rung phản hồi (mobile)</span></span><button class="tgl" id="tgl-haptic" data-i18n-aria="settings.haptic_aria" aria-label="Bật/tắt rung phản hồi"></button></div>
     <div class="setrow"><span><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> <span data-i18n="settings.fx">Hiệu ứng hình ảnh</span></span>

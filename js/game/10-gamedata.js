@@ -26,6 +26,19 @@ if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") 
     "monster.snatcher.escaped": "GEMS LOST! 😭",
   },
 });
+/* RFC stage-themes-modes §2.2.8: key i18n riêng của quái glimmer ("ĐOM ĐÓM VÀNG").
+ * Đăng ký qua I18N.register() (pattern snatcher) — KHÔNG thêm key mới vào js/i18n.js.
+ * Đặt TRƯỚC MONSTER_REGISTRY vì entry gọi I18N.t() lúc load. */
+if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+  vi: {
+    "monster.glimmer.name": "Đom Đóm Vàng",
+    "monster.glimmer.desc": "Đom đóm đèn lồng chỉ biết chạy trốn — hạ nó trước khi nó chui qua viền!",
+  },
+  en: {
+    "monster.glimmer.name": "Golden Firefly",
+    "monster.glimmer.desc": "A fleeing lantern firefly — take it down before it slips through the edge!",
+  },
+});
 const MONSTER_REGISTRY = {
   "chaser": { id: "chaser", name: I18N.t("monster.chaser.name"), behavior: "chase", color: "#ff5470",
     r: 12, dmg: 1, score: 10, xp: 1, minWave: 1, weight: 100, acts: [1, 2, 3],
@@ -106,7 +119,16 @@ const MONSTER_REGISTRY = {
     init: e => { e.phase = "hunt"; e.carried = []; e.idleT = 0; e.escaped = false; },
     onDeath: e => { releaseSnatcherGems(e, true); }, // bất kể nguồn sát thương — không bao giờ nuốt gem
     desc: I18N.t("monster.snatcher.desc") },
-};const BEHAVIORS = {
+  /* RFC stage-themes-modes §2.2.8: ĐOM ĐÓM ĐÈN LỒNG — bonus rượt đuổi, dmg 0, không
+   * tấn công. weight 0 → KHÔNG vào pool spawn endless (không đổi balance);
+   * chạm viền/thọ 12s → thoát (không điểm — cùng pattern snatcher). */
+  "glimmer": { id: "glimmer", name: I18N.t("monster.glimmer.name"), behavior: "flee", color: "#fbbf24",
+    r: 9, dmg: 0, score: 40, xp: 1, minWave: 6, weight: 0, maxPerWave: 1, acts: [1, 2, 3],
+    hp: () => 2, spd: () => 175,
+    init: e => { e.lifeT = 12; },
+    desc: I18N.t("monster.glimmer.desc") },
+};
+const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const wob = Math.sin(e.t * 6) * 12;
@@ -358,6 +380,20 @@ const MONSTER_REGISTRY = {
         addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.steal"), "#f0abfc");
         if (e.carried.length >= 3) e.phase = "flee";
       }
+    }
+  } },
+  /* RFC stage-themes-modes §3.2.1: FLEE (glimmer) — chạy TRÁNH tàu, hướng ra viền
+   * gần nhất. Hết lifeT (12s) hoặc chạm viền → thoát, KHÔNG qua killEnemy
+   * → không điểm/xp (cùng pattern snatcher RFC nest-removal). */
+  flee: { update(e, dt, s, spd) {
+    e.lifeT = (e.lifeT == null ? 12 : e.lifeT) - dt;
+    const p = nearestEdgePoint(e.x, e.y);
+    const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 5) * 30; // lượn nhẹ cho vui mắt
+    e.x += (dx / d * spd + -dy / d * wob) * dt;
+    e.y += (dy / d * spd + dx / d * wob) * dt;
+    if (d < 14 || e.lifeT <= 0) {
+      e.escaped = true; e.dead = true;
     }
   } },
 };

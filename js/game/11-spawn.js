@@ -153,3 +153,13 @@ function buildSpawnQueue(n) {
   }
   return q;
 }
+
+/* RFC stage-themes-modes §2.3.1 (DEV-05): Time Attack — spawn dồn dập.
+   wkSpawnInterval × Modes.spawnScale().intervalMul (0.75 khi timeattack). */
+function modeSpawnInterval(wave) {
+  var iv = wkSpawnInterval(wave);
+  try {
+    if (window.V2 && V2.mode === "timeattack" && window.Modes) iv *= Modes.spawnScale().intervalMul;
+  } catch (e) {}
+  return iv;
+}

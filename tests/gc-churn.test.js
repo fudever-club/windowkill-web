@@ -178,7 +178,8 @@ describe("game.js — không còn alloc nóng đã biết", () => {
     assert.ok(GAME.includes("const values = () => sats.values();"), "thiếu SatManager.values");
     assert.ok(GAME.includes("values, anyRole"), "values chưa export");
     const perFrameFors = (GAME.match(/for \(const \w+ of SatManager\.values\(\)\)/g) || []).length;
-    assert.ok(perFrameFors >= 10, `kỳ vọng ≥10 vòng values(), thấy ${perFrameFors}`);
+    // RFC ui-audit-boss-cleanup (2026-10-17): vòng dọn fragment trong killBoss (M2) đã xóa → 9
+    assert.ok(perFrameFors >= 9, `kỳ vọng ≥9 vòng values(), thấy ${perFrameFors}`);
     assert.ok(!/for \(const \w+ of SatManager\.list\(\)\)/.test(GAME), "vẫn còn for-of SatManager.list()");
     // RFC nest-removal (2026-10-17): M5 bị xóa → motherChickCount/updateMothers
     // không còn tồn tại; 2 assertions cũ đã xóa khỏi file này.

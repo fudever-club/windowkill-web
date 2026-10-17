@@ -224,7 +224,21 @@ $("btn-resume").onclick = () => { AudioEngine.sfx.click(); pauseGame(false); };
 // FIX 2026-10-05 (user báo nút home liệt trên mobile): window.close() chỉ đóng
 // được tab do script mở — browser chặn với tab thường → bấm không có tác dụng.
 // "Về menu" phải về launcher (index.html), không phải đóng tab.
-function quitToMenu() { try { Telemetry.log("wave_quit", { phase: G.phase, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} location.href = "index.html"; } // telemetry FUN: wave quit (module tự bỏ khi phase==="over" — đã chết thì death đã log)
+function quitToMenu() { try { Telemetry.log("wave_quit", { phase: G.phase, wave: G.wave, score: G.score, kills: G.kills, duration_s: Math.round(G.time), difficulty: DIFF_KEY, level: G.level }); } catch (e) {} /* telemetry FUN: wave quit (module tự bỏ khi phase==="over" — đã chết thì death đã log) */
+  // FIX 2026-10-17 (user báo duplicate trang + duplicate nhạc nền): game chạy trong popup do menu
+  // mở (window.open) → "về menu" phải focus về menu gốc và ĐÓNG popup. location.href="index.html"
+  // trong popup tạo ra trang menu thứ 2 (trùng) + BGM 2 nơi (opener resume ở pagehide + trang mới init).
+  let backToOpener = false;
+  try { backToOpener = !!(window.opener && !window.opener.closed); } catch (e) {}
+  if (backToOpener) {
+    try { window.opener.focus(); } catch (e) {}
+    window.close();
+    // fallback: nếu browser chặn close (không phải popup do script mở) thì về index.html trong cùng tab
+    setTimeout(() => { try { if (!window.closed) location.href = "index.html"; } catch (e) {} }, 350);
+  } else {
+    location.href = "index.html";
+  }
+}
 window.quitToMenu = quitToMenu;
 $("btn-quit").onclick = quitToMenu;
 $("btn-quit2").onclick = quitToMenu;

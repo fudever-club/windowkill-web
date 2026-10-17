@@ -569,6 +569,9 @@
           "menu.mode.locked_hint": "Clear Stage 1 to unlock Boss Parade",
         },
       });
+      // FIX 2026-10-17 (user báo panel mode hiện key thô): register() chạy sau applyDOM()
+      // (i18n.js defer, vẽ ở DOMContentLoaded) nên key mới chưa được vẽ — vẽ lại ngay.
+      try { if (typeof I18N !== "undefined" && I18N && typeof I18N.applyDOM === "function") I18N.applyDOM(); } catch (e) {}
       try {
         const modesPanel = document.querySelector("#v2-modes");
         const stagesWrap = document.querySelector("#v2-stages");

@@ -49,13 +49,29 @@ document.querySelectorAll("[data-quality]").forEach(function (b) {
   };
 });
 /* Mobile Assist (2026-10-05, CEO chốt): toggle trong pause menu (game.html#ov-pause).
-   Đọc/ghi wk_settings.mobileAssist (mặc định BẬT). Áp dụng từ wave tiếp theo
-   vì Campaign.diffOf() đọc setting mỗi lần compose wave. */
+   Đọc/ghi wk_settings.mobileAssist (mặc định BẬT). */
 function mobileAssistOn() {
   try {
     var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
     return !st || st.mobileAssist !== false;
   } catch (e) { return true; }
+}
+/* RFC fix-round-final F2 — khôi phục Mobile Assist (2026-10-05, CEO chốt số).
+   Active khi device coarse (class wk-coarse HOẶC pointer:coarse — cùng logic với
+   coarseNow() trong js/mobile.js) && toggle "Hỗ trợ mobile" bật.
+   mobileAssistOn() chỉ check setting, không đủ — cần thêm device check. */
+var MOBILE_ASSIST = { speedMult: 0.85, spawnCountMult: 0.8, chewDpsMult: 0.8 }; // hằng từ campaign cũ
+function mobileAssistActive() {
+  var coarse = false;
+  try {
+    if (typeof window !== "undefined" && window.matchMedia &&
+        window.matchMedia("(pointer:coarse)").matches) coarse = true;
+  } catch (e) {}
+  try {
+    if (!coarse && typeof document !== "undefined" && document.body &&
+        document.body.classList && document.body.classList.contains("wk-coarse")) coarse = true;
+  } catch (e2) {}
+  return coarse && mobileAssistOn();
 }
 function paintPauseMobileAssist() {
   var on = mobileAssistOn();
@@ -162,7 +178,7 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     lastStand: false, // "Cửa Sổ Cuối Cùng": reset khi chơi lại
-    giantWave: 0,
+    giantWave: 0, miniBossWave: 0, // guard spawn miniboss 1 lần/wave (RFC fix-round-final F1)
     _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
@@ -189,11 +205,6 @@ function resetGame() {
   // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
-  try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
-  // STAGE-OBJ: reset objective phụ mỗi run (startWave wave 1 reset lại lần nữa cho chắc)
-  try { if (window.StageObj) StageObj.begin(window.V2 ? V2.stageId : 0); } catch (e) {}
-  // STAGE-MECH: reset twist thưởng theo ải mỗi run (gọi sau StageObj để chain đúng hook gai ải 2)
-  try { if (window.StageMech) StageMech.begin(window.V2 ? V2.stageId : 0); } catch (e2) {}
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
   // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
   // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.
@@ -225,7 +236,12 @@ function resetGame() {
   if (window.Juice) { try { Juice.reset(); } catch (e) {} }
   if (window.Cinema) { try { Cinema.reset(); } catch (e) {} }
   playActMusic(); // Act 1
-  refreshBG(); // build background ải 1
+  // RFC ui-audit-boss-cleanup §3.6: campaign đã xóa → theme art (5 palette PR #79)
+  // random mỗi run; tránh lặp theme run trước nếu có thể.
+  G.themeSid = 1 + Math.floor(Math.random() * 5);
+  if (G._lastThemeSid === G.themeSid) G.themeSid = (G.themeSid % 5) + 1;
+  G._lastThemeSid = G.themeSid;
+  refreshBG(); // build background theo theme run này
   lastT = performance.now();
 }
 $("btn-again").onclick = () => { AudioEngine.sfx.click(); resetGame(); };

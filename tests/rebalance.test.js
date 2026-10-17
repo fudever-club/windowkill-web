@@ -1,5 +1,5 @@
 /* WINDOWKILL v2.0 — rebalance độ khó (CEO 2026-10-01) + campaign 5 stages.
- * Static test: assert các con số đã chốt trong js/game.js / difficulty.config.json / js/campaign.js. */
+ * Static test: assert các con số đã chốt trong js/game.js / difficulty.config.json. */
 "use strict";
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -46,18 +46,9 @@ describe("difficulty.config.json đồng bộ rebalance", () => {
   assert.equal(cfg.chill.ship_hp, 4, "chill ship_hp 4");
 });
 
-describe("Campaign v2.0 — 5 stages", () => {
-  const src = read("js/campaign.js");
-  assert.match(src, /STAGES/, "campaign.js có STAGES");
-  const ids = [...src.matchAll(/\bid:\s*([1-5])(?=[,\s])/g)].map((m) => parseInt(m[1], 10));
-  for (const n of [1, 2, 3, 4, 5]) assert.ok(ids.includes(n), `stage ${n} tồn tại`);
-  assert.match(src, /MÀN HÌNH XANH/, "stage 1");
-  assert.match(src, /TRÀN BỘ NHỚ/, "stage 5");
-});
-
 describe("V2 glue — hook points trong game.js", () => {
   const src = read("js/game.js");
-  for (const h of ["V2.boot(", "V2.onKill(", "V2.onWaveClear(", "V2.onGameOver(", "V2.hitstop(", "V2.drawOver(", "V2.stageWave(", "window.G = G"]) {
+  for (const h of ["V2.boot(", "V2.onKill(", "V2.onWaveClear(", "V2.onGameOver(", "V2.hitstop(", "V2.drawOver(", "window.G = G"]) {
     assert.ok(src.includes(h), `game.js chứa hook ${h}`);
   }
   const glue = read("js/v2glue.js");

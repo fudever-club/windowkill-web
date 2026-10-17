@@ -14,7 +14,7 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
   const MAX_SATS = 3;
-  const PRI = { fragment: 0, debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
+  const PRI = { debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
   const queue = [];
   const sats = new Map(); // id -> sat
   let permAsked = false, pollT = 0, blockedWarned = false;
@@ -219,7 +219,6 @@ const SatManager = (() => {
 
   // DESIGN-SYSTEM v1.1 §8 — tint title bar mô phỏng theo role (giữ tương phản thấp)
   const ROLE_TB_TINT = {
-    fragment: ["#274b63", "#10222f"],
     shield: ["#1d3a52", "#0c1c2c"], debris: ["#4a1d1d", "#260d0d"],
     giant: ["#1d4224", "#0d2112"], minion: ["#2d4416", "#141f0a"],
     lover: ["#4d1428", "#270a14"],
@@ -458,38 +457,6 @@ const SatManager = (() => {
       const n = (s.swallowed || []).length;
       ctx.fillStyle = "#c084fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.vacuum_count", { n }), cx, s.y + s.sh - 22);
-    } else if (s.role === "fragment") { // M2 rework 2026-10-04: mảnh kính
-      ctx.fillStyle = "#0a1626"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const wob = Math.sin(t / 200) * 0.1;
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
-      ctx.fillStyle = "rgba(125,211,252,.28)"; // mảnh kính xanh nhạt trong suốt
-      ctx.beginPath();
-      for (let i = 0; i < 7; i++) {
-        const a = i / 7 * Math.PI * 2, r = 24 + (i % 3) * 10;
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#7dd3fc"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1.5; // vết nứt
-      ctx.beginPath(); ctx.moveTo(-14, 10); ctx.lineTo(-2, -4); ctx.lineTo(10, 6); ctx.lineTo(18, -12); ctx.stroke();
-      ctx.restore();
-      if (s.fphase === "telegraph") { // telegraph: viền tím nhấp nháy + mũi tên chỉ viền mục tiêu
-        const p = (Math.sin(t / 90) + 1) / 2;
-        ctx.strokeStyle = `rgba(192,132,252,${0.5 + 0.5 * p})`; ctx.lineWidth = 3 + 2 * p;
-        roundRect(s.x + 1, s.y + 1, s.sw - 2, s.sh - 2, 8); ctx.stroke();
-        let dx = 0, dy = 1;
-        if (s.tedge === "left") { dx = -1; dy = 0; } else if (s.tedge === "right") { dx = 1; dy = 0; }
-        else if (s.tedge === "top") { dx = 0; dy = -1; }
-        ctx.fillStyle = `rgba(192,132,252,${0.6 + 0.4 * p})`;
-        const ahx = cx + dx * 44, ahy = cy + dy * 44;
-        ctx.beginPath();
-        ctx.moveTo(ahx + dx * 14, ahy + dy * 14);
-        ctx.lineTo(ahx - dy * 9, ahy + dx * 9);
-        ctx.lineTo(ahx + dy * 9, ahy - dx * 9);
-        ctx.closePath(); ctx.fill();
-      }
-      ctx.fillStyle = "#9adcff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
     } else {
       ctx.fillStyle = "#0a0a14"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       ctx.fillStyle = s.color; ctx.font = "700 22px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";

@@ -597,7 +597,7 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
   const MAX_SATS = 3;
-  const PRI = { fragment: 0, debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
+  const PRI = { debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
   const queue = [];
   const sats = new Map(); // id -> sat
   let permAsked = false, pollT = 0, blockedWarned = false;
@@ -802,7 +802,6 @@ const SatManager = (() => {
 
   // DESIGN-SYSTEM v1.1 §8 — tint title bar mô phỏng theo role (giữ tương phản thấp)
   const ROLE_TB_TINT = {
-    fragment: ["#274b63", "#10222f"],
     shield: ["#1d3a52", "#0c1c2c"], debris: ["#4a1d1d", "#260d0d"],
     giant: ["#1d4224", "#0d2112"], minion: ["#2d4416", "#141f0a"],
     lover: ["#4d1428", "#270a14"],
@@ -1041,38 +1040,6 @@ const SatManager = (() => {
       const n = (s.swallowed || []).length;
       ctx.fillStyle = "#c084fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.vacuum_count", { n }), cx, s.y + s.sh - 22);
-    } else if (s.role === "fragment") { // M2 rework 2026-10-04: mảnh kính
-      ctx.fillStyle = "#0a1626"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const wob = Math.sin(t / 200) * 0.1;
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
-      ctx.fillStyle = "rgba(125,211,252,.28)"; // mảnh kính xanh nhạt trong suốt
-      ctx.beginPath();
-      for (let i = 0; i < 7; i++) {
-        const a = i / 7 * Math.PI * 2, r = 24 + (i % 3) * 10;
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#7dd3fc"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1.5; // vết nứt
-      ctx.beginPath(); ctx.moveTo(-14, 10); ctx.lineTo(-2, -4); ctx.lineTo(10, 6); ctx.lineTo(18, -12); ctx.stroke();
-      ctx.restore();
-      if (s.fphase === "telegraph") { // telegraph: viền tím nhấp nháy + mũi tên chỉ viền mục tiêu
-        const p = (Math.sin(t / 90) + 1) / 2;
-        ctx.strokeStyle = `rgba(192,132,252,${0.5 + 0.5 * p})`; ctx.lineWidth = 3 + 2 * p;
-        roundRect(s.x + 1, s.y + 1, s.sw - 2, s.sh - 2, 8); ctx.stroke();
-        let dx = 0, dy = 1;
-        if (s.tedge === "left") { dx = -1; dy = 0; } else if (s.tedge === "right") { dx = 1; dy = 0; }
-        else if (s.tedge === "top") { dx = 0; dy = -1; }
-        ctx.fillStyle = `rgba(192,132,252,${0.6 + 0.4 * p})`;
-        const ahx = cx + dx * 44, ahy = cy + dy * 44;
-        ctx.beginPath();
-        ctx.moveTo(ahx + dx * 14, ahy + dy * 14);
-        ctx.lineTo(ahx - dy * 9, ahy + dx * 9);
-        ctx.lineTo(ahx + dy * 9, ahy - dx * 9);
-        ctx.closePath(); ctx.fill();
-      }
-      ctx.fillStyle = "#9adcff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
     } else {
       ctx.fillStyle = "#0a0a14"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       ctx.fillStyle = s.color; ctx.font = "700 22px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -1980,189 +1947,6 @@ function drawSatFields() {
   }
 }
 
-/* ---------------- M2 — BOSS VỠ KÍNH (Shatter) — P1d (rework 2026-10-04) ----------------
- * CEO: mảnh cũ "vô dụng, vô hại" — cắn 8px/3s trên cửa sổ ~1000px là muỗi đốt,
- * mảnh bất tử (hp 9999) nên không có counterplay, đóng tay bị phạt đẻ mini-boss
- * ngược đời. Rework: mảnh là MẢNH KÍNH vỡ ra từ chính viền cửa sổ — gắn chặt
- * fantasy "cửa sổ = máu".
- * - 3 mảnh, DESTRUCTIBLE (4 click để bắn vỡ). Bắn vỡ → +5 gem. KHÔNG pool HP chung.
- * - Vòng đời: drift 2.5s → telegraph 0.9s (sáng tím + rung + mũi tên chỉ viền) →
- *   dive 420px/s về viền gần nhất. Chạm viền → cắn 26px + vết rạn 3s, mảnh tiêu hao.
- * - Đóng tay mảnh (desktop popup thật) = "bắt mảnh" → +3 gem, không phạt.
- * - Triết lý vui > khó: telegraph rõ, bắn vỡ được, không spike.
- * - Hết boss → tất cả mảnh tự đóng (mode "cleanup"). */
-/* ---- FRAG-LOGIC-START ---- */
-const FRAG = { COUNT: 3, HP: 4, BITE: 26, DRIFT_T: 2.5, TELE_T: 0.9, DIVE_V: 420, GEMS_BREAK: 5, GEMS_CATCH: 3 };
-/* Pure-ish: bước 1 tick cho mảnh kính sim. Đột biến sat, trả về events.
- * sat: {fphase, phaseT, x,y,sw,sh, vx,vy, tx,ty,tedge}; b: {x,y,w,h}. */
-function fragStep(sat, dt, b) {
-  const ev = [];
-  const cx = sat.x + sat.sw / 2, cy = sat.y + sat.sh / 2;
-  if (sat.fphase === "drift") {
-    sat.x += sat.vx * dt; sat.y += sat.vy * dt;
-    const nx = sat.x + sat.sw / 2, ny = sat.y + sat.sh / 2;
-    if (nx < b.x + 20) sat.vx = Math.abs(sat.vx);
-    else if (nx > b.x + b.w - 20) sat.vx = -Math.abs(sat.vx);
-    if (ny < b.y + 20) sat.vy = Math.abs(sat.vy);
-    else if (ny > b.y + b.h - 20) sat.vy = -Math.abs(sat.vy);
-    sat.phaseT -= dt;
-    if (sat.phaseT <= 0) {
-      // chọn viền gần nhất làm mục tiêu dive
-      const dl = cx - b.x, dr = (b.x + b.w) - cx, dtp = cy - b.y, db = (b.y + b.h) - cy;
-      const m = Math.min(dl, dr, dtp, db);
-      sat.tedge = m === dl ? "left" : m === dr ? "right" : m === dtp ? "top" : "bottom";
-      sat.tx = sat.tedge === "left" ? b.x : sat.tedge === "right" ? b.x + b.w : cx;
-      sat.ty = sat.tedge === "top" ? b.y : sat.tedge === "bottom" ? b.y + b.h : cy;
-      sat.fphase = "telegraph"; sat.phaseT = FRAG.TELE_T;
-      ev.push({ type: "telegraph", edge: sat.tedge });
-    }
-  } else if (sat.fphase === "telegraph") {
-    sat.x += (Math.random() - 0.5) * 60 * dt; sat.y += (Math.random() - 0.5) * 60 * dt; // rung tại chỗ
-    sat.phaseT -= dt;
-    if (sat.phaseT <= 0) {
-      const dx = sat.tx - cx, dy = sat.ty - cy, d = Math.sqrt(dx * dx + dy * dy) || 1;
-      sat.vx = dx / d * FRAG.DIVE_V; sat.vy = dy / d * FRAG.DIVE_V;
-      sat.fphase = "dive";
-      ev.push({ type: "dive", edge: sat.tedge });
-    }
-  } else if (sat.fphase === "dive") {
-    sat.x += sat.vx * dt; sat.y += sat.vy * dt;
-    const nx = sat.x + sat.sw / 2, ny = sat.y + sat.sh / 2;
-    const hit =
-      (sat.tedge === "left" && nx <= b.x + 14) || (sat.tedge === "right" && nx >= b.x + b.w - 14) ||
-      (sat.tedge === "top" && ny <= b.y + 14) || (sat.tedge === "bottom" && ny >= b.y + b.h - 14);
-    if (hit) ev.push({ type: "bite", edge: sat.tedge, x: nx, y: ny });
-  }
-  return ev;
-}
-/* ---- FRAG-LOGIC-END ---- */
-/* Rải gem tại (x,y) — dùng cho thưởng bắn vỡ / bắt mảnh kính. */
-function dropFragGems(x, y, n) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    G.gems.push({ x: x + rand(-30, 30), y: y + rand(-30, 30), vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: 0 });
-  }
-}
-function hurtBoss(n) {
-  const bs = G.boss;
-  if (!bs || bs.dead) return;
-  bs.hp -= n; bs.flash = 0.2;
-  if (bs.hp <= 0) killBoss(); else bossSplitCheck(bs);
-}
-
-function bossSplitCheck(bs) {
-  if (!bs || bs.dead || bs.split) return;
-  if (bs.hp > bs.maxHp * 0.66) return; // vào phase 2 ở 66% HP
-  bs.split = true;
-  const b = bounds();
-  for (let i = 0; i < FRAG.COUNT; i++) {
-    const sat = SatManager.request("fragment", {
-      hp: FRAG.HP, color: "#7dd3fc", label: I18N.t("sat.bossfrag_label"), w: 220, h: 160,
-      onClose: (mode, s) => {
-        const px = s.sim ? s.x + s.sw / 2 : b.x + b.w / 2;
-        const py = s.sim ? s.y + s.sh / 2 : b.y + b.h / 2;
-        if (mode === "manual") {
-          // bắt mảnh: +3 gem, không phạt (rework: bỏ phạt đẻ mini-boss ngược đời)
-          dropFragGems(px, py, FRAG.GEMS_CATCH);
-          addFloat(px, py - 30, I18N.t("sat.bossfrag_catch"), "#7dd3fc", true);
-          AudioEngine.sfx.gem();
-        } else if (mode === "killed") {
-          // bắn vỡ mảnh: +5 gem
-          dropFragGems(px, py, FRAG.GEMS_BREAK);
-          addFloat(px, py - 30, I18N.t("sat.bossfrag_break"), "#7dd3fc", true);
-          AudioEngine.sfx.crack();
-        }
-        // bitten/cleanup: không thêm gì
-      },
-    });
-    if (sat) {
-      // vỡ RA TỪ viền: spawn tại điểm ngẫu nhiên trên viền arena
-      if (sat.sim) {
-        const edge = ["left", "right", "top", "bottom"][i % 4], m = 34;
-        if (edge === "left") { sat.x = b.x + m; sat.y = rand(b.y + 70, b.y + b.h - 70 - sat.sh); }
-        else if (edge === "right") { sat.x = b.x + b.w - m - sat.sw; sat.y = rand(b.y + 70, b.y + b.h - 70 - sat.sh); }
-        else if (edge === "top") { sat.y = b.y + m + 34; sat.x = rand(b.x + 60, b.x + b.w - 60 - sat.sw); }
-        else { sat.y = b.y + b.h - m - sat.sh; sat.x = rand(b.x + 60, b.x + b.w - 60 - sat.sw); }
-      }
-      const ang = -Math.PI / 2 + (i - 1) * 0.9; // 3 hướng chéo lên
-      const sp = 60 + Math.random() * 60; // drift 60–120px/s
-      sat.vx = Math.cos(ang) * sp; sat.vy = Math.sin(ang) * sp;
-      sat.fphase = "drift"; sat.phaseT = FRAG.DRIFT_T; sat.shipCD = 0;
-    }
-  }
-  setBanner(I18N.t("sat.bossfrag_spawn"), "");
-  AudioEngine.sfx.boss(); AudioEngine.sfx.crack();
-  G.shake = Math.max(G.shake, 10);
-}
-
-function fragmentBite(edge, x, y) {
-  if (edge === "left" || edge === "right") shrinkWindow(FRAG.BITE, 0);
-  else shrinkWindow(0, FRAG.BITE);
-  // vết rạn kính lưu lại trên viền 3s (visual)
-  const b = bounds();
-  G.cracks.push({
-    edge, t: 0, life: 3,
-    at: edge === "left" || edge === "right" ? (y ?? b.y + b.h / 2) : (x ?? b.x + b.w / 2),
-  });
-  AudioEngine.sfx.crack(); G.shake = Math.max(G.shake, 10);
-  addFloat(x ?? b.x + b.w / 2, (y ?? 80) - 24, I18N.t("sat.bossfrag_bite"), "#7dd3fc", true);
-}
-
-function updateFragments(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "fragment" || sat.dead) continue;
-    sat.shipCD = Math.max(0, (sat.shipCD || 0) - dt);
-    if (sat.sim) {
-      const b = bounds(), s = G.ship;
-      for (const ev of fragStep(sat, dt, b)) {
-        if (ev.type === "telegraph") AudioEngine.sfx.hit();
-        else if (ev.type === "bite") { fragmentBite(ev.edge, ev.x, ev.y); SatManager.kill(sat.id, "bitten"); }
-      }
-      if (!sat.dead) {
-        const cx = sat.x + sat.sw / 2, cy = sat.y + sat.sh / 2;
-        if (sat.shipCD <= 0 && dist2(s.x, s.y, cx, cy) < (s.r + 30) * (s.r + 30)) {
-          sat.shipCD = 1; hurtShip(1, cx, cy);
-          sat.vx *= -1; sat.vy *= -1;
-        }
-      }
-    } else {
-      // desktop popup thật: 3 phase qua steer (drift → telegraph → dive)
-      if (!sat.steered && sat.win && !sat.win.closed) {
-        sat.steered = true;
-        SatManager.steer(sat.id, sat.vx, sat.vy);
-      }
-      sat.phaseT = (sat.phaseT ?? FRAG.DRIFT_T) - dt;
-      if ((sat.fphase === "drift" || !sat.fphase) && sat.phaseT <= 0) {
-        sat.fphase = "telegraph"; sat.phaseT = FRAG.TELE_T;
-        SatManager.warn(sat.id);
-      } else if (sat.fphase === "telegraph" && sat.phaseT <= 0) {
-        sat.fphase = "dive";
-        try { // lao về tâm cửa sổ chính
-          const mx = window.screenX + window.outerWidth / 2, my = window.screenY + window.outerHeight / 2;
-          const sx = sat.win.screenX + sat.w / 2, sy = sat.win.screenY + sat.h / 2;
-          const dx = mx - sx, dy = my - sy, d = Math.sqrt(dx * dx + dy * dy) || 1;
-          SatManager.steer(sat.id, dx / d * FRAG.DIVE_V, dy / d * FRAG.DIVE_V);
-        } catch (e) {}
-      }
-      sat.colT = (sat.colT || 0) - dt; // check va chạm mỗi 0.2s
-      if (sat.colT <= 0) {
-        sat.colT = 0.2;
-        try {
-          const sx = sat.win.screenX, sy = sat.win.screenY;
-          const mx = window.screenX, my = window.screenY, mw = window.outerWidth, mh = window.outerHeight;
-          if (sat.fphase === "dive" && sx < mx + mw && sx + sat.w > mx && sy < my + mh && sy + sat.h > my) {
-            const fcX = sx + sat.w / 2, fcY = sy + sat.h / 2;
-            const m = Math.min(Math.abs(fcX - mx), Math.abs(fcX - (mx + mw)), Math.abs(fcY - my), Math.abs(fcY - (my + mh)));
-            const edge = m === Math.abs(fcX - mx) ? "left" : m === Math.abs(fcX - (mx + mw)) ? "right" : m === Math.abs(fcY - my) ? "top" : "bottom";
-            fragmentBite(edge, fcX, fcY);
-            SatManager.kill(sat.id, "bitten");
-          }
-        } catch (e) { /* popup đã đóng */ }
-      }
-    }
-  }
-}
-
 /* ---------------- input: phím + chuột + touch ---------------- */
 const keys = {};
 const mouse = { x: innerWidth / 2, y: innerHeight / 2 - 100, down: false };
@@ -2195,11 +1979,10 @@ window.addEventListener("keydown", e => {
     } catch (e2) {}
   }
   if (e.code === "KeyR" && G.phase === "over") resetGame();
-  // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn ải 3 qua module slippery đã export)
+  // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn)
   if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && G.phase === "play" && window.Upgrades2) {
     try {
-      if (Upgrades2.tryAnchor(G.ship) && window.StageFX && StageFX.modules && StageFX.modules.slippery &&
-          typeof StageFX.modules.slippery.stabilize === "function") StageFX.modules.slippery.stabilize();
+      Upgrades2.tryAnchor(G.ship);
     } catch (er) {}
   }
   // Súng Bắn Keo (2026-10-04, CEO chốt) — E vá ngay +60px cửa sổ, hồi chiêu 30s
@@ -2605,7 +2388,9 @@ const BEHAVIORS = {
       } else { e.x += (p.x - e.x) / d * spd * dt; e.y += (p.y - e.y) / d * spd * dt; }
     } else {
       e.chewT += dt;
-      if (e.chewT >= DIFF.chew) {
+      // RFC fix-round-final F2: Mobile Assist → threshold ×1.25 (=1/0.8, tương đương
+      // chew DPS ×0.8: threshold lớn hơn = gặm chậm hơn)
+      if (e.chewT >= DIFF.chew * (mobileAssistActive() ? 1.25 : 1)) {
         e.chewT = 0;
         if (e.onShield && typeof damageShield === "function") damageShield(e); // gặm khiên thay vì gặm cửa sổ
         else {
@@ -2914,14 +2699,12 @@ function bossPersonaOf(w) {
     if (w >= BOSS_PERSONAS[i].wave) return BOSS_PERSONAS[i];
   return BOSS_PERSONAS[0];
 }
-/* Item 1 (stage BG wiring): ở campaign mode (V2.stageId 1-5) dùng stageId làm
-   sid cho BG.build để mỗi ải hiện đúng palette (BG PALETTES keyed 1-5);
-   trước đây chỉ đọc ACTS/G.act (ở campaign luôn = 1 vì wave trong ải chỉ
-   1-10) nên ải 2-5 không bao giờ hiện đúng palette. Endless (stageId = 0)
-   giữ nguyên behavior ACTS cũ; sid invalid → fallback 1. */
+/* RFC ui-audit-boss-cleanup §3.6 (campaign đã xóa): stageId không còn —
+   theme art (BG PALETTES keyed 1-5, PR #79) random mỗi run qua G.themeSid
+   (set trong resetGame). themeSid invalid → fallback ACTS bgStage. */
 function bgStageSid() {
   try {
-    const st = window.V2 && V2.stageId;
+    const st = window.G ? G.themeSid : 0;
     if (Number.isInteger(st) && st >= 1 && st <= 5) return st;
   } catch (e) {}
   return (ACTS[(G.act || 1) - 1] || {}).bgStage || 1;
@@ -2945,10 +2728,6 @@ const PICKUP_DEFS = {
   "magnet":    { w: 22, use: s => { s.magnetT = 8; addFloat(s.x, s.y - 30, I18N.t("pickup.magnet_8s"), "#7df9ff", true); } },
   "overdrive": { w: 18, use: s => { s.overdriveT = 8; addFloat(s.x, s.y - 30, "OVERDRIVE 8s!", "#ffe14d", true); } },
   "shieldwin": { w: 18, can: () => G.wave >= 4, use: () => requestShield() }, // M3: cửa sổ khiên
-  // STAGE-OBJ ải 5: patch xanh nới vùng an toàn (GAME-DESIGN-DOC §4). w: 0 + can: false →
-  // KHÔNG vào bảng rớt random chung; chỉ spawn qua roll riêng trong killEnemy khi ải 5.
-  "patch":     { w: 0, can: () => false,
-                 use: () => { try { if (window.StageFX) StageFX.growPatch(G); } catch (e) {} } },
 };
 
 /* ---------------- spawn & wave ---------------- */
@@ -2966,6 +2745,19 @@ function edgeSpawn() {
 /* REBALANCE v2.0: đường cong độ khó mượt — thay bước nhảy act (count 1→1.15→1.3,
  * hp 1→1.35→1.8, spd 1→1.08→1.15) bằng ramp tuyến tính theo wave; giữ nguyên giá trị
  * tại các mốc cũ (wave 11, wave 21) nên độ gắt tổng thể không đổi, chỉ hết spike đột ngột. */
+/* RFC ui-audit-boss-cleanup §3.5: miniboss defs migrate từ campaign.js sang
+   Monsters.MINIBOSSES (key 1-5). Map id "mini_boss_N" → def {base, nameVi,
+   hpMul: 8, rMul: 2.5, gems: 20} — stat mapping giữ nguyên campaign cũ. */
+function miniBossSpecOf(type) {
+  var m = /^mini_boss_([1-5])$/.exec(String(type || ""));
+  if (!m) return null;
+  var M = null;
+  try { M = (typeof window !== "undefined" && window.Monsters) || null; } catch (e) {}
+  if (!M) { try { M = (typeof Monsters !== "undefined") ? Monsters : null; } catch (e2) {} }
+  var def = (M && M.MINIBOSSES) ? M.MINIBOSSES[parseInt(m[1], 10)] : null;
+  if (!def || !def.base) return null;
+  return { id: type, base: def.base, nameVi: def.nameVi, hpMult: def.hpMul || 8, scale: def.rMul || 2.5, gemReward: def.gems || 20 };
+}
 function smoothCountMul(n) {
   if (n <= 10) return 1;
   if (n <= 20) return 1 + 0.15 * (n - 10) / 10;
@@ -2994,16 +2786,12 @@ function onboardSpdMul() {
   return (DIFF_KEY === "normal" && G.wave <= 3) ? 0.85 : 1;
 }
 function mkEnemy(type, x, y) {
-  // FIX C2b (2026-10-02): id đặc biệt 'mini_boss_N' (campaign wave 5) resolve
-  // thành entity mini-boss thật: base monster + hp×8, scale×2.5, gem 20
-  // (DIFFICULTY.campaign.miniboss) và bossHpMult theo độ khó đã chọn.
+  // RFC ui-audit-boss-cleanup (campaign đã xóa): id đặc biệt 'mini_boss_N' resolve
+  // thành entity mini-boss thật qua Monsters.MINIBOSSES (đã migrate từ campaign.js):
+  // base monster + hp×8 (hpMul), scale×2.5 (rMul), gem 20 (gems).
   // e.type giữ = base id để mọi behavior/effect/render theo type cũ nguyên vẹn;
-  // đánh dấu e.miniBoss để banner/kill-track nhận diện. Không có Campaign
-  // (endless) thì id lạ vẫn trả null như cũ — không đổi hành vi cũ.
-  var miniSpec = null;
-  if (typeof type === "string" && window.Campaign && Campaign.getMinibossSpec) {
-    try { miniSpec = Campaign.getMinibossSpec(type); } catch (e0) { miniSpec = null; }
-  }
+  // đánh dấu e.miniBoss để banner/kill-track nhận diện.
+  var miniSpec = miniBossSpecOf(type);
   var def = MONSTER_REGISTRY[miniSpec ? miniSpec.base : type];
   if (!def) return null;
   var e = {
@@ -3011,16 +2799,19 @@ function mkEnemy(type, x, y) {
 
    kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
     hp: wkCapMult(G.wave, "hp", def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave)),
-    speed: wkCapMult(G.wave, "speed", def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul()),
+    // RFC fix-round-final F2: Mobile Assist → tốc độ quái ×0.85 (không đổi HP/xp)
+    speed: wkCapMult(G.wave, "speed", def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul() *
+      (mobileAssistActive() ? MOBILE_ASSIST.speedMult : 1)),
          xp: def.xp,
   };
 if (miniSpec) {
+    // RFC ui-audit-boss-cleanup: Campaign.getRunParams đã xóa — DIFF không có
+    // bossHpMult nên inline hằng tuning từ campaign (DIFFICULTY.*.boss_hp_mult):
+    // chill 0.65, normal 1.0, hardcore 1.35.
     var bossHpM = 1;
     try {
-      if (window.V2 && V2.diffKey && Campaign.getRunParams) {
-        var rp = Campaign.getRunParams(V2.diffKey);
-        if (rp && rp.bossHpMult) bossHpM = rp.bossHpMult;
-      }
+      var _dk = (typeof DIFF_KEY !== "undefined" && DIFF_KEY) || "normal";
+      bossHpM = _dk === "chill" ? 0.65 : (_dk === "hardcore" || _dk === "hard" ? 1.35 : 1);
     } catch (e1) {}
     e.miniBoss = miniSpec.id;
     e.miniName = miniSpec.nameVi;
@@ -3071,6 +2862,23 @@ function spawnEnemy(type) {
   const p = edgeSpawn();
   spawnEnemyAt(type, p.x, p.y);
 }
+/* RFC fix-round-final F1 — miniboss debut ngay trước boss wave: wave 4/9/14/19/24
+   (mapping k=(n+1)/5 khi n%5===4 → wave 4→mini_boss_1 … 24→mini_boss_5; ngoài
+   khoảng, vd 29+ → no-op). Guard G.miniBossWave chống spawn trùng trong wave.
+   Hook: startWave() (js/game/12-variety.js) sau maybeTriggerGiant(n). */
+function maybeSpawnMiniBoss(n) {
+  if (n % 5 !== 4) return;
+  var k = (n + 1) / 5;
+  if (k < 1 || k > 5) return;
+  if (G.miniBossWave === n) return;
+  var id = "mini_boss_" + k;
+  var spec = miniBossSpecOf(id);
+  if (!spec) return;
+  spawnEnemy(id); // mkEnemy resolve mini_boss_N qua Monsters.MINIBOSSES (edgeSpawn + spawnWarning có sẵn)
+  setBanner(spec.nameVi, "");
+  try { AudioEngine.sfx.boss(); } catch (e) {}
+  G.miniBossWave = n;
+}
 function detonateKamikaze(e) {
   e.dead = true;
   shrinkWindow(20, 16); // nổ gặm cửa sổ
@@ -3091,7 +2899,9 @@ function buildSpawnQueue(n) {
   const wOf = d => d.weight * ((ELITE_HEAVY && ELITE_HEAVY[d.id]) || 1);
   const totalW = pool.reduce((a, d) => a + wOf(d), 0);
   const TS = wkSpawnCfg();
-  const count = Math.round((TS.base_count + n * TS.per_wave) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n));
+  // RFC fix-round-final F2: Mobile Assist → số lượng spawn ×0.8.
+  // KHÔNG áp vào wkSpawnInterval (DIFF.spawnMul là interval, bị band formula bypass wave 15-30).
+  const count = Math.round((TS.base_count + n * TS.per_wave) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n) * (mobileAssistActive() ? MOBILE_ASSIST.spawnCountMult : 1));
   const q = [];
   for (let i = 0; i < count; i++) {
     let r = Math.random() * totalW, type = pool[0].id;
@@ -3375,31 +3185,6 @@ function startWave(n) {
   G.act = act;
   if (changed) playActMusic(); // đổi nhạc nền theo Act
   if (changed) refreshBG(); // đổi background "Deep Dever" theo ải
-  // v2.0 campaign: ?stage=1..5 → wave 10 = boss module, các wave khác lấy comp từ Campaign
-  if (window.V2) {
-    try {
-      const sv = V2.stageWave(n);
-      if (sv) {
-        if (sv.boss) { V2.startStageBoss(n) || spawnBoss(); return; }
-        G.spawnQueue = sv.queue;
-        G.spawnQueue.sort(() => Math.random() - 0.5);
-        G.spawnT = 0;
-        V2.stageFxEnter();
-        // Item 2: nghi thức vào ải — wave 1 mỗi ải campaign: banner tên ải +
-        // câu luật gắn mechanic + story "quét virus" (thay banner wave mặc định)
-        var ritualDone = false;
-        try { ritualDone = !!(V2.stageRitualEnter && V2.stageRitualEnter(n)); } catch (err2) {}
-        if (!ritualDone) {
-          setBanner(I18N.t("campaign.wave", { n: n, stage: V2.stageId }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
-        }
-        // STAGE-OBJ: reset objective phụ đầu run (wave 1) — tiến trình reset mỗi run
-        if (n === 1 && window.StageObj) { try { StageObj.begin(V2.stageId); } catch (er2) {} }
-        // STAGE-MECH: reset lại lần nữa cho chắc (giống StageObj)
-        if (n === 1 && window.StageMech) { try { StageMech.begin(V2.stageId); } catch (er3) {} }
-        return;
-      }
-    } catch (er) {}
-  }
   if (n % 5 === 0) { spawnBoss(); return; }
   vp1ClearModifier(); // VP1: xóa modifier wave trước (không stack)
   G.vp1_golden = false; G.vp1_meteors = null; G.vp1_blackoutT = 0;
@@ -3429,13 +3214,18 @@ function startWave(n) {
     if (vp1ev) vp1TriggerEvent(vp1ev, n);
   }
   maybeTriggerGiant(n); // M6
+  maybeSpawnMiniBoss(n); // RFC fix-round-final F1: miniboss debut wave 4/9/14/19/24 (trước boss wave)
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? I18N.t("banner.wave1") : pickSub();
   // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)
   const waveTitle = changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`;
-  const waveSub = changed
+  // RFC ui-audit-boss-cleanup §3.6: wave 1 hiện theme run (flavor text, KHÔNG unlock/select)
+  const THEME_NAMES = { 1: "MÀN HÌNH XANH", 2: "TƯỜNG LỬA", 3: "TRỌNG LỰC 404", 4: "CÚP ĐIỆN", 5: "TRÀN BỘ NHỚ" };
+  const themeName = THEME_NAMES[G.themeSid] || "";
+  const waveSubBase = changed
     ? (G.vp1_spotlightSub ? `ACT ${act} — ${cfg.name}: ${G.vp1_spotlightSub}` : `ACT ${act} — ${cfg.name}: ${cfg.sub}`)
     : (G.vp1_spotlightSub || sub);
+  const waveSub = (n === 1 && themeName) ? `Chủ đề: ${themeName} · ${waveSubBase}` : waveSubBase;
   // WOW: wave banner qua Cinema (fallback setBanner cũ)
   if (window.Cinema) {
     try {
@@ -3624,13 +3414,29 @@ document.querySelectorAll("[data-quality]").forEach(function (b) {
   };
 });
 /* Mobile Assist (2026-10-05, CEO chốt): toggle trong pause menu (game.html#ov-pause).
-   Đọc/ghi wk_settings.mobileAssist (mặc định BẬT). Áp dụng từ wave tiếp theo
-   vì Campaign.diffOf() đọc setting mỗi lần compose wave. */
+   Đọc/ghi wk_settings.mobileAssist (mặc định BẬT). */
 function mobileAssistOn() {
   try {
     var st = JSON.parse(localStorage.getItem("wk_settings") || "{}");
     return !st || st.mobileAssist !== false;
   } catch (e) { return true; }
+}
+/* RFC fix-round-final F2 — khôi phục Mobile Assist (2026-10-05, CEO chốt số).
+   Active khi device coarse (class wk-coarse HOẶC pointer:coarse — cùng logic với
+   coarseNow() trong js/mobile.js) && toggle "Hỗ trợ mobile" bật.
+   mobileAssistOn() chỉ check setting, không đủ — cần thêm device check. */
+var MOBILE_ASSIST = { speedMult: 0.85, spawnCountMult: 0.8, chewDpsMult: 0.8 }; // hằng từ campaign cũ
+function mobileAssistActive() {
+  var coarse = false;
+  try {
+    if (typeof window !== "undefined" && window.matchMedia &&
+        window.matchMedia("(pointer:coarse)").matches) coarse = true;
+  } catch (e) {}
+  try {
+    if (!coarse && typeof document !== "undefined" && document.body &&
+        document.body.classList && document.body.classList.contains("wk-coarse")) coarse = true;
+  } catch (e2) {}
+  return coarse && mobileAssistOn();
 }
 function paintPauseMobileAssist() {
   var on = mobileAssistOn();
@@ -3737,7 +3543,7 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     lastStand: false, // "Cửa Sổ Cuối Cùng": reset khi chơi lại
-    giantWave: 0,
+    giantWave: 0, miniBossWave: 0, // guard spawn miniboss 1 lần/wave (RFC fix-round-final F1)
     _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
@@ -3764,11 +3570,6 @@ function resetGame() {
   // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
-  try { if (window.StageFX) StageFX.exit(); } catch (e) {} // AUDIT 2026-10-02: thoát mechanic ải của run cũ (xóa cả flag G.blackout)
-  // STAGE-OBJ: reset objective phụ mỗi run (startWave wave 1 reset lại lần nữa cho chắc)
-  try { if (window.StageObj) StageObj.begin(window.V2 ? V2.stageId : 0); } catch (e) {}
-  // STAGE-MECH: reset twist thưởng theo ải mỗi run (gọi sau StageObj để chain đúng hook gai ải 2)
-  try { if (window.StageMech) StageMech.begin(window.V2 ? V2.stageId : 0); } catch (e2) {}
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
   // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
   // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.
@@ -3800,7 +3601,12 @@ function resetGame() {
   if (window.Juice) { try { Juice.reset(); } catch (e) {} }
   if (window.Cinema) { try { Cinema.reset(); } catch (e) {} }
   playActMusic(); // Act 1
-  refreshBG(); // build background ải 1
+  // RFC ui-audit-boss-cleanup §3.6: campaign đã xóa → theme art (5 palette PR #79)
+  // random mỗi run; tránh lặp theme run trước nếu có thể.
+  G.themeSid = 1 + Math.floor(Math.random() * 5);
+  if (G._lastThemeSid === G.themeSid) G.themeSid = (G.themeSid % 5) + 1;
+  G._lastThemeSid = G.themeSid;
+  refreshBG(); // build background theo theme run này
   lastT = performance.now();
 }
 $("btn-again").onclick = () => { AudioEngine.sfx.click(); resetGame(); };
@@ -3885,16 +3691,6 @@ function killEnemy(e) {
   // VP1 glowparty: mỗi kill +1 gem
   if (G.vp1_glowParty) G.gems.push({ x: e.x, y: e.y - 10, vx: 0, vy: -60, v: 1, t: 0 });
   // STAGE-OBJ: objective phụ theo ải — dark-kill (ải 4) / drift-kill (ải 3)
-  try { if (window.StageObj) StageObj.onKill(e); } catch (er) {}
-  // STAGE-MECH: twist thưởng theo ải — drift-kill ×2 (ải 3), dark-kill ×2 (ải 4)
-  try { if (window.StageMech) StageMech.onKill(e); } catch (er2) {}
-  // STAGE-OBJ ải 5 (theo GAME-DESIGN-DOC §4 — mechanic còn thiếu): quái rớt patch
-  // xanh nới vùng an toàn. Roll riêng 12%, KHÔNG vào bảng random chung (không tăng khó,
-  // chỉ thêm pickup có lợi + mục tiêu cho objective "Kỹ Sư Bản Vá").
-  try {
-    if (window.V2 && V2.stageId === 5 && window.StageFX && StageFX.activeId === "shrink" && Math.random() < 0.12)
-      G.pickups.push({ kind: "patch", x: e.x, y: e.y, t: 0 });
-  } catch (er) {}
   // rớt vật phẩm: 10% tổng, chia theo trọng số PICKUP_DEFS
   // REBALANCE v2.0: chill tăng tỉ lệ rớt heart/shield ~+50% (pickupBoost × trọng số + dropRateMul × tỉ lệ chung)
   const boost = DIFF.pickupBoost || 1;
@@ -3920,7 +3716,7 @@ function nukeBlast() {
   G.enemies.forEach(e => { if (!e.dead) { e.hp -= 15; if (e.hp <= 0) killEnemy(e); else { e.flash = 0.15; } } });
   if (G.boss && !G.boss.dead) {
     G.boss.hp -= 40; G.boss.flash = 0.2;
-    if (G.boss.hp <= 0) killBoss(); else if (typeof bossSplitCheck === "function") bossSplitCheck(G.boss); // M2
+    if (G.boss.hp <= 0) killBoss();
   }
   // v2.0: nuke cũng trúng boss module
   if (window.V2 && window.Bosses) { try { if (V2.bossActive && Bosses.active && !Bosses.active.dead) Bosses.hit(Bosses.active, 15, Bosses.active.x, Bosses.active.y, G); } catch (er) {} }
@@ -3931,15 +3727,11 @@ function nukeBlast() {
 function killBoss() {
   const bs = G.boss; if (!bs || bs.dead) return;
   bs.dead = true; G.boss = null;
-  for (const sat of SatManager.values()) // M2: hết boss → mảnh tự đóng
-    if (sat.role === "fragment" && !sat.dead) SatManager.kill(sat.id, "cleanup");
   if (typeof BG !== "undefined") BG.setDim(0); // hết dim nền
   const pts = 500; // §6: boss = 500 cố định
   G.score += pts; G.kills++;
   // v2.0: meta + tutorial hook
   if (window.V2) { try { V2.onBossKill(); } catch (er) {} }
-  // STAGE-MECH: ải 1 reboot tốt nghiệp khi hạ boss; ải 5 CTRL+Z nếu hạ trong lúc NULL hút
-  try { if (window.StageMech) StageMech.onBossKill(); } catch (er2) {}
   try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
   try { AudioEngine.sfx.stinger("victory"); } catch (e) {} // stinger victory khi hạ boss
   jxShake(12, 700, 10); windowJitter(30);
@@ -4052,10 +3844,6 @@ function update(dt) {
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
-  // STAGE-OBJ: tick objective mỗi frame — trạng thái input cho drift detection (ải 3)
-  try { if (window.StageObj) StageObj.update(dt, ml > 0.05); } catch (er) {}
-  // STAGE-MECH: boss 25% HP ải 5 (NULL hút cửa sổ), chain drift ải 3, reboot flash ải 1
-  try { if (window.StageMech) StageMech.update(dt); } catch (er2) {}
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
@@ -4168,7 +3956,7 @@ function update(dt) {
           dist2(bl.x, bl.y, G.boss.x, G.boss.y) < (bl.r + G.boss.r) * (bl.r + G.boss.r)) {
         G.boss.hp -= bl.dmg; G.boss.flash = 0.08; AudioEngine.sfx.hit();
         burst(bl.x, bl.y, 5, ["#ffd166", "#fff"], 180);
-        if (G.boss.hp <= 0) killBoss(); else if (typeof bossSplitCheck === "function") bossSplitCheck(G.boss); // M2
+        if (G.boss.hp <= 0) killBoss();
         if (bl.pierce > 0) bl.pierce--; else dead = true;
       }
     }
@@ -4376,7 +4164,6 @@ function update(dt) {
       G.gems.splice(i, 1); AudioEngine.sfx.gem();
       burst(gm.x, gm.y, 6, ["#7df9ff", "#fff"], 140);
       gainXp(gm.v + (s.xpPerGem || 0)); // §6: gem = 0 điểm, chỉ XP (Tham lam: +1 XP/gem)
-      try { if (window.StageObj) StageObj.onGem(); } catch (er) {} // STAGE-OBJ ải 1
       if (G.phase !== "play") return;
     }
   }
@@ -4394,9 +4181,6 @@ function update(dt) {
       G.pickups.splice(i, 1); AudioEngine.sfx.pickup();
       const pd = PICKUP_DEFS[p.kind];
       if (pd) pd.use(s);
-      try { if (window.StageObj) StageObj.onPickup(p.kind); } catch (er) {} // STAGE-OBJ ải 5 (patch)
-      // STAGE-MECH: ải 5 nhặt patch → +5 gem thưởng "vá có công"
-      try { if (window.StageMech) StageMech.onPickup(p.kind, p); } catch (er2) {}
       if (p.kind === "heart") wkBuzz(15); // HAPTIC (feat/mobile-quality): nhặt heart
       // v2.0: meta hook (achievement nhặt vật phẩm)
       if (window.V2) { try { V2.onPickup(p.kind); } catch (er) {} }
@@ -4447,11 +4231,11 @@ function damageEnemy(e, dmg, bl) {
  * Gọi BG.build khi đổi ải / resize; mỗi frame chỉ BG.draw. */
 
 /* =====================================================================
-   RFC stage-themes-modes §2.1 — theme theo ải:
+   RFC ui-audit-boss-cleanup §3.6 — theme theo run (campaign đã xóa):
    (c) themeTint(e): shift hue màu quái ±15° (chỉ đổi hue, không đổi shape/hitbox);
-       TẮT ở endless/mode mới (V2.stageId ∉ 1..5) và không áp cho boss/đạn/particle.
-   (b) drawThemeBorder(): motif viền theo ải — vẽ SAU BorderFX.draw, DƯỚI StageFX.draw
-       (mechanic ải luôn là lớp trên cùng — gameplay readability ưu tiên).
+       chạy mọi run với G.themeSid random 1-5, không áp cho boss/đạn/particle.
+   (b) drawThemeBorder(): motif viền theo theme — vẽ SAU BorderFX.draw,
+       reduced-motion được tôn trọng.
    ===================================================================== */
 const _tintMemo = {};
 /* P2: hoist array literal khỏi per-frame draw (tránh alloc mỗi frame) */
@@ -4489,8 +4273,8 @@ function themeTint(e) {
   if (!e || !e.color) return "#ffffff";
   try {
     if (window.G && G.themeTint === false) return e.color; // override tắt tường minh
-    const st = window.V2 ? V2.stageId : 0;
-    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: endless/mode mới → TẮT
+    const st = (window.G && G.themeSid) || 0;
+    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: theme invalid → TẮT
     const th = (typeof BG !== "undefined" && BG.getTheme(st).tintHue) || 0;
     if (!th) return e.color;
     const k = st + "|" + e.color;
@@ -4517,8 +4301,8 @@ function _lerpColor(c1, c2, t) {
 function drawThemeBorder(ctx, W, H, now) {
   let bd = null;
   try {
-    const st = window.V2 ? V2.stageId : 0;
-    if (!(st >= 1 && st <= 5)) return; // endless/mode mới: không motif viền
+    const st = (window.G && G.themeSid) || 0;
+    if (!(st >= 1 && st <= 5)) return; // theme invalid: không motif viền
     if (typeof BG === "undefined") return;
     bd = BG.getTheme(st).border;
   } catch (e) { return; }
@@ -4533,11 +4317,9 @@ function drawThemeBorder(ctx, W, H, now) {
     rr(inset, inset, W - inset * 2, H - inset * 2, 14); ctx.stroke();
     ctx.fillStyle = "#66B2FF"; ctx.globalAlpha = 0.9;
     for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(inset + 18 + i * 17, inset + 18, 4, 0, Math.PI * 2); ctx.fill(); }
-  } else if (bd.kind === "fire") { // ải 2: hào quang lửa đồng bộ chu kỳ gai (cùng state StageFX)
-    let on = true;
-    try { on = !!(window.StageFX && StageFX.spikesOn && StageFX.spikesOn()); } catch (e) {}
+  } else if (bd.kind === "fire") { // hào quang lửa (campaign đã xóa: luôn sáng, không còn chu kỳ gai)
     ctx.strokeStyle = bd.colors[0]; ctx.lineWidth = wdt;
-    ctx.globalAlpha = on ? 0.45 : 0.25;
+    ctx.globalAlpha = 0.45;
     ctx.strokeRect(inset + 3, inset + 3, W - (inset + 3) * 2, H - (inset + 3) * 2);
   } else if (bd.kind === "swirl") { // ải 3: viền gradient tím + sheen chạy vòng quanh (chu kỳ 8s)
     const g = ctx.createLinearGradient(0, 0, W, 0);
@@ -5059,7 +4841,7 @@ function render(now) {
         ctx.fillStyle = "#ff3b30"; ctx.font = "bold 13px sans-serif";
         ctx.fillText("!", 0, -e.r - 8);
       } else {
-        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "11px sans-serif";
+        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "12px sans-serif"; // UI-07: 11px → 12px dễ đọc trên mobile
         ctx.fillText("HỌP", 0, -e.r - 8);
       }
     } else if (e.type === "snatcher") {
@@ -5271,7 +5053,7 @@ function render(now) {
   // H1/B2: viền màn hình = thanh máu — decal notch cache (borderfx.js), flash xanh khi bắn vào viền
   if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now,
     G.lastStand ? heartbeatPulse(now) : (Math.sin(now / 280) + 1) / 2, !!G.lastStand);
-  // RFC stage-themes-modes §2.1: motif viền theo ải — SAU BorderFX, DƯỚI StageFX (mechanic trên cùng)
+  // RFC ui-audit-boss-cleanup §3.6: theme theo run (campaign đã xóa) — motif viền SAU BorderFX
   drawThemeBorder(ctx, W, H, now);
   // RFC stage-themes-modes §3.3 (DEV-05/DEV-06): HUD mode mới (countdown / tiến trình boss)
   try { if (window.Modes) Modes.drawHUD(ctx, W); } catch (e) {}
@@ -5477,8 +5259,6 @@ function render(now) {
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
   }
-  // STAGE-MECH ải 1: flash xanh "reboot" khi hạ boss tốt nghiệp tân binh
-  try { if (window.StageMech) StageMech.drawFlash(ctx, W, H); } catch (erf) {}
   // touch sticks
   if (touch.active) {
     if (touch.moveId !== null) {
@@ -5494,19 +5274,8 @@ function render(now) {
       ctx.beginPath(); ctx.arc(touch.aimX + clamp(touch.aimDX, -52, 52), touch.aimY + clamp(touch.aimDY, -52, 52), 22, 0, Math.PI * 2); ctx.fill();
     }
   }
-  // v2.0: Juice2 overlays + Bosses/StageFX draw + Tutorial coach-marks
+  // v2.0: Juice2 overlays + Bosses draw + Tutorial coach-marks
   if (window.V2) { try { V2.drawOver(ctx, W, H); } catch (e) {} }
-  /* M22: Mắt Cú — outline quái quanh tàu, CHỈ khi mất điện, vẽ SAU lớp blackout ở trên */
-  if (window.Upgrades2 && s && s.owlEye && window.StageFX && StageFX.isDark()) {
-    try {
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1.5;
-      for (const e of Upgrades2.owlTargets(s, G.enemies)) {
-        ctx.beginPath(); ctx.arc(e.x, e.y, (e.r || 12) + 3, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
-    } catch (er) {}
-  }
 }
 
 /* =====================================================================
@@ -5688,21 +5457,11 @@ window.Modes = {
   _startBoss: function (n) {
     var V2o = this._V2(), Go = this._G();
     if (!V2o || !Go) return false;
+    // RFC ui-audit-boss-cleanup §3.3: campaign đã xóa → diff mặc định;
+    // boss_5 countdown 20s giữ nguyên (khớp campaign.boss_banner_sub_5 cũ "20 giây")
+    var BOSS5_COUNTDOWN_S = 20;
     var diff = { bossHpMul: 1, telegraphMul: 1, enemySpdMul: 1 };
-    try {
-      if (typeof Campaign !== "undefined" && Campaign && Campaign.getRunParams) {
-        var rp = Campaign.getRunParams(V2o.diffKey || "normal");
-        if (rp) {
-          diff.bossHpMul = rp.bossHpMult || 1;
-          diff.telegraphMul = rp.telegraphMult || 1;
-          diff.enemySpdMul = rp.monsterSpeedMult || 1;
-        }
-      }
-      if (n === 5 && typeof Campaign !== "undefined" && Campaign && Campaign.getStageMechanic) {
-        var mech = Campaign.getStageMechanic(5, V2o.diffKey || "normal");
-        if (mech && mech.boss5P3CountdownS) diff.boss5Timer = mech.boss5P3CountdownS;
-      }
-    } catch (e) {}
+    if (n === 5) diff.boss5Timer = BOSS5_COUNTDOWN_S;
     var self = this;
     try {
       if (typeof Bosses === "undefined" || !Bosses || !Bosses.startBoss) return false;
@@ -6607,7 +6366,7 @@ function loop(now) {
   if (window.Cinema) { try { cineLocked = !!Cinema.locked; } catch (e) {} }
   if (window.Juice && Juice.draftOpen) cineLocked = true;
   if (G.phase === "play" && !cineLocked) update(dt);
-  // v2.0: Tutorial / Bosses module / StageFX
+  // v2.0: Tutorial / Bosses module
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
   // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0
   if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }

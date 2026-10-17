@@ -31,9 +31,8 @@ const EN = {
   "upg2.dan_xich.desc": "Bullets that hit a monster bounce to the nearest monster within 150px at 50% damage.",
   "upg2.keo_tu_va.name": "Glue Gun",
   "upg2.keo_tu_va.desc": "Press E: instantly patch +60px window. 30s cooldown.",
-  "upg2.tag.stage2": "Stage 2 exclusive",
-  "upg2.tag.stage3": "Stage 3 exclusive",
-  "upg2.tag.stage4": "Stage 4 exclusive",
+  /* F3 (RFC fix-round-final): key upg2.tag.stage2/3/4 đã xóa khỏi dict — dtag()
+   * chỉ trả tagVi fallback ("Độc quyền ải N") làm nhãn hiển thị. */
 };
 
 /* Nạp i18n.js thật trong vm để đọc dict VI/EN (pattern tests/i18n-coverage.test.js). */
@@ -68,8 +67,8 @@ describe("P2 i18n v2 — dict upg2.* có đủ VI + EN", () => {
       }
       assert.deepEqual(missing, [], `thiếu key: ${missing.join(", ")}`);
     });
-    it(`dict ${lang}: đủ tag độc quyền ải 2/3/4`, () => {
-      for (const s of [2, 3, 4]) assert.ok(dict[lang][`upg2.tag.stage${s}`], `thiếu upg2.tag.stage${s}`);
+    it(`dict ${lang}: key upg2.tag.stage* đã xóa (F3)`, () => {
+      for (const s of [2, 3, 4]) assert.ok(!dict[lang][`upg2.tag.stage${s}`], `key thừa còn sót: upg2.tag.stage${s}`);
     });
   }
   it("EN khớp bản dịch chốt (chống hồi quy dịch sai)", () => {
@@ -91,7 +90,7 @@ describe("P2 i18n v2 — helper dname/ddesc/dtag", () => {
     const U = require(path.join(ROOT, "js", "upgrades2.js"));
     assert.equal(U.dname({ id: "dan_no", nameVi: "Đạn Nổ" }), "Boom Rounds");
     assert.equal(U.ddesc({ id: "dan_no", descVi: "x" }), EN["upg2.dan_no.desc"]);
-    assert.equal(U.dtag({ id: "gai_phan", tagVi: "Độc quyền ải 2", bossStage: 2 }), "Stage 2 exclusive");
+    assert.equal(U.dtag({ id: "gai_phan", tagVi: "Độc quyền ải 2" }), "Độc quyền ải 2", "F3: dtag trả tagVi fallback");
     assert.equal(U.dtag({ id: "dan_no" }), "", "không tagVi → chuỗi rỗng");
   });
   it("fallback VI khi không có I18N (hoặc thiếu key)", () => {
@@ -99,7 +98,7 @@ describe("P2 i18n v2 — helper dname/ddesc/dtag", () => {
     const U = require(path.join(ROOT, "js", "upgrades2.js"));
     assert.equal(U.dname({ id: "dan_no", nameVi: "Đạn Nổ" }), "Đạn Nổ");
     assert.equal(U.ddesc({ id: "dan_no", descVi: "Mô tả VI" }), "Mô tả VI");
-    assert.equal(U.dtag({ id: "gai_phan", tagVi: "Độc quyền ải 2", bossStage: 2 }), "Độc quyền ải 2");
+    assert.equal(U.dtag({ id: "gai_phan", tagVi: "Độc quyền ải 2" }), "Độc quyền ải 2");
     // key thiếu trong dict EN → T() trả fallback VI
     globalThis.window = { I18N: { t: (k) => k } };
     assert.equal(U.dname({ id: "dan_no", nameVi: "Đạn Nổ" }), "Đạn Nổ");

@@ -257,31 +257,6 @@ function startWave(n) {
   G.act = act;
   if (changed) playActMusic(); // đổi nhạc nền theo Act
   if (changed) refreshBG(); // đổi background "Deep Dever" theo ải
-  // v2.0 campaign: ?stage=1..5 → wave 10 = boss module, các wave khác lấy comp từ Campaign
-  if (window.V2) {
-    try {
-      const sv = V2.stageWave(n);
-      if (sv) {
-        if (sv.boss) { V2.startStageBoss(n) || spawnBoss(); return; }
-        G.spawnQueue = sv.queue;
-        G.spawnQueue.sort(() => Math.random() - 0.5);
-        G.spawnT = 0;
-        V2.stageFxEnter();
-        // Item 2: nghi thức vào ải — wave 1 mỗi ải campaign: banner tên ải +
-        // câu luật gắn mechanic + story "quét virus" (thay banner wave mặc định)
-        var ritualDone = false;
-        try { ritualDone = !!(V2.stageRitualEnter && V2.stageRitualEnter(n)); } catch (err2) {}
-        if (!ritualDone) {
-          setBanner(I18N.t("campaign.wave", { n: n, stage: V2.stageId }) || `ẢI ${V2.stageId} — WAVE ${n}`, "");
-        }
-        // STAGE-OBJ: reset objective phụ đầu run (wave 1) — tiến trình reset mỗi run
-        if (n === 1 && window.StageObj) { try { StageObj.begin(V2.stageId); } catch (er2) {} }
-        // STAGE-MECH: reset lại lần nữa cho chắc (giống StageObj)
-        if (n === 1 && window.StageMech) { try { StageMech.begin(V2.stageId); } catch (er3) {} }
-        return;
-      }
-    } catch (er) {}
-  }
   if (n % 5 === 0) { spawnBoss(); return; }
   vp1ClearModifier(); // VP1: xóa modifier wave trước (không stack)
   G.vp1_golden = false; G.vp1_meteors = null; G.vp1_blackoutT = 0;
@@ -311,13 +286,18 @@ function startWave(n) {
     if (vp1ev) vp1TriggerEvent(vp1ev, n);
   }
   maybeTriggerGiant(n); // M6
+  maybeSpawnMiniBoss(n); // RFC fix-round-final F1: miniboss debut wave 4/9/14/19/24 (trước boss wave)
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? I18N.t("banner.wave1") : pickSub();
   // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)
   const waveTitle = changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`;
-  const waveSub = changed
+  // RFC ui-audit-boss-cleanup §3.6: wave 1 hiện theme run (flavor text, KHÔNG unlock/select)
+  const THEME_NAMES = { 1: "MÀN HÌNH XANH", 2: "TƯỜNG LỬA", 3: "TRỌNG LỰC 404", 4: "CÚP ĐIỆN", 5: "TRÀN BỘ NHỚ" };
+  const themeName = THEME_NAMES[G.themeSid] || "";
+  const waveSubBase = changed
     ? (G.vp1_spotlightSub ? `ACT ${act} — ${cfg.name}: ${G.vp1_spotlightSub}` : `ACT ${act} — ${cfg.name}: ${cfg.sub}`)
     : (G.vp1_spotlightSub || sub);
+  const waveSub = (n === 1 && themeName) ? `Chủ đề: ${themeName} · ${waveSubBase}` : waveSubBase;
   // WOW: wave banner qua Cinema (fallback setBanner cũ)
   if (window.Cinema) {
     try {

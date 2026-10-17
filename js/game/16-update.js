@@ -47,16 +47,6 @@ function killEnemy(e) {
   // VP1 glowparty: mỗi kill +1 gem
   if (G.vp1_glowParty) G.gems.push({ x: e.x, y: e.y - 10, vx: 0, vy: -60, v: 1, t: 0 });
   // STAGE-OBJ: objective phụ theo ải — dark-kill (ải 4) / drift-kill (ải 3)
-  try { if (window.StageObj) StageObj.onKill(e); } catch (er) {}
-  // STAGE-MECH: twist thưởng theo ải — drift-kill ×2 (ải 3), dark-kill ×2 (ải 4)
-  try { if (window.StageMech) StageMech.onKill(e); } catch (er2) {}
-  // STAGE-OBJ ải 5 (theo GAME-DESIGN-DOC §4 — mechanic còn thiếu): quái rớt patch
-  // xanh nới vùng an toàn. Roll riêng 12%, KHÔNG vào bảng random chung (không tăng khó,
-  // chỉ thêm pickup có lợi + mục tiêu cho objective "Kỹ Sư Bản Vá").
-  try {
-    if (window.V2 && V2.stageId === 5 && window.StageFX && StageFX.activeId === "shrink" && Math.random() < 0.12)
-      G.pickups.push({ kind: "patch", x: e.x, y: e.y, t: 0 });
-  } catch (er) {}
   // rớt vật phẩm: 10% tổng, chia theo trọng số PICKUP_DEFS
   // REBALANCE v2.0: chill tăng tỉ lệ rớt heart/shield ~+50% (pickupBoost × trọng số + dropRateMul × tỉ lệ chung)
   const boost = DIFF.pickupBoost || 1;
@@ -82,7 +72,7 @@ function nukeBlast() {
   G.enemies.forEach(e => { if (!e.dead) { e.hp -= 15; if (e.hp <= 0) killEnemy(e); else { e.flash = 0.15; } } });
   if (G.boss && !G.boss.dead) {
     G.boss.hp -= 40; G.boss.flash = 0.2;
-    if (G.boss.hp <= 0) killBoss(); else if (typeof bossSplitCheck === "function") bossSplitCheck(G.boss); // M2
+    if (G.boss.hp <= 0) killBoss();
   }
   // v2.0: nuke cũng trúng boss module
   if (window.V2 && window.Bosses) { try { if (V2.bossActive && Bosses.active && !Bosses.active.dead) Bosses.hit(Bosses.active, 15, Bosses.active.x, Bosses.active.y, G); } catch (er) {} }
@@ -93,15 +83,11 @@ function nukeBlast() {
 function killBoss() {
   const bs = G.boss; if (!bs || bs.dead) return;
   bs.dead = true; G.boss = null;
-  for (const sat of SatManager.values()) // M2: hết boss → mảnh tự đóng
-    if (sat.role === "fragment" && !sat.dead) SatManager.kill(sat.id, "cleanup");
   if (typeof BG !== "undefined") BG.setDim(0); // hết dim nền
   const pts = 500; // §6: boss = 500 cố định
   G.score += pts; G.kills++;
   // v2.0: meta + tutorial hook
   if (window.V2) { try { V2.onBossKill(); } catch (er) {} }
-  // STAGE-MECH: ải 1 reboot tốt nghiệp khi hạ boss; ải 5 CTRL+Z nếu hạ trong lúc NULL hút
-  try { if (window.StageMech) StageMech.onBossKill(); } catch (er2) {}
   try { AudioEngine.sfx.explosion(1.2); } catch (err) { try { AudioEngine.sfx.bigboom(); } catch (e2) {} }
   try { AudioEngine.sfx.stinger("victory"); } catch (e) {} // stinger victory khi hạ boss
   jxShake(12, 700, 10); windowJitter(30);
@@ -214,10 +200,6 @@ function update(dt) {
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
-  // STAGE-OBJ: tick objective mỗi frame — trạng thái input cho drift detection (ải 3)
-  try { if (window.StageObj) StageObj.update(dt, ml > 0.05); } catch (er) {}
-  // STAGE-MECH: boss 25% HP ải 5 (NULL hút cửa sổ), chain drift ải 3, reboot flash ải 1
-  try { if (window.StageMech) StageMech.update(dt); } catch (er2) {}
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
     s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
@@ -330,7 +312,7 @@ function update(dt) {
           dist2(bl.x, bl.y, G.boss.x, G.boss.y) < (bl.r + G.boss.r) * (bl.r + G.boss.r)) {
         G.boss.hp -= bl.dmg; G.boss.flash = 0.08; AudioEngine.sfx.hit();
         burst(bl.x, bl.y, 5, ["#ffd166", "#fff"], 180);
-        if (G.boss.hp <= 0) killBoss(); else if (typeof bossSplitCheck === "function") bossSplitCheck(G.boss); // M2
+        if (G.boss.hp <= 0) killBoss();
         if (bl.pierce > 0) bl.pierce--; else dead = true;
       }
     }
@@ -538,7 +520,6 @@ function update(dt) {
       G.gems.splice(i, 1); AudioEngine.sfx.gem();
       burst(gm.x, gm.y, 6, ["#7df9ff", "#fff"], 140);
       gainXp(gm.v + (s.xpPerGem || 0)); // §6: gem = 0 điểm, chỉ XP (Tham lam: +1 XP/gem)
-      try { if (window.StageObj) StageObj.onGem(); } catch (er) {} // STAGE-OBJ ải 1
       if (G.phase !== "play") return;
     }
   }
@@ -556,9 +537,6 @@ function update(dt) {
       G.pickups.splice(i, 1); AudioEngine.sfx.pickup();
       const pd = PICKUP_DEFS[p.kind];
       if (pd) pd.use(s);
-      try { if (window.StageObj) StageObj.onPickup(p.kind); } catch (er) {} // STAGE-OBJ ải 5 (patch)
-      // STAGE-MECH: ải 5 nhặt patch → +5 gem thưởng "vá có công"
-      try { if (window.StageMech) StageMech.onPickup(p.kind, p); } catch (er2) {}
       if (p.kind === "heart") wkBuzz(15); // HAPTIC (feat/mobile-quality): nhặt heart
       // v2.0: meta hook (achievement nhặt vật phẩm)
       if (window.V2) { try { V2.onPickup(p.kind); } catch (er) {} }

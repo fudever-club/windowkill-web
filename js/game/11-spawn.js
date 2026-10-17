@@ -13,6 +13,19 @@ function edgeSpawn() {
 /* REBALANCE v2.0: đường cong độ khó mượt — thay bước nhảy act (count 1→1.15→1.3,
  * hp 1→1.35→1.8, spd 1→1.08→1.15) bằng ramp tuyến tính theo wave; giữ nguyên giá trị
  * tại các mốc cũ (wave 11, wave 21) nên độ gắt tổng thể không đổi, chỉ hết spike đột ngột. */
+/* RFC ui-audit-boss-cleanup §3.5: miniboss defs migrate từ campaign.js sang
+   Monsters.MINIBOSSES (key 1-5). Map id "mini_boss_N" → def {base, nameVi,
+   hpMul: 8, rMul: 2.5, gems: 20} — stat mapping giữ nguyên campaign cũ. */
+function miniBossSpecOf(type) {
+  var m = /^mini_boss_([1-5])$/.exec(String(type || ""));
+  if (!m) return null;
+  var M = null;
+  try { M = (typeof window !== "undefined" && window.Monsters) || null; } catch (e) {}
+  if (!M) { try { M = (typeof Monsters !== "undefined") ? Monsters : null; } catch (e2) {} }
+  var def = (M && M.MINIBOSSES) ? M.MINIBOSSES[parseInt(m[1], 10)] : null;
+  if (!def || !def.base) return null;
+  return { id: type, base: def.base, nameVi: def.nameVi, hpMult: def.hpMul || 8, scale: def.rMul || 2.5, gemReward: def.gems || 20 };
+}
 function smoothCountMul(n) {
   if (n <= 10) return 1;
   if (n <= 20) return 1 + 0.15 * (n - 10) / 10;
@@ -41,16 +54,12 @@ function onboardSpdMul() {
   return (DIFF_KEY === "normal" && G.wave <= 3) ? 0.85 : 1;
 }
 function mkEnemy(type, x, y) {
-  // FIX C2b (2026-10-02): id đặc biệt 'mini_boss_N' (campaign wave 5) resolve
-  // thành entity mini-boss thật: base monster + hp×8, scale×2.5, gem 20
-  // (DIFFICULTY.campaign.miniboss) và bossHpMult theo độ khó đã chọn.
+  // RFC ui-audit-boss-cleanup (campaign đã xóa): id đặc biệt 'mini_boss_N' resolve
+  // thành entity mini-boss thật qua Monsters.MINIBOSSES (đã migrate từ campaign.js):
+  // base monster + hp×8 (hpMul), scale×2.5 (rMul), gem 20 (gems).
   // e.type giữ = base id để mọi behavior/effect/render theo type cũ nguyên vẹn;
-  // đánh dấu e.miniBoss để banner/kill-track nhận diện. Không có Campaign
-  // (endless) thì id lạ vẫn trả null như cũ — không đổi hành vi cũ.
-  var miniSpec = null;
-  if (typeof type === "string" && window.Campaign && Campaign.getMinibossSpec) {
-    try { miniSpec = Campaign.getMinibossSpec(type); } catch (e0) { miniSpec = null; }
-  }
+  // đánh dấu e.miniBoss để banner/kill-track nhận diện.
+  var miniSpec = miniBossSpecOf(type);
   var def = MONSTER_REGISTRY[miniSpec ? miniSpec.base : type];
   if (!def) return null;
   var e = {
@@ -58,16 +67,19 @@ function mkEnemy(type, x, y) {
 
    kbx: 0, kby: 0, r: def.r, dmg: def.dmg, color: def.color,
     hp: wkCapMult(G.wave, "hp", def.hp(G.wave) * DIFF.hpMul * smoothHpMul(G.wave)),
-    speed: wkCapMult(G.wave, "speed", def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul()),
+    // RFC fix-round-final F2: Mobile Assist → tốc độ quái ×0.85 (không đổi HP/xp)
+    speed: wkCapMult(G.wave, "speed", def.spd(G.wave) * DIFF.spMul * smoothSpMul(G.wave) * onboardSpdMul() *
+      (mobileAssistActive() ? MOBILE_ASSIST.speedMult : 1)),
          xp: def.xp,
   };
 if (miniSpec) {
+    // RFC ui-audit-boss-cleanup: Campaign.getRunParams đã xóa — DIFF không có
+    // bossHpMult nên inline hằng tuning từ campaign (DIFFICULTY.*.boss_hp_mult):
+    // chill 0.65, normal 1.0, hardcore 1.35.
     var bossHpM = 1;
     try {
-      if (window.V2 && V2.diffKey && Campaign.getRunParams) {
-        var rp = Campaign.getRunParams(V2.diffKey);
-        if (rp && rp.bossHpMult) bossHpM = rp.bossHpMult;
-      }
+      var _dk = (typeof DIFF_KEY !== "undefined" && DIFF_KEY) || "normal";
+      bossHpM = _dk === "chill" ? 0.65 : (_dk === "hardcore" || _dk === "hard" ? 1.35 : 1);
     } catch (e1) {}
     e.miniBoss = miniSpec.id;
     e.miniName = miniSpec.nameVi;
@@ -118,6 +130,23 @@ function spawnEnemy(type) {
   const p = edgeSpawn();
   spawnEnemyAt(type, p.x, p.y);
 }
+/* RFC fix-round-final F1 — miniboss debut ngay trước boss wave: wave 4/9/14/19/24
+   (mapping k=(n+1)/5 khi n%5===4 → wave 4→mini_boss_1 … 24→mini_boss_5; ngoài
+   khoảng, vd 29+ → no-op). Guard G.miniBossWave chống spawn trùng trong wave.
+   Hook: startWave() (js/game/12-variety.js) sau maybeTriggerGiant(n). */
+function maybeSpawnMiniBoss(n) {
+  if (n % 5 !== 4) return;
+  var k = (n + 1) / 5;
+  if (k < 1 || k > 5) return;
+  if (G.miniBossWave === n) return;
+  var id = "mini_boss_" + k;
+  var spec = miniBossSpecOf(id);
+  if (!spec) return;
+  spawnEnemy(id); // mkEnemy resolve mini_boss_N qua Monsters.MINIBOSSES (edgeSpawn + spawnWarning có sẵn)
+  setBanner(spec.nameVi, "");
+  try { AudioEngine.sfx.boss(); } catch (e) {}
+  G.miniBossWave = n;
+}
 function detonateKamikaze(e) {
   e.dead = true;
   shrinkWindow(20, 16); // nổ gặm cửa sổ
@@ -138,7 +167,9 @@ function buildSpawnQueue(n) {
   const wOf = d => d.weight * ((ELITE_HEAVY && ELITE_HEAVY[d.id]) || 1);
   const totalW = pool.reduce((a, d) => a + wOf(d), 0);
   const TS = wkSpawnCfg();
-  const count = Math.round((TS.base_count + n * TS.per_wave) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n));
+  // RFC fix-round-final F2: Mobile Assist → số lượng spawn ×0.8.
+  // KHÔNG áp vào wkSpawnInterval (DIFF.spawnMul là interval, bị band formula bypass wave 15-30).
+  const count = Math.round((TS.base_count + n * TS.per_wave) * (n === 1 ? 0.7 : 1) * smoothCountMul(n) * onboardCountMul(n) * (mobileAssistActive() ? MOBILE_ASSIST.spawnCountMult : 1));
   const q = [];
   for (let i = 0; i < count; i++) {
     let r = Math.random() * totalW, type = pool[0].id;

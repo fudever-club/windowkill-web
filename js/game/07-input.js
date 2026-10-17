@@ -30,11 +30,10 @@ window.addEventListener("keydown", e => {
     } catch (e2) {}
   }
   if (e.code === "KeyR" && G.phase === "over") resetGame();
-  // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn ải 3 qua module slippery đã export)
+  // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn)
   if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && G.phase === "play" && window.Upgrades2) {
     try {
-      if (Upgrades2.tryAnchor(G.ship) && window.StageFX && StageFX.modules && StageFX.modules.slippery &&
-          typeof StageFX.modules.slippery.stabilize === "function") StageFX.modules.slippery.stabilize();
+      Upgrades2.tryAnchor(G.ship);
     } catch (er) {}
   }
   // Súng Bắn Keo (2026-10-04, CEO chốt) — E vá ngay +60px cửa sổ, hồi chiêu 30s

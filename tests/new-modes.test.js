@@ -127,7 +127,6 @@ function bootV2(search, extraWindow = {}, extraTop = {}) {
     console, URLSearchParams,
     location: { search },
     window: Object.assign({
-      Campaign: { getUnlockedStage: () => 5 },
       Modes: { init(mode) { rec.inits.push(mode); } },
     }, extraWindow),
   }, extraTop);
@@ -178,13 +177,11 @@ function modeEnv(over = {}) {
 }
 
 /* ================= M1: parse ?mode= (F1, F2) ================= */
-describe("modes/M1 (F1,F2): parse ?mode= — whitelist + precedence", () => {
-  it("?mode=timeattack → V2.mode='timeattack', stageId=0, endless/daily=false", () => {
+describe("modes/M1 (F1,F2): parse ?mode= — whitelist (campaign đã xóa)", () => {
+  it("?mode=timeattack → V2.mode='timeattack', stageId=0 (deprecated)", () => {
     const { V2, rec } = bootV2("?mode=timeattack&diff=normal");
     assert.equal(V2.mode, "timeattack");
     assert.equal(V2.stageId, 0);
-    assert.equal(V2.endless, false);
-    assert.equal(V2.daily, false);
     assert.ok(rec.inits.includes("timeattack"), "V2.boot phải gọi Modes.init('timeattack')");
   });
   it("?mode=bossrush → V2.mode='bossrush', stageId=0", () => {
@@ -193,10 +190,17 @@ describe("modes/M1 (F1,F2): parse ?mode= — whitelist + precedence", () => {
     assert.equal(V2.stageId, 0);
     assert.ok(rec.inits.includes("bossrush"), "V2.boot phải gọi Modes.init('bossrush')");
   });
-  it("không có ?mode= → V2.mode=null, game chạy như cũ", () => {
-    const { V2 } = bootV2("?endless=1");
+  it("không có ?mode= → V2.mode=null, vào endless (không param)", () => {
+    const { V2 } = bootV2("?diff=normal");
     assert.ok(V2.mode == null, `V2.mode phải null, thấy ${V2.mode}`);
-    assert.equal(V2.endless, true, "endless=1 vẫn hoạt động khi không có mode");
+    assert.equal(V2.stageId, 0);
+  });
+  it("?stage=3/?endless=1/?daily=1 bị BỎ QUA → endless, không crash/kẹt", () => {
+    for (const q of ["?stage=3", "?endless=1", "?daily=1", "?stage=3&endless=1&daily=1"]) {
+      const V2 = bootV2(q).V2;
+      assert.ok(V2.mode == null, `${q}: V2.mode phải null`);
+      assert.equal(V2.stageId, 0, `${q}: stageId phải 0`);
+    }
   });
   it("F1: fuzz 10 giá trị mode sai → V2.mode=null, 0 exception, fallback an toàn", () => {
     const bads = ["turbo", "", "TIMEATTACK", "time attack", "bossrush2", "null", "undefined", "0", "1", "daily"];
@@ -208,22 +212,15 @@ describe("modes/M1 (F1,F2): parse ?mode= — whitelist + precedence", () => {
       assert.ok(V2.mode == null, `?mode=${bad}: V2.mode phải null, thấy ${V2.mode}`);
     }
   });
-  it("F1: mode sai + endless=1 → endless vẫn chạy (fallback, không kẹt mode)", () => {
-    const { V2 } = bootV2("?mode=turbo&endless=1");
-    assert.ok(V2.mode == null);
-    assert.equal(V2.endless, true);
-  });
-  it("F2: mode hợp lệ ĐÈ stage/endless/daily (?mode=bossrush&stage=3&endless=1&daily=1)", () => {
-    const { V2 } = bootV2("?mode=bossrush&stage=3&endless=1&daily=1");
-    assert.equal(V2.mode, "bossrush");
-    assert.equal(V2.stageId, 0, "mode đè ?stage=");
-    assert.equal(V2.endless, false, "mode đè ?endless=1");
-    assert.equal(V2.daily, false, "mode đè ?daily=1");
-  });
-  it("F2: mode sai + stage=2 → stage vẫn được tôn trọng (không có trạng thái lai)", () => {
+  it("F1: mode sai + ?stage=2 → cả hai bị bỏ qua, vào endless", () => {
     const { V2 } = bootV2("?mode=xxx&stage=2");
     assert.ok(V2.mode == null);
-    assert.equal(V2.stageId, 2, "mode sai → stage parse như thường");
+    assert.equal(V2.stageId, 0, "?stage= bị bỏ qua sau khi xóa campaign");
+  });
+  it("?mode=bossrush&stage=3&endless=1&daily=1 → mode giữ, param lạ bị bỏ qua", () => {
+    const { V2 } = bootV2("?mode=bossrush&stage=3&endless=1&daily=1");
+    assert.equal(V2.mode, "bossrush");
+    assert.equal(V2.stageId, 0);
   });
 });
 
@@ -559,7 +556,7 @@ describe("modes/M9 (F6): boss_5 timeout → thua (WKDie 'window')", () => {
 });
 
 /* ================= M10: menu guard + panel ================= */
-describe("modes/M10: menu — panel 'Chế độ chơi' + guard unlock ải ≥ 2", () => {
+describe("modes/M10: menu — panel 'Chế độ chơi', Boss Rush mở luôn (không gate)", () => {
   const menuSrc = fs.readFileSync(path.join(ROOT, "js/menu.js"), "utf8");
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   it("index.html có 2 nút mode đúng tên RFC", () => {
@@ -571,13 +568,11 @@ describe("modes/M10: menu — panel 'Chế độ chơi' + guard unlock ải ≥ 
     assert.ok(menuSrc.includes('"timeattack"'), "thiếu mode id 'timeattack'");
     assert.ok(menuSrc.includes('"bossrush"'), "thiếu mode id 'bossrush'");
   });
-  it("guard: boss rush khóa khi getUnlockedStage < 2 (+ hint khóa)", () => {
-    assert.ok(menuSrc.includes("getUnlockedStage"), "menu phải đọc Campaign.getUnlockedStage");
-    const i = menuSrc.indexOf("bossrush");
-    const around = menuSrc.slice(Math.max(0, i - 600), i + 600);
-    assert.ok(/<\s*2/.test(around) || />=\s*2/.test(around),
-      "quanh nút bossrush phải có điều kiện unlock ải ≥ 2");
-    assert.ok(menuSrc.includes("menu.mode.locked_hint"), "thiếu hint khóa menu.mode.locked_hint");
+  it("Boss Rush mở luôn, không gate (campaign đã xóa — không còn guard ải)", () => {
+    assert.ok(!menuSrc.includes("getUnlockedStage"), "menu không được đọc Campaign.getUnlockedStage");
+    assert.ok(!menuSrc.includes("menu.mode.locked_hint"), "menu không được còn key menu.mode.locked_hint");
+    assert.ok(!html.includes("v2-mode-hint"), "index.html không được còn #v2-mode-hint");
+    assert.ok(!/brBtn\.disabled/.test(menuSrc), "menu không được disable nút bossrush");
   });
   it("launchGame: v2sel mode → ?mode= trên URL", () => {
     assert.ok(/q\.set\(\s*"mode"/.test(menuSrc), 'launchGame phải q.set("mode", v2sel.mode)');
@@ -694,7 +689,8 @@ function moduleRegisterKeys(rel) {
 describe("modes/M13 (F12): i18n key mới qua I18N.register (vi+en), cấm vào js/i18n.js", () => {
   const TA_KEYS = ["mode.ta.name", "mode.ta.desc", "mode.ta.timeup_title", "mode.ta.hud", "mode.ta.new_record"];
   const BR_KEYS = ["mode.br.name", "mode.br.desc", "mode.br.rest_banner", "mode.br.victory_title", "mode.br.best_line", "mode.br.progress"];
-  const MENU_KEYS = ["menu.mode.title", "menu.mode.ta", "menu.mode.ta_desc", "menu.mode.br", "menu.mode.br_desc", "menu.mode.locked_hint"];
+  // RFC ui-audit-boss-cleanup: menu.mode.locked_hint đã xóa (Boss Rush mở luôn) → còn 5 key
+  const MENU_KEYS = ["menu.mode.title", "menu.mode.ta", "menu.mode.ta_desc", "menu.mode.br", "menu.mode.br_desc"];
   it("22-modes.js: đủ cặp vi/en cho 10 key mode.*", () => {
     const k = moduleRegisterKeys("js/game/22-modes.js");
     for (const key of [...TA_KEYS, ...BR_KEYS]) {
@@ -702,7 +698,7 @@ describe("modes/M13 (F12): i18n key mới qua I18N.register (vi+en), cấm vào 
       assert.ok(k.en[key], `thiếu en["${key}"] trong js/game/22-modes.js`);
     }
   });
-  it("menu.js: đủ cặp vi/en cho 6 key menu.mode.*", () => {
+  it("menu.js: đủ cặp vi/en cho 5 key menu.mode.*", () => {
     const k = moduleRegisterKeys("js/menu.js");
     for (const key of MENU_KEYS) {
       assert.ok(k.vi[key], `thiếu vi["${key}"] trong js/menu.js`);
@@ -759,35 +755,21 @@ describe("modes/M15 (QA-04): gate chung — build đồng bộ + SW stamp + MANI
   });
 });
 
-/* ================= M16 (§1.3): mode mới KHÔNG enter StageFX ================= */
-describe("modes/M16 (§1.3): mode mới KHÔNG enter StageFX (mechanic ải chỉ thuộc campaign)", () => {
-  function fxProbe(search) {
-    const entered = [];
-    // v2glue guard đọc window.StageFX/window.G nhưng gọi bare StageFX.enter → spy cả 2 chỗ
-    const spy = { enter(...a) { entered.push(a); } };
-    const { V2 } = bootV2(search, { G: {}, StageFX: spy }, { StageFX: spy, G: {} });
-    return { V2, entered };
-  }
-  it("timeattack: V2.stageFxEnter() → StageFX.enter KHÔNG gọi", () => {
-    const { V2, entered } = fxProbe("?mode=timeattack");
-    assert.equal(V2.mode, "timeattack");
-    assert.equal(V2.stageId, 0, "mode mới: stageId=0 (không ải)");
-    assert.doesNotThrow(() => V2.stageFxEnter(), "stageFxEnter phải no-op, không throw");
-    assert.equal(entered.length, 0, "timeattack không được enter StageFX (RFC §1.3)");
+/* ================= M16 (RFC ui-audit-boss-cleanup): StageFX đã xóa hẳn ================= */
+describe("modes/M16: StageFX đã xóa — V2 không còn stageFxEnter, không reference StageFX", () => {
+  it("V2 không còn method stageFxEnter/stageRitualEnter/stageWave/startStageBoss", () => {
+    const { V2 } = bootV2("?mode=timeattack");
+    for (const m of ["stageFxEnter", "stageRitualEnter", "stageWave", "startStageBoss", "onStageBossDead"]) {
+      assert.equal(typeof V2[m], "undefined", `V2.${m} phải bị xóa`);
+    }
   });
-  it("bossrush: V2.stageFxEnter() → StageFX.enter KHÔNG gọi", () => {
-    const { V2, entered } = fxProbe("?mode=bossrush");
-    assert.equal(V2.mode, "bossrush");
-    assert.equal(V2.stageId, 0);
-    assert.doesNotThrow(() => V2.stageFxEnter());
-    assert.equal(entered.length, 0, "bossrush không được enter StageFX (RFC §1.3)");
-  });
-  it("control: ?stage=2 → stageFxEnter() gọi StageFX.enter(2, …) (campaign vẫn vào mechanic)", () => {
-    const { V2, entered } = fxProbe("?stage=2");
-    assert.equal(V2.stageId, 2);
-    assert.doesNotThrow(() => V2.stageFxEnter());
-    assert.equal(entered.length, 1, "campaign ải 2 phải enter StageFX như cũ");
-    assert.equal(entered[0][0], 2, "enter đúng stageId=2");
+  it("boot timeattack/bossrush/endless không đụng StageFX", () => {
+    for (const q of ["?mode=timeattack", "?mode=bossrush", "?diff=normal"]) {
+      const { V2 } = bootV2(q, { G: {} }, { G: {} });
+      assert.equal(typeof V2.stageFxEnter, "undefined");
+    }
+    const v2src = fs.readFileSync(path.join(ROOT, "js/v2glue.js"), "utf8");
+    assert.ok(!v2src.includes("StageFX"), "v2glue.js không được chứa StageFX");
   });
 });
 

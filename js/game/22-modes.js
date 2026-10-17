@@ -177,21 +177,11 @@ window.Modes = {
   _startBoss: function (n) {
     var V2o = this._V2(), Go = this._G();
     if (!V2o || !Go) return false;
+    // RFC ui-audit-boss-cleanup §3.3: campaign đã xóa → diff mặc định;
+    // boss_5 countdown 20s giữ nguyên (khớp campaign.boss_banner_sub_5 cũ "20 giây")
+    var BOSS5_COUNTDOWN_S = 20;
     var diff = { bossHpMul: 1, telegraphMul: 1, enemySpdMul: 1 };
-    try {
-      if (typeof Campaign !== "undefined" && Campaign && Campaign.getRunParams) {
-        var rp = Campaign.getRunParams(V2o.diffKey || "normal");
-        if (rp) {
-          diff.bossHpMul = rp.bossHpMult || 1;
-          diff.telegraphMul = rp.telegraphMult || 1;
-          diff.enemySpdMul = rp.monsterSpeedMult || 1;
-        }
-      }
-      if (n === 5 && typeof Campaign !== "undefined" && Campaign && Campaign.getStageMechanic) {
-        var mech = Campaign.getStageMechanic(5, V2o.diffKey || "normal");
-        if (mech && mech.boss5P3CountdownS) diff.boss5Timer = mech.boss5P3CountdownS;
-      }
-    } catch (e) {}
+    if (n === 5) diff.boss5Timer = BOSS5_COUNTDOWN_S;
     var self = this;
     try {
       if (typeof Bosses === "undefined" || !Bosses || !Bosses.startBoss) return false;

@@ -157,7 +157,9 @@ const BEHAVIORS = {
       } else { e.x += (p.x - e.x) / d * spd * dt; e.y += (p.y - e.y) / d * spd * dt; }
     } else {
       e.chewT += dt;
-      if (e.chewT >= DIFF.chew) {
+      // RFC fix-round-final F2: Mobile Assist → threshold ×1.25 (=1/0.8, tương đương
+      // chew DPS ×0.8: threshold lớn hơn = gặm chậm hơn)
+      if (e.chewT >= DIFF.chew * (mobileAssistActive() ? 1.25 : 1)) {
         e.chewT = 0;
         if (e.onShield && typeof damageShield === "function") damageShield(e); // gặm khiên thay vì gặm cửa sổ
         else {
@@ -466,14 +468,12 @@ function bossPersonaOf(w) {
     if (w >= BOSS_PERSONAS[i].wave) return BOSS_PERSONAS[i];
   return BOSS_PERSONAS[0];
 }
-/* Item 1 (stage BG wiring): ở campaign mode (V2.stageId 1-5) dùng stageId làm
-   sid cho BG.build để mỗi ải hiện đúng palette (BG PALETTES keyed 1-5);
-   trước đây chỉ đọc ACTS/G.act (ở campaign luôn = 1 vì wave trong ải chỉ
-   1-10) nên ải 2-5 không bao giờ hiện đúng palette. Endless (stageId = 0)
-   giữ nguyên behavior ACTS cũ; sid invalid → fallback 1. */
+/* RFC ui-audit-boss-cleanup §3.6 (campaign đã xóa): stageId không còn —
+   theme art (BG PALETTES keyed 1-5, PR #79) random mỗi run qua G.themeSid
+   (set trong resetGame). themeSid invalid → fallback ACTS bgStage. */
 function bgStageSid() {
   try {
-    const st = window.V2 && V2.stageId;
+    const st = window.G ? G.themeSid : 0;
     if (Number.isInteger(st) && st >= 1 && st <= 5) return st;
   } catch (e) {}
   return (ACTS[(G.act || 1) - 1] || {}).bgStage || 1;
@@ -497,9 +497,5 @@ const PICKUP_DEFS = {
   "magnet":    { w: 22, use: s => { s.magnetT = 8; addFloat(s.x, s.y - 30, I18N.t("pickup.magnet_8s"), "#7df9ff", true); } },
   "overdrive": { w: 18, use: s => { s.overdriveT = 8; addFloat(s.x, s.y - 30, "OVERDRIVE 8s!", "#ffe14d", true); } },
   "shieldwin": { w: 18, can: () => G.wave >= 4, use: () => requestShield() }, // M3: cửa sổ khiên
-  // STAGE-OBJ ải 5: patch xanh nới vùng an toàn (GAME-DESIGN-DOC §4). w: 0 + can: false →
-  // KHÔNG vào bảng rớt random chung; chỉ spawn qua roll riêng trong killEnemy khi ải 5.
-  "patch":     { w: 0, can: () => false,
-                 use: () => { try { if (window.StageFX) StageFX.growPatch(G); } catch (e) {} } },
 };
 

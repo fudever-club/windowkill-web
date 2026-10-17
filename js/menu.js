@@ -313,8 +313,7 @@
       `${svgIcon("i-clock")} ${I18N.t("menu.stats.time")}: <b>${I18N.t("menu.stats.minutes", { n: mins })}</b>`;
   }
   function renderAll() { renderProfiles(); renderScores(); renderStats();
-    // AUDIT 2026-10-02: panel ải v2 phải tính lại khóa/kỷ lục theo profile đang chọn
-    // (trước đây chỉ tính 1 lần lúc load — đổi profile vẫn hiện ải của profile trước).
+    // panel meta v2 (Xưởng/Thành tựu/Daily) vẽ lại theo profile đang chọn qua __wkRefreshV2
     try { if (window.__wkRefreshV2) window.__wkRefreshV2(); } catch (e) {} }
 
   /* ---------- game over reports from popup ---------- */
@@ -439,7 +438,6 @@
     try {
       if (!window.I18N) return;
       const vt = (k, fb) => { try { const v = I18N.t(k); return (!v || v === k) ? fb : v; } catch (e) { return fb; } };
-      const stName = (st) => { try { return (I18N.getLang() === "en" && st.nameEn) ? st.nameEn : st.nameVi; } catch (e) { return st.nameVi; } };
       const lang = (window.I18N && I18N.getLang) ? I18N.getLang() : "vi"; // AUDIT 2026-10-02: trước đây đọc I18N.lang (không tồn tại) → luôn "vi", nút EN không bao giờ được highlight sau reload
 
       /* 1. Language toggle — chèn vào settings panel */
@@ -461,7 +459,7 @@
         });
       } catch (e) {}
 
-      let v2sel = { kind: "free" }; // free | stage | daily | mode (RFC stage-themes-modes DEV-07)
+      let v2sel = { kind: null }; // null (endless mặc định) | mode — campaign đã xóa (RFC ui-audit-boss-cleanup)
       let v2skipTut = null;         // null = hỏi lần đầu; true = bỏ qua; false = học
 
       function launchGame() {
@@ -475,8 +473,6 @@
           sat: ["auto", "sim", "off"].includes(settings.sat) ? settings.sat : "sim", profile: activeId,
           quality: ["auto", "high", "balanced", "lite"].includes(settings.quality) ? settings.quality : "auto",
         });
-        if (v2sel.kind === "stage") q.set("stage", String(v2sel.n));
-        if (v2sel.kind === "daily") q.set("daily", "1");
         if (v2sel.kind === "mode") q.set("mode", v2sel.mode); // RFC stage-themes-modes DEV-07
         if (v2skipTut === true) q.set("tut", "0");
         else if (v2skipTut === false) q.set("tut", "1");
@@ -490,65 +486,6 @@
         else { $("popup-warn").style.display = "none"; w.focus(); }
       }
 
-      /* 2. Stage select — panel trước nút CHƠI NGAY */
-      try {
-        if (window.Campaign) {
-          const wrap = document.createElement("div");
-          wrap.className = "panel"; wrap.id = "v2-stages";
-          const playRow = document.querySelector("#btn-play").closest(".cta-band, .row");
-          playRow.parentNode.insertBefore(wrap, playRow);
-          // AUDIT 2026-10-02: tách thành paintStages() để renderAll() gọi lại khi đổi
-          // profile (window.__wkRefreshV2) — khóa ải + kỷ lục là dữ liệu theo profile.
-          function paintStages() {
-            const unlocked = Campaign.getUnlockedStage(activeId);
-            const best = Campaign.getStageBest(activeId);
-            // RFC stage-themes-modes DEV-02: accent màu theme/ải trên stage card
-            // (1 #0066CC, 2 #CC3300, 3 #9D4EDD, 4 #00E5FF, 5 #4ADE80) — inline style.
-            const STAGE_ACCENT = { 1: "#0066CC", 2: "#CC3300", 3: "#9D4EDD", 4: "#00E5FF", 5: "#4ADE80" };
-            const cards = Campaign.STAGES.map(st => {
-              const lock = st.id > unlocked;
-              const b = best[String(st.id)] || {};
-              const accent = STAGE_ACCENT[st.id] || "#0080FF";
-              // STAGE-OBJ: huy hiệu objective phụ (per profile) — hiện icon + tên ngắn khi đã đạt
-              let badgeRow = "";
-              try {
-                if (!lock && Campaign.hasStageBadge && Campaign.hasStageBadge(activeId, st.id) && window.StageObj) {
-                  const def = StageObj.def(st.id);
-                  const bname = vt("stageobj." + st.id + ".short", "");
-                  badgeRow = `<div style="font-size:12px;color:#ffd166;margin-top:2px">${def ? svgIcon(def.icon) : svgIcon("i-trophy")}${bname ? " " + escapeHtml(bname) : ""}</div>`;
-                }
-              } catch (e) {}
-              return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
-                style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1};border-top:3px solid ${accent}">
-                <div style="font-weight:800">${lock ? svgIcon("i-lock") : svgIcon("i-window")} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
-                <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
-                <div style="font-size:13px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>${badgeRow}
-              </button>`;
-            }).join("");
-            const selStage = (v2sel && v2sel.kind === "stage") ? v2sel.n : 0;
-            wrap.innerHTML = `<h3><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> ${escapeHtml(vt("campaign.title", "Chiến dịch"))}</h3>
-              <div class="row" style="gap:8px;flex-wrap:wrap">
-                <button class="btn-ghost v2-stage ${selStage === 0 ? "sel" : ""}" data-stage="0" style="min-width:148px;text-align:left">
-                  <div style="font-weight:800">${svgIcon("i-infinity")} ${escapeHtml(vt("campaign.free", "Chơi tự do"))}</div>
-                  <div style="font-size:12.5px">${escapeHtml(vt("campaign.free_desc", "Endless như cũ, boss mỗi 5 wave"))}</div>
-                </button>${cards}
-              </div>`;
-            wrap.querySelectorAll(".v2-stage").forEach(b => {
-              const sel = parseInt(b.dataset.stage, 10) === selStage;
-              if (sel) b.classList.add("sel");
-              b.setAttribute("aria-pressed", sel ? "true" : "false"); // QW7
-              b.onclick = () => {
-                wrap.querySelectorAll(".v2-stage").forEach(x => { const s = x === b; x.classList.toggle("sel", s); x.setAttribute("aria-pressed", s ? "true" : "false"); });
-                const s = b.dataset.stage;
-                v2sel = s === "0" ? { kind: "free" } : { kind: "stage", n: parseInt(s, 10) };
-              };
-            });
-          }
-          paintStages();
-          window.__wkRefreshV2 = paintStages;
-        }
-      } catch (e) {}
-
       /* RFC stage-themes-modes DEV-07: panel "Chế độ chơi" — 2 nút mode mới.
          Keys qua I18N.register() literal — KHÔNG thêm vào js/i18n.js (F12). */
       if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
@@ -558,7 +495,6 @@
           "menu.mode.ta_desc": "180 giây farm điểm tốc độ cao — spawn dồn dập!",
           "menu.mode.br": "Xếp Hình Sếp",
           "menu.mode.br_desc": "5 sếp liên tiếp — nghỉ giữa boss, sửa cửa sổ!",
-          "menu.mode.locked_hint": "Phá đảo ải 1 để mở Xếp Hình Sếp",
         },
         en: {
           "menu.mode.title": "Game Modes",
@@ -566,7 +502,6 @@
           "menu.mode.ta_desc": "180 seconds of high-speed farming — dense spawns!",
           "menu.mode.br": "Boss Parade",
           "menu.mode.br_desc": "5 bosses in a row — rest between, repair window!",
-          "menu.mode.locked_hint": "Clear Stage 1 to unlock Boss Parade",
         },
       });
       // FIX 2026-10-17 (user báo panel mode hiện key thô): register() chạy sau applyDOM()
@@ -574,26 +509,9 @@
       try { if (typeof I18N !== "undefined" && I18N && typeof I18N.applyDOM === "function") I18N.applyDOM(); } catch (e) {}
       try {
         const modesPanel = document.querySelector("#v2-modes");
-        const stagesWrap = document.querySelector("#v2-stages");
-        if (modesPanel && stagesWrap && stagesWrap.parentNode) {
-          // đặt panel mode ngay sau panel ải (RFC §3.3)
-          stagesWrap.parentNode.insertBefore(modesPanel, stagesWrap.nextSibling);
-        }
         // whitelist mode id (đồng bộ với v2glue whitelist)
         const MODE_IDS = ["timeattack", "bossrush"];
-        // guard: boss rush chỉ mở khi đã unlock ải ≥ 2 (đã biết boss là gì)
-        const unlocked = (window.Campaign && typeof Campaign.getUnlockedStage === "function")
-          ? Campaign.getUnlockedStage(activeId) : 5;
-        const brBtn = modesPanel ? modesPanel.querySelector('[data-mode="bossrush"]') : null;
-        if (brBtn && unlocked < 2) {
-          brBtn.disabled = true;
-          brBtn.style.opacity = 0.55;
-          const hintEl = document.querySelector("#v2-mode-hint");
-          if (hintEl) {
-            hintEl.hidden = false;
-            hintEl.textContent = vt("menu.mode.locked_hint", "Phá đảo ải 1 để mở Xếp Hình Sếp");
-          }
-        }
+        // Boss Rush mở luôn, không gate (RFC ui-audit-boss-cleanup §3.7)
         if (modesPanel) {
           modesPanel.querySelectorAll(".v2-mode").forEach(b => {
             b.onclick = () => {
@@ -606,19 +524,7 @@
                 x.setAttribute("aria-pressed", s ? "true" : "false");
               });
               v2sel = { kind: "mode", mode: mid };
-              // chọn mode → bỏ chọn ải (không có trạng thái lai, F2)
-              const sw = document.querySelector("#v2-stages");
-              if (sw) sw.querySelectorAll(".v2-stage").forEach(x => {
-                x.classList.remove("sel"); x.setAttribute("aria-pressed", "false");
-              });
             };
-          });
-          // chọn ải → bỏ chọn mode (delegated để sống sót qua paintStages repaint)
-          document.addEventListener("click", (ev) => {
-            const st = ev.target && ev.target.closest ? ev.target.closest(".v2-stage") : null;
-            if (st) modesPanel.querySelectorAll(".v2-mode").forEach(x => {
-              x.classList.remove("sel"); x.setAttribute("aria-pressed", "false");
-            });
           });
         }
       } catch (e) {}
@@ -629,7 +535,7 @@
         ov.id = "v2-tutmodal";
         ov.style.cssText = "position:fixed;inset:0;background:rgba(2,8,20,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
         ov.innerHTML = `<div class="panel" style="max-width:420px;text-align:center">
-          <h3>svgIcon("i-grad") ${escapeHtml(vt("tutorial.modal_title", "Học chơi trong 2 phút?"))}</h3>
+          <h3>${svgIcon("i-grad")} ${escapeHtml(vt("tutorial.modal_title", "Học chơi trong 2 phút?"))}</h3>
           <p style="font-size:14px;color:#c8dcf5">${escapeHtml(vt("tutorial.modal_desc", "Hướng dẫn tương tác ngay trong game: di chuyển, bắn, nhặt gem, chọn nâng cấp."))}</p>
           <div class="row" style="gap:10px;justify-content:center;margin-top:12px">
             <button class="btn-big" id="v2-tut-yes">${escapeHtml(vt("tutorial.modal_yes", "Học chơi"))}</button>
@@ -729,7 +635,7 @@
                 <button class="btn-ghost" id="v2-daily-play">${svgIcon("i-calendar")} ${escapeHtml(vt("meta.daily_play", "Chơi Daily"))}</button>
               </div>`;
             const dp = el.querySelector("#v2-daily-play");
-            if (dp) dp.onclick = () => { v2sel = { kind: "daily" }; launchGame(); v2sel = { kind: "free" }; };
+            if (dp) dp.onclick = () => { v2sel = { kind: null }; launchGame(); }; // campaign đã xóa: daily vào endless thường (RFC ui-audit-boss-cleanup)
           }
           function renderV2Meta() { renderWorkshop(); renderAch(); renderDaily(); }
           renderV2Meta();
@@ -804,6 +710,23 @@
     if (link) link.addEventListener("click", () => trackCtaClick(link.dataset.ctaId || "launcher_card"));
   }
   window.__wkTrackCta = trackCtaClick; // debug console (game.html có helper riêng trong game.js)
+  /* RFC ui-audit-boss-cleanup §3.4: campaign đã xóa — dọn save cũ 1 lần khi
+     launcher boot. Chỉ xóa đúng 4 họ key campaign; KHÔNG migration wk_save_version;
+     kỷ lục endless/profile/meta giữ nguyên. */
+  function cleanupLegacyCampaignKeys() {
+    var PREFIXES = ["wk_unlocked_stage_", "wk_stage_best_", "wk_unlocked_endless_", "wk_stage_badges_"];
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) { try { keys.push(localStorage.key(i)); } catch (e) {} }
+      keys.forEach(function (k) {
+        if (typeof k !== "string") return;
+        for (var j = 0; j < PREFIXES.length; j++) {
+          if (k.indexOf(PREFIXES[j]) === 0) { try { localStorage.removeItem(k); } catch (e2) {} break; }
+        }
+      });
+    } catch (e3) {}
+  }
+  cleanupLegacyCampaignKeys();
   initDesktopCta();
   paintToggles(); renderAll(); Backend.init();
   if (activeId) Analytics.setProfile(activeId); // warm the sha256 profile hash for analytics

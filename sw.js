@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261017T041137Z-4350039"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261017T084340Z-bc5396e"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -45,18 +45,16 @@ const CORE_ASSETS = [
   "js/cinema.js",
   "js/tuning.js", // Sprint R2 Item 3: loader tuning tập trung — precache để offline vẫn có config
   // AUDIT 2026-10-02: precache từng chỉ chứa file v1 — bổ sung toàn bộ file v2.0
-  // (campaign/meta/tutorial/i18n/monsters/bosses/juice2/sfx2/stagefx/upgrades2/v2glue/mobile/portal)
+  // (meta/tutorial/i18n/monsters/bosses/juice2/sfx2/upgrades2/v2glue/mobile/portal)
   // để chế độ offline cài được game đầy đủ, không rớt vào offline.html thiếu JS.
+  // RFC ui-audit-boss-cleanup: campaign.js/stagefx.js/stageobj.js/stagemech.js đã xóa.
   "js/i18n.js",
-  "js/campaign.js",
   "js/meta.js",
   "js/tutorial.js",
   "js/monsters.js",
   "js/bosses.js",
   "js/juice2.js",
   "js/sfx2.js",
-  "js/stagefx.js",
-  "js/stageobj.js", // Stage Identity item 3: objective phụ + huy hiệu theo ải
   "js/upgrades2.js",
   "js/v2glue.js",
   "js/mobile.js",

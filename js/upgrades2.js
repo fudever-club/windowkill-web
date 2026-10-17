@@ -4,9 +4,9 @@
 
    - IIFE, "use strict", vanilla JS, không dependency.
    - Mỗi nâng cấp: { id, nameVi, descVi, pool, tagVi?, apply(ship) }.
-   - pool: 'common' | 'stage2' | 'stage3' | 'stage4'.
-     Độc quyền ải chỉ vào draft SAU KHI hạ boss ải tương ứng:
-       unlockBossStage(2|3|4) — integrator gọi khi boss ải chết.
+   - pool: 'common' (RFC fix-round-final F3: campaign đã xóa → 3 upgrade cũ
+     "độc quyền ải 2/3/4" (gai_phan, neo_quan_tinh, mat_cu) thành draft thường,
+     không lock vĩnh viễn; tagVi "Độc quyền ải N" chỉ còn là nhãn hiển thị).
    - Runtime helpers để game.js hook mà không cần sửa struct ship:
        checkThornBorder(ship, enemies, bounds, dealDamage)
        tryAnchor(ship)                    // Shift: dừng trượt tức thì
@@ -20,7 +20,7 @@
    API: window.Upgrades2 = {
      LIST, get(id), draftPool(), rollDraft(n),
      applyUpgrade(id, ship), hasTaken(id),
-     unlockBossStage(stage), isUnlocked(id), resetRun(),
+     isUnlocked(id), resetRun(),
      dname(u), ddesc(u), dtag(u),   // I18N (N4): tên/mô tả/tag theo ngôn ngữ hiện tại
      checkThornBorder, tryAnchor, tick, owlTargets, explodeAt, chainFrom
    }
@@ -46,7 +46,7 @@ function dname(u) { return u ? T(u.id + ".name", u.nameVi) : ""; }
 function ddesc(u) { return u ? T(u.id + ".desc", u.descVi) : ""; }
 function dtag(u) {
   if (!u || !u.tagVi) return "";
-  return u.bossStage ? T("tag.stage" + u.bossStage, u.tagVi) : u.tagVi;
+  return u.tagVi;
 }
 
 /* ================= 6 nâng cấp §7.2 ================= */
@@ -55,27 +55,24 @@ var LIST = [
     id: "gai_phan",
     nameVi: "Gai Phản",
     descVi: "Tàu chạm viền: gây 3 sát thương cho mọi quái trong 120px.",
-    pool: "stage2",
+    pool: "common",
     tagVi: "Độc quyền ải 2",
-    bossStage: 2,
     apply: function (ship) { ship.thornBorder = { dmg: 3, r: 120 }; }
   },
   {
     id: "neo_quan_tinh",
     nameVi: "Neo Quán Tính",
     descVi: "Nhấn Shift: dừng trượt tức thì. Hồi chiêu 8s.",
-    pool: "stage3",
+    pool: "common",
     tagVi: "Độc quyền ải 3",
-    bossStage: 3,
     apply: function (ship) { ship.inertiaAnchor = { cd: 0, max: 8 }; }
   },
   {
     id: "mat_cu",
     nameVi: "Mắt Cú",
     descVi: "Lúc mất điện: hiện outline mờ mọi quái trong 200px quanh tàu.",
-    pool: "stage4",
+    pool: "common",
     tagVi: "Độc quyền ải 4",
-    bossStage: 4,
     apply: function (ship) { ship.owlEye = { r: 200 }; }
   },
   {
@@ -102,24 +99,15 @@ var LIST = [
 ];
 
 var _taken = {};        // id -> true (đã chọn trong run này)
-var _bossBeaten = {};   // stage -> true (boss ải đã hạ → mở độc quyền)
 
 function get(id) {
   for (var i = 0; i < LIST.length; i++) if (LIST[i].id === id) return LIST[i];
   return null;
 }
-/** Nâng cấp độc quyền chỉ khả dụng sau khi hạ boss ải tương ứng. */
+/** RFC fix-round-final F3: campaign đã xóa → không còn gate độc quyền;
+ *  mọi upgrade đều vào draft thường. Giữ hàm vì API/public caller dùng. */
 function isUnlocked(u) {
-  if (!u) return false;
-  if (u.pool === "common") return true;
-  return !!_bossBeaten[u.bossStage];
-}
-/** Integrator gọi khi hạ boss ải `stage` (2/3/4). Trả về upgrade vừa mở. */
-function unlockBossStage(stage) {
-  _bossBeaten[stage] = true;
-  for (var i = 0; i < LIST.length; i++)
-    if (LIST[i].bossStage === stage) return LIST[i];
-  return null;
+  return !!u;
 }
 function hasTaken(id) { return !!_taken[id]; }
 /** Pool draft hiện tại: common + độc quyền đã mở, loại món đã lấy. */
@@ -142,11 +130,10 @@ function applyUpgrade(id, ship) {
   _taken[id] = true;
   return u;
 }
-/** Reset đầu run: món đã lấy + boss đã hạ (giữ nguyên _bossBeaten? KHÔNG —
- *  chiến lợi phẩm theo run; gọi resetAll() khi về menu nếu muốn giữ). */
+/** Reset đầu run: các món đã lấy (gọi resetAll() khi về menu nếu muốn giữ). */
 function resetRun() { _taken = {}; }
-/** Xóa cả tiến trình mở độc quyền (khi đổi profile / về menu chính). */
-function resetAll() { _taken = {}; _bossBeaten = {}; }
+/** Xóa tiến trình draft (khi đổi profile / về menu chính). */
+function resetAll() { _taken = {}; }
 
 /* ================= runtime helpers ================= */
 /**
@@ -269,7 +256,6 @@ var Upgrades2 = {
   applyUpgrade: applyUpgrade,
   hasTaken: hasTaken,
   isUnlocked: isUnlocked,
-  unlockBossStage: unlockBossStage,
   resetRun: resetRun,
   resetAll: resetAll,
   /* i18n (N4) */

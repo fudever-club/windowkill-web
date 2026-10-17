@@ -112,6 +112,14 @@ function hookMode() {
 function resolveBase() {
   if (process.env.SW_CHECK_BASE) return process.env.SW_CHECK_BASE;
   if (process.env.GITHUB_BASE_REF) return `origin/${process.env.GITHUB_BASE_REF}`;
+  // Nhánh feature: so với fork-point (merge-base với main) thay vì HEAD~1 —
+  // HEAD~1 sai khi HEAD là merge commit (vd PR #80 merge).
+  for (const ref of ["origin/main", "main"]) {
+    try {
+      const mb = git(["merge-base", "HEAD", ref], { cwd: repoRoot() }).trim();
+      if (mb) return mb;
+    } catch {}
+  }
   try {
     git(["rev-parse", "--verify", "HEAD~1"]);
     return "HEAD~1";

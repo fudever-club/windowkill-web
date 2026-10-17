@@ -1,3 +1,4 @@
+
 /* js/bgm.js — BGM player: nhạc nền CÓ THẬT (assets/music/*.mp3)
  *
  * - Single theme "High Score Parade" loop liên tục (CEO chốt 2026-10-04).
@@ -16,9 +17,15 @@ window.BGM = (() => {
   const TRACKS = [
     { file: "high-score-parade-loop", title: "High Score Parade", artist: "Joystick Odyssey" },
   ];
+
+
   const SINGLE_LOOP = TRACKS.length === 1; // theme duy nhất → loop liền, không crossfade
+
+  
   const XFADE_MS = 1500; // chỉ dùng khi playlist nhiều track
-  const VOLUME = 0.5; // vừa phải, không lấn SFX
+  let volTarget = 0.5; // FIX 2026-10-17 (user báo setting nhạc khác nhau): mục tiêu fade PHẢI theo
+    // slider âm lượng của user (BGM.setVolume) — trước đây hardcode 0.5 nên mọi lần fade/watchdog
+    // restart đều ghi đè về 0.5, slider chỉnh xong không giữ được.
 
   let enabled = false;   // user muốn nhạc (settings.music)
   let trackOK = true;    // còn ít nhất 1 track phát được
@@ -167,7 +174,7 @@ window.BGM = (() => {
     try { a.loop = SINGLE_LOOP; } catch (e) {} // single theme: loop liền, không crossfade
     a.src = BASE + t.file + ".mp3";
     try { a.load(); } catch (e) {}
-    fadeTo(a, VOLUME, fadeInMs);
+    fadeTo(a, volTarget, fadeInMs);
     tryPlay(a);
   }
 
@@ -228,7 +235,7 @@ window.BGM = (() => {
     if (!unlocked) return;
     const a = players[cur];
     if (!a.getAttribute("src") && !a.src) playAt(cur, order[pos], 1200);
-    else if (a.paused) { fadeTo(a, VOLUME, 800); tryPlay(a); }
+    else if (a.paused) { fadeTo(a, volTarget, 800); tryPlay(a); }
   }
 
   /* ---- public API ---- */
@@ -280,7 +287,7 @@ window.BGM = (() => {
 
   return {
     init, setEnabled, suspend, resume, nowPlaying,
-    setVolume: (v) => { players.forEach((a) => { a.volume = Math.max(0, Math.min(1, v)); }); },
+    setVolume: (v) => { v = +v; if (!(v >= 0)) v = 0; if (v > 1) v = 1; volTarget = v; players.forEach((a) => { a.volume = v; }); },
     version: "1.2-bgm-single-loop",
   };
 })();

@@ -10,7 +10,10 @@ const BG = (() => {
   const TAU = Math.PI * 2;
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
-  /* ---------- palette 5 ải (token theo art-direction §2) ---------- */
+  /* ---------- palette 5 ải (token theo art-direction §2) ----------
+     RFC stage-themes-modes §2.1: theme = 3 lớp MỞ RỘNG (decor + border + tintHue),
+     palette màu gốc giữ nguyên 100%. Mọi field trong theme optional — thiếu =
+     fallback an toàn (decor rỗng, border rỗng, tintHue 0). */
   const PALETTES = {
     1: { // MÀN HÌNH XANH — xanh Dever trầm
       base0: "#04070F", base1: "#0A1626",
@@ -21,6 +24,25 @@ const BG = (() => {
       grid: { type: "square", c: "#2E6DB4", a: 0.06, sp: 56 },
       parts: { n: 40, c: "#66B2FF", aMin: 0.20, aMax: 0.38, mode: "drift", spMin: 8, spMax: 14, square: true },
       vignette: 0.50, watermark: true,
+      theme: { // "Màn Hình Xanh Chết Chóc" (BSOD vui vẻ)
+        decor: {
+          statics: [
+            { kind: "rect", x: 0.06, y: 0.18, w: 110, h: 78, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0.78, y: 0.30, w: 90, h: 64, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0.30, y: 0.62, w: 120, h: 84, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0.60, y: 0.70, w: 96, h: 68, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0.15, y: 0.78, w: 84, h: 60, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0.86, y: 0.62, w: 100, h: 72, r: 8, c: "#2E6DB4", a: 0.10, tb: "#2E6DB4" },
+            { kind: "rect", x: 0, y: 0.52, w: 4000, h: 3, r: 0, c: "#66B2FF", a: 0.06 },
+            { kind: "text", x: 0.93, y: 0.10, text: ":-(", size: 64, c: "#ffffff", a: 0.05 },
+          ],
+          animated: [
+            { kind: "scanline", count: 3, speed: 12, c: "#66B2FF", a: 0.08, h: 2 },
+          ],
+        },
+        border: { kind: "rounded", colors: ["#2E6DB4"], width: 3, sync: "none" },
+        tintHue: 8,
+      },
     },
     2: { // TƯỜNG LỬA — cam đất
       base0: "#0B0605", base1: "#170C07",
@@ -31,6 +53,22 @@ const BG = (() => {
       grid: { type: "hex", c: "#B34A1F", a: 0.05, sp: 34 },
       parts: { n: 36, c: "#FF9A4D", aMin: 0.25, aMax: 0.42, mode: "rise", spMin: 20, spMax: 40 },
       vignette: 0.55,
+      theme: { // "Lò Lửa Firewall"
+        decor: {
+          statics: [
+            { kind: "bricks", rows: 2, c: "#7A2E12", a: 0.50 },
+            { kind: "chimney", x: 0.06, w: 36, h: 64, c: "#5a2310", a: 0.60 },
+            { kind: "chimney", x: 0.13, w: 30, h: 48, c: "#5a2310", a: 0.60 },
+            { kind: "chimney", x: 0.90, w: 36, h: 64, c: "#5a2310", a: 0.60 },
+          ],
+          animated: [
+            { kind: "spark", count: 12, c: "#FF9A4D", a: 0.80 },
+          ],
+        },
+        // hào quang lửa đồng bộ chu kỳ gai ải 2 (đọc cùng state StageFX.spikesOn)
+        border: { kind: "fire", colors: ["#FF6A00"], width: 6, sync: "spikes" },
+        tintHue: -10,
+      },
     },
     3: { // TRỌNG LỰC 404 — tím vũ trụ
       base0: "#080514", base1: "#130B30",
@@ -41,6 +79,23 @@ const BG = (() => {
       grid: { type: "swirl", c: "#9D4EDD", a: 0.05, rings: 5 },
       parts: { n: 44, c: "#C4B5FD", aMin: 0.22, aMax: 0.40, mode: "orbit", wMin: 0.05, wMax: 0.12 },
       vignette: 0.50,
+      theme: { // "Hố Đen Trọng Lực 404"
+        decor: {
+          statics: [
+            { kind: "text", x: 0.15, y: 0.25, text: "404", size: 56, rot: 0.4, c: "#9D4EDD", a: 0.12 },
+            { kind: "text", x: 0.82, y: 0.20, text: "404", size: 44, rot: -0.5, c: "#9D4EDD", a: 0.12 },
+            { kind: "text", x: 0.75, y: 0.78, text: "404", size: 64, rot: 0.2, c: "#9D4EDD", a: 0.12 },
+            { kind: "text", x: 0.20, y: 0.72, text: "404", size: 40, rot: -0.3, c: "#9D4EDD", a: 0.12 },
+            { kind: "text", x: 0.55, y: 0.12, text: "404", size: 48, rot: 0.6, c: "#9D4EDD", a: 0.12 },
+            { kind: "blackhole", x: 0.50, y: 0.42, r: 90 },
+          ],
+          animated: [
+            { kind: "orbit", count: 8, cx: 0.50, cy: 0.42, r: 115, c: "#C4B5FD", a: 0.70, speed: 0.5 },
+          ],
+        },
+        border: { kind: "swirl", colors: ["#3A0CA3", "#7209B7"], width: 3, sync: "none" },
+        tintHue: 12,
+      },
     },
     4: { // CÚP ĐIỆN — gần như đen
       base0: "#020204", base1: "#0A0A14",
@@ -48,6 +103,23 @@ const BG = (() => {
       grid: { type: "flicker", c: "#00E5FF", aMin: 0.02, aMax: 0.07, sp: 64 },
       parts: { n: 28, c: "#7DF9FF", aMin: 0.20, aMax: 0.35, mode: "fall", spMin: 60, spMax: 120, lifeMin: 1, lifeMax: 2 },
       vignette: 0.65,
+      theme: { // "Thành Phố Cúp Điện"
+        decor: {
+          statics: [
+            { kind: "bulb", x: 0.18, y: 0.30, s: 1.1, c: "#00E5FF", a: 0.12 },
+            { kind: "bulb", x: 0.42, y: 0.55, s: 0.9, c: "#00E5FF", a: 0.12 },
+            { kind: "bulb", x: 0.68, y: 0.28, s: 1.0, c: "#00E5FF", a: 0.12 },
+            { kind: "bulb", x: 0.85, y: 0.60, s: 0.85, c: "#00E5FF", a: 0.12 },
+            { kind: "line", x1: 0.05, y1: 0.12, x2: 0.95, y2: 0.30, c: "#00E5FF", a: 0.10, w: 2 },
+          ],
+          animated: [
+            { kind: "flicker", count: 6, c: "#BFF3FF", a: 0.50 },
+          ],
+        },
+        // viền neon theo blackout (cùng state BG.setBlackout)
+        border: { kind: "neon", colors: ["#00E5FF"], width: 3, sync: "blackout" },
+        tintHue: 0,
+      },
     },
     5: { // TRÀN BỘ NHỚ — xanh lá độc → đỏ cảnh báo
       base0: "#060A04", base1: "#0F1C09",
@@ -56,6 +128,30 @@ const BG = (() => {
       grid: { type: "square", c: "#4A7C2E", a: 0.05, sp: 52 },
       parts: { n: 24, c: "#4ADE80", a: 0.10, mode: "hexrain", spMin: 30, spMax: 70 },
       vignette: 0.55,
+      theme: { // "Vùng Tràn Bộ Nhớ"
+        decor: {
+          statics: [
+            { kind: "memblock", x: 0.03, y: 0.04, w: 70, h: 44, c: "#4ADE80", a: 0.16 },
+            { kind: "memblock", x: 0.10, y: 0.10, w: 60, h: 38, c: "#4ADE80", a: 0.14 },
+            { kind: "memblock", x: 0.05, y: 0.15, w: 52, h: 34, c: "#4ADE80", a: 0.12 },
+            { kind: "memblock", x: 0.88, y: 0.04, w: 70, h: 44, c: "#4ADE80", a: 0.16 },
+            { kind: "memblock", x: 0.82, y: 0.10, w: 60, h: 38, c: "#4ADE80", a: 0.14 },
+            { kind: "memblock", x: 0.90, y: 0.15, w: 52, h: 34, c: "#4ADE80", a: 0.12 },
+            { kind: "memblock", x: 0.03, y: 0.82, w: 70, h: 44, c: "#4ADE80", a: 0.16 },
+            { kind: "memblock", x: 0.10, y: 0.76, w: 60, h: 38, c: "#4ADE80", a: 0.14 },
+            { kind: "memblock", x: 0.05, y: 0.70, w: 52, h: 34, c: "#4ADE80", a: 0.12 },
+            { kind: "memblock", x: 0.88, y: 0.82, w: 70, h: 44, c: "#4ADE80", a: 0.16 },
+            { kind: "memblock", x: 0.82, y: 0.76, w: 60, h: 38, c: "#4ADE80", a: 0.14 },
+            { kind: "memblock", x: 0.90, y: 0.70, w: 52, h: 34, c: "#4ADE80", a: 0.12 },
+          ],
+          animated: [
+            { kind: "fallblock", count: 4, c: "#4ADE80", a: 0.25, speed: 20 },
+          ],
+        },
+        // viền lerp xanh→đỏ theo danger nội bộ của BG
+        border: { kind: "danger", colors: ["#4ADE80", "#FF3B30"], width: 4, sync: "danger" },
+        tintHue: -12,
+      },
     },
   };
 
@@ -92,6 +188,7 @@ const BG = (() => {
     g.addColorStop(0, pal.base0); g.addColorStop(1, pal.base1);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     paintGrid(ctx, pal, gridAlpha);
+    paintDecorStatic(ctx, pal); // RFC stage-themes-modes: decor static bake vào offscreen
     if (pal.watermark) {
       ctx.save();
       ctx.globalAlpha = 0.035; ctx.fillStyle = "#fff";
@@ -147,6 +244,148 @@ const BG = (() => {
           const px = cx + r * Math.cos(ang), py = cy + r * Math.sin(ang) * 0.82;
           if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /* ---------- RFC stage-themes-modes §2.1: decor theo ải ----------
+     Statics: vẽ 1 lần trong paintBase() → bake vào offscreen base (0 draw-call/frame).
+     Animated: ≤12 prop/ải, mỗi prop ≤ 6 canvas ops, vẽ ở layer L1.5 (sau nebula);
+     đứng yên khi reduced(). Tọa độ x,y ∈ [0,1] theo W,H để chịu resize. */
+  let animProps = []; // props animated của stage hiện tại (precompute trong build)
+  function paintDecorStatic(ctx, pal) {
+    const th = pal.theme, D = th && th.decor;
+    if (!D || !D.statics || !D.statics.length) return;
+    ctx.save();
+    for (const d of D.statics) {
+      const x = (d.x || 0) * W, y = (d.y || 0) * H;
+      ctx.globalAlpha = d.a == null ? 0.10 : d.a;
+      if (d.kind === "rect") { // khung "cửa sổ lỗi" (ải 1) + dải scanline ngang mờ
+        const w = d.w || 60, h = d.h || 40;
+        ctx.strokeStyle = d.c || "#ffffff"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, w, h, d.r == null ? 6 : d.r); else ctx.rect(x, y, w, h);
+        ctx.stroke();
+        if (d.tb) { // thanh tiêu đề cửa sổ
+          ctx.fillStyle = d.tb;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(x, y, w, 14, [d.r == null ? 6 : d.r, d.r == null ? 6 : d.r, 0, 0]);
+          else ctx.rect(x, y, w, 14);
+          ctx.fill();
+        }
+      } else if (d.kind === "text") { // glyph ":-(" (ải 1) / mảnh "404" vỡ (ải 3)
+        ctx.fillStyle = d.c || "#ffffff";
+        ctx.font = "700 " + (d.size || 48) + "px system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        if (d.rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(d.rot); ctx.fillText(d.text || "", 0, 0); ctx.restore(); }
+        else ctx.fillText(d.text || "", x, y);
+      } else if (d.kind === "bricks") { // dải tường gạch nung dọc mép dưới (ải 2)
+        const bh = 24, rows = d.rows || 2, bw = 24;
+        ctx.fillStyle = d.c || "#7A2E12";
+        for (let rI = 0; rI < rows; rI++) {
+          const yy = H - (rI + 1) * bh, off = (rI % 2) * bw / 2;
+          for (let xx = -bw; xx < W + bw; xx += bw) ctx.fillRect(xx + off, yy + 2, bw - 3, bh - 4);
+        }
+      } else if (d.kind === "chimney") { // ống khói pixel (ải 2) — tia lửa animated bay từ miệng
+        const cw = d.w || 36, ch = d.h || 64;
+        ctx.fillStyle = d.c || "#5a2310";
+        ctx.fillRect(x - cw / 2, H - ch, cw, ch);
+        ctx.fillRect(x - cw / 2 - 4, H - ch, cw + 8, 10);
+      } else if (d.kind === "blackhole") { // hố đen decor (ải 3): vòng xoáy static + vành sáng tím
+        const br = d.r || 90;
+        const g = ctx.createRadialGradient(x, y, br * 0.2, x, y, br * 1.6);
+        g.addColorStop(0, "rgba(20,8,40,0.85)");
+        g.addColorStop(0.55, "rgba(58,12,163,0.35)");
+        g.addColorStop(1, "rgba(58,12,163,0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, br * 1.6, 0, TAU); ctx.fill();
+        ctx.strokeStyle = "#9D4EDD"; ctx.lineWidth = 3;
+        for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(x, y, br * (0.35 + i * 0.22), 0, TAU); ctx.stroke(); }
+        ctx.strokeStyle = "rgba(196,181,253,0.5)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, br * 1.02, 0, TAU); ctx.stroke();
+      } else if (d.kind === "bulb") { // bóng đèn vỡ treo lơ lửng (ải 4)
+        const s2 = d.s || 1;
+        ctx.strokeStyle = d.c || "#00E5FF"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, y - 46 * s2); ctx.lineTo(x, y - 18 * s2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 16 * s2, 0, TAU); ctx.stroke();
+        ctx.fillStyle = d.c || "#00E5FF";
+        ctx.fillRect(x - 7 * s2, y - 26 * s2, 14 * s2, 8 * s2);
+        ctx.beginPath();
+        ctx.moveTo(x - 8 * s2, y - 8 * s2); ctx.lineTo(x + 2 * s2, y + 2 * s2);
+        ctx.lineTo(x - 4 * s2, y + 10 * s2); ctx.stroke();
+      } else if (d.kind === "line") { // đường dây điện pixel chéo góc (ải 4)
+        ctx.strokeStyle = d.c || "#ffffff"; ctx.lineWidth = d.w || 2;
+        ctx.beginPath();
+        ctx.moveTo((d.x1 || 0) * W, (d.y1 || 0) * H);
+        ctx.lineTo((d.x2 == null ? 1 : d.x2) * W, (d.y2 == null ? 1 : d.y2) * H);
+        ctx.stroke();
+      } else if (d.kind === "memblock") { // "memory block" rò rỉ ở 4 góc (ải 5)
+        const mw = d.w || 70, mh = d.h || 44;
+        ctx.fillStyle = d.c || "#4ADE80";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, mw, mh, 8); else ctx.rect(x, y, mw, mh);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 2;
+        for (let gi = 1; gi <= 3; gi++) {
+          ctx.beginPath(); ctx.moveTo(x + mw * gi / 4, y + 6); ctx.lineTo(x + mw * gi / 4, y + mh - 6); ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+  function buildAnimProps(pal) {
+    const out = [];
+    const th = pal.theme, D = th && th.decor;
+    const A = (D && D.animated) || [];
+    const chimX = [];
+    for (const d of ((D && D.statics) || [])) if (d.kind === "chimney") chimX.push(d.x || 0);
+    for (const a of A) {
+      const n = Math.min(a.count || 0, 12);
+      for (let i = 0; i < n; i++) {
+        const seed = ((i + 1) * 0.6180339887) % 1;
+        const p = { kind: a.kind, i, seed, c: a.c, a: a.a, h: a.h };
+        if (a.kind === "scanline") { p.y0 = (i + 0.25) / n; p.speed = (a.speed || 12) * (0.8 + seed * 0.4); }
+        else if (a.kind === "spark") { p.chx = chimX.length ? chimX[i % chimX.length] : 0.1 * (i + 1); p.ph = seed * TAU; p.sp = 40 + seed * 40; }
+        else if (a.kind === "orbit") { p.cx = a.cx == null ? 0.5 : a.cx; p.cy = a.cy == null ? 0.5 : a.cy; p.ang = seed * TAU; p.or = (a.r || 110) * (0.85 + seed * 0.3); p.w = (a.speed || 0.5) * (seed < 0.5 ? 1 : -1); }
+        else if (a.kind === "fallblock") { p.x = seed; p.y0 = i / n; p.sp = a.speed || 20; p.w = 54 + seed * 30; p.h = 34 + seed * 18; }
+        else if (a.kind === "flicker") { p.x = 0.15 + seed * 0.7; p.y = 0.2 + ((seed * 7) % 1) * 0.5; p.ph = seed * TAU; }
+        out.push(p);
+      }
+    }
+    return out;
+  }
+  function drawDecorAnim(ctx, pal, t) {
+    if (!animProps.length) return;
+    const rd = reduced(), tt = rd ? 0 : t / 1000;
+    ctx.save();
+    for (const p of animProps) {
+      if (p.kind === "scanline") { // ải 1: scanline mỏng trôi chậm dọc
+        const y = ((p.y0 + tt * p.speed / H) % 1) * H;
+        ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
+        ctx.fillRect(0, y, W, p.h || 2);
+      } else if (p.kind === "spark") { // ải 2: tia lửa từ miệng ống khói bay lên
+        const rise = (tt * p.sp + p.ph * 40) % 160;
+        const x = p.chx * W + Math.sin(tt * 3 + p.ph) * 8, y = H - 64 - rise;
+        ctx.globalAlpha = p.a * (1 - rise / 160);
+        ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, TAU); ctx.fill();
+      } else if (p.kind === "orbit") { // ải 3: hạt quay quanh hố đen (quỹ đạo tròn chậm)
+        const ang = p.ang + tt * p.w;
+        const x = p.cx * W + Math.cos(ang) * p.or, y = p.cy * H + Math.sin(ang) * p.or * 0.8;
+        ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(x, y, 2.4, 0, TAU); ctx.fill();
+      } else if (p.kind === "fallblock") { // ải 5: block "rơi" chậm từ mép trên (loop)
+        const y = ((p.y0 + tt * p.sp / H) % 1.2 - 0.1) * H;
+        ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
+        ctx.fillRect(p.x * W - p.w / 2, y, p.w, p.h);
+      } else if (p.kind === "flicker") { // ải 4: tia lửa tĩnh điện — CHỈ khi đèn đang sáng
+        if (blackoutT > 0.5) continue;
+        if (Math.sin(tt * 13 + p.ph) <= 0.2) continue;
+        const x = p.x * W, y = p.y * H;
+        ctx.globalAlpha = p.a; ctx.strokeStyle = p.c; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 6, y); ctx.lineTo(x - 2, y - 5); ctx.lineTo(x + 3, y + 1); ctx.lineTo(x + 7, y - 4);
         ctx.stroke();
       }
     }
@@ -225,6 +464,7 @@ const BG = (() => {
     neb = mkCanvas(W, H);
     paintNebula(neb.getContext("2d"), pal);
     initParts(pal);
+    animProps = buildAnimProps(pal); // RFC stage-themes-modes: props animated theo ải
     lastT = 0;
   }
 
@@ -293,6 +533,9 @@ const BG = (() => {
     if (rd) ctx.drawImage(neb, 0, 0);
     else ctx.drawImage(neb, Math.sin(t * 0.00010) * 12, Math.cos(t * 0.00013) * 12);
 
+    // L1.5 theme decor animated (RFC stage-themes-modes) — sau nebula, trước particles
+    drawDecorAnim(ctx, pal, t);
+
     // L3 particles
     if (pal.parts.mode === "hexrain") drawHexRain(ctx, pal, dt);
     else { stepParts(pal, rd ? 0 : dt, t); drawParts(ctx, pal, t); }
@@ -325,7 +568,16 @@ const BG = (() => {
   function setDim(a) { dimT = clamp(+a || 0, 0, 1); }
   function setQuality(q) { quality = q === "reduced" ? "reduced" : "full"; }
 
+  /* RFC stage-themes-modes §3.1: API theme bổ sung */
+  function getTheme(sid) {
+    const p = PALETTES[sid];
+    return (p && p.theme) || {}; // thiếu theme → {} (không throw — F8)
+  }
+  function getDanger() { return danger; } // giá trị danger đã smooth (cho border ải 5)
+  function blackoutOn() { return blackoutT > 0.5; } // cùng state BG.setBlackout dùng (border ải 4)
+
   return { build, draw, setDanger, setBlackout, setDim, setQuality, PALETTES,
+           getTheme, getDanger, blackoutOn,
            get stageId() { return stageId; }, get quality() { return quality; } };
 })();
 

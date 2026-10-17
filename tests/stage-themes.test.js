@@ -9,10 +9,10 @@
  *   BG.build invalid → fallback ........ T3 (F8)
  *   perf smoke < 2ms/frame ............. T5
  *   reduced → decor đứng yên ........... T5
- *   endless: tint TẮT .................. T8
+ *   themeSid invalid: tint TẮT ......... T8
  *   decor không sinh entity ............ T7
- *   motif viền sau BorderFX/dưới StageFX  T6 (T2.3)
- *   tint ±15° chỉ ải 1–5 ............... T4 (T2.4/T2.5)
+ *   motif viền sau BorderFX ............. T6
+ *   tint ±15° theo G.themeSid ........... T4
  *
  * Chạy: node --test tests/stage-themes.test.js
  */
@@ -255,48 +255,49 @@ function loadThemeTint() {
   const shiftSrc = extractFunctionDecl(src, "_shiftHue");
   const tintSrc = extractFunctionDecl(src, "themeTint");
   const memoDecl = "const _tintMemo = {};";
-  const ctx = { Math, console, window: {}, BG, V2: { stageId: 1 }, G: {} };
+  // RFC ui-audit-boss-cleanup §3.6: themeTint đọc G.themeSid (random mỗi run), không còn V2.stageId
+  const G = { themeSid: 1 };
+  const ctx = { Math, console, window: { G }, BG, G };
   vm.createContext(ctx);
   vm.runInContext(memoDecl + "\n" + shiftSrc + "\n" + tintSrc, ctx, { filename: "themeTint" });
   return ctx;
 }
-describe("themes/T4: tint quái ±15° — chỉ ải 1–5, không đụng boss/đạn/particle", () => {
-  it("ải 1–5: themeTint(e) = shift hue đúng tintHue ải (sai số làm tròn cho phép)", () => {
+describe("themes/T4: tint quái ±15° — themeSid 1–5, không đụng boss/đạn/particle", () => {
+  it("theme 1–5: themeTint(e) = shift hue đúng tintHue theme (sai số làm tròn cho phép)", () => {
     const ctx = loadThemeTint();
     for (let sid = 1; sid <= 5; sid++) {
       BG.build(sid, 1280, 720);
-      ctx.V2 = { stageId: sid };
-      ctx.window = { V2: ctx.V2, G: {} };
+      ctx.G.themeSid = sid;
+      ctx.window.G = ctx.G;
       const deg = BG.getTheme(sid).tintHue;
       const got = vm.runInContext(`themeTint({ color: "#ff5470", type: "chaser" })`, ctx);
-      if (deg === 0) assert.equal(got, "#ff5470", `ải ${sid}: tintHue 0 → giữ nguyên`);
-      else assertHexNear(got, shiftHue("#ff5470", deg), 3, `ải ${sid}: shift ${deg}°`);
+      if (deg === 0) assert.equal(got, "#ff5470", `theme ${sid}: tintHue 0 → giữ nguyên`);
+      else assertHexNear(got, shiftHue("#ff5470", deg), 3, `theme ${sid}: shift ${deg}°`);
     }
   });
-  it("T2.5: endless (stageId 0) / mode mới (stageId 0) → tint TẮT, trả e.color gốc", () => {
+  it("themeSid invalid (0/6/-1/undefined) → tint TẮT, trả e.color gốc", () => {
     const ctx = loadThemeTint();
     BG.build(2, 1280, 720);
-    for (const st of [0, 6, -1]) {
-      ctx.V2 = { stageId: st };
-      ctx.window = { V2: ctx.V2, G: {} };
+    for (const st of [0, 6, -1, undefined]) {
+      ctx.G.themeSid = st;
+      ctx.window.G = ctx.G;
       const got = vm.runInContext(`themeTint({ color: "#ff5470", type: "chaser" })`, ctx);
-      assert.equal(got, "#ff5470", `stageId=${st}: tint phải TẮT`);
+      assert.equal(got, "#ff5470", `themeSid=${String(st)}: tint phải TẮT`);
     }
   });
-  it("T2.5: G.themeTint=false → tắt tường minh ngay cả trong ải 1–5", () => {
+  it("G.themeTint=false → tắt tường minh ngay cả khi themeSid 1–5", () => {
     const ctx = loadThemeTint();
     BG.build(3, 1280, 720);
     // game thật: window.G === G (cùng object) — mirror đúng
-    ctx.G = { themeTint: false };
-    ctx.V2 = { stageId: 3 };
-    ctx.window = { V2: ctx.V2, G: ctx.G };
+    ctx.G = { themeTint: false, themeSid: 3 };
+    ctx.window = { G: ctx.G };
     const got = vm.runInContext(`themeTint({ color: "#ff5470", type: "chaser" })`, ctx);
     assert.equal(got, "#ff5470", "G.themeTint=false → giữ e.color gốc");
   });
   it("themeTint memo theo e.color+sid, không throw khi e thiếu color", () => {
     const ctx = loadThemeTint();
-    ctx.V2 = { stageId: 1 };
-    ctx.window = { V2: ctx.V2, G: {} };
+    ctx.G.themeSid = 1;
+    ctx.window.G = ctx.G;
     const a = vm.runInContext(`themeTint({ color: "#ff5470" })`, ctx);
     const b = vm.runInContext(`themeTint({ color: "#ff5470" })`, ctx);
     assert.equal(a, b, "memo: cùng color+sid → cùng kết quả");
@@ -373,52 +374,52 @@ function loadDrawThemeBorder() {
   const perimSrc = extractFunctionDecl(src, "_perimPoint");
   const lerpSrc = extractFunctionDecl(src, "_lerpColor");
   const fnSrc = extractFunctionDecl(src, "drawThemeBorder");
-  // game thật: window.V2/V2/G cùng object — implementation đọc window.V2
-  const V2 = { stageId: 1 }, G = {};
+  // game thật: window.G === G (cùng object) — implementation đọc G.themeSid (RFC ui-audit-boss-cleanup)
+  const G = { themeSid: 1 };
   const ctx = {
     Math, console, BG,
-    G, V2, window: { V2, G },
+    G, window: { G },
     now: 1000,
   };
   vm.createContext(ctx);
   vm.runInContext(perimSrc + "\n" + lerpSrc + "\n" + fnSrc, ctx, { filename: "drawThemeBorder" });
   return ctx;
 }
-describe("themes/T6: motif viền — sau BorderFX, dưới StageFX (T2.3)", () => {
-  it("render(): drawThemeBorder nằm SAU BorderFX.draw và TRƯỚC lớp mechanic ải", () => {
+describe("themes/T6: motif viền — sau BorderFX, dưới lớp overlay (mode mới)", () => {
+  it("render(): drawThemeBorder nằm SAU BorderFX.draw và TRƯỚC V2.drawOver", () => {
     const src = gameSrc();
     const renderSrc = extractFunctionDecl(src, "render");
     const iB = renderSrc.indexOf("BorderFX.draw");
     const iT = renderSrc.indexOf("drawThemeBorder(ctx");
-    // mechanic ải vẽ qua V2.drawOver → StageFX.draw (v2glue.js) — lớp trên cùng
+    // overlay mode/juice2/tutorial vẽ qua V2.drawOver — lớp trên cùng
     const iS = renderSrc.indexOf("V2.drawOver");
     assert.ok(iB > 0 && iT > 0 && iS > 0, "render() phải gọi BorderFX.draw, drawThemeBorder, V2.drawOver");
     assert.ok(iB < iT && iT < iS,
-      "thứ tự sai: motif viền phải sau BorderFX.draw và dưới V2.drawOver/StageFX.draw (mechanic ải là lớp trên cùng)");
+      "thứ tự sai: motif viền phải sau BorderFX.draw và dưới V2.drawOver");
   });
-  it("drawThemeBorder(ctx,W,H,now) vẽ đúng màu motif từng ải, không throw", () => {
+  it("drawThemeBorder(ctx,W,H,now) vẽ đúng màu motif từng theme, không throw", () => {
     const ctx = loadDrawThemeBorder();
     const cases = [
       [1, "#2E6DB4"], [2, "#FF6A00"], [3, "#3A0CA3"], [4, "#00E5FF"], [5, "#4ADE80"],
     ];
     for (const [sid, color] of cases) {
       BG.build(sid, 1280, 720);
-      ctx.V2.stageId = sid; // cùng object với window.V2
+      ctx.G.themeSid = sid; // cùng object với window.G
       const c = mockCtx2d();
       assert.doesNotThrow(() => vm.runInContext(`drawThemeBorder(__c, 1280, 720, 1000)`, Object.assign(ctx, { __c: c })),
-        `ải ${sid}: drawThemeBorder throw`);
+        `theme ${sid}: drawThemeBorder throw`);
       // màu có thể gán trực tiếp (strokeStyle=...) hoặc qua gradient (addColorStop)
       const styles = c.__calls
         .filter((x) => (x[0] === "set" && /style/i.test(x[1])) || x[0] === "addColorStop")
         .map((x) => String(x[2]));
       assert.ok(styles.some((s) => s.toLowerCase().includes(color.toLowerCase())),
-        `ải ${sid}: motif viền phải dùng màu ${color}, thấy: ${styles.slice(0, 4).join(" | ")}`);
+        `theme ${sid}: motif viền phải dùng màu ${color}, thấy: ${styles.slice(0, 4).join(" | ")}`);
     }
   });
-  it("ải 4: border đồng bộ blackout (sáng khi đèn sáng, mờ khi blackout)", () => {
+  it("theme 4: border đồng bộ blackout (sáng khi đèn sáng, mờ khi blackout)", () => {
     const ctx = loadDrawThemeBorder();
     BG.build(4, 1280, 720);
-    ctx.V2.stageId = 4;
+    ctx.G.themeSid = 4;
     BG.setBlackout(false);
     const c1 = mockCtx2d();
     vm.runInContext(`drawThemeBorder(__c, 1280, 720, 1000)`, Object.assign(ctx, { __c: c1 }));
@@ -436,10 +437,10 @@ describe("themes/T6: motif viền — sau BorderFX, dưới StageFX (T2.3)", () 
     assert.ok(Math.max(...a1) > Math.max(...a2),
       `đèn sáng (alpha ${Math.max(...a1)}) phải > blackout (alpha ${Math.max(...a2)})`);
   });
-  it("ải 5: border lerp xanh→đỏ theo BG danger (giá trị smoothed nội bộ)", () => {
+  it("theme 5: border lerp xanh→đỏ theo BG danger (giá trị smoothed nội bộ)", () => {
     const ctx = loadDrawThemeBorder();
     BG.build(5, 1280, 720);
-    ctx.V2.stageId = 5;
+    ctx.G.themeSid = 5;
     // lerp độc lập để tính kỳ vọng (không dùng code game)
     const lerp = (c1, c2, t) => {
       const p = (c) => { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -472,17 +473,17 @@ describe("themes/T7: decor không sinh entity gameplay (§5.1)", () => {
   });
 });
 
-/* ================= T8: endless ================= */
-describe("themes/T8: endless — giữ nguyên, tint TẮT", () => {
-  it("sid 0 (endless): không theme mới", () => {
-    assert.deepEqual(BG.getTheme(0), {}, "endless (sid 0) không có theme riêng");
+/* ================= T8: themeSid invalid ================= */
+describe("themes/T8: themeSid invalid → tint TẮT, giữ e.color gốc", () => {
+  it("sid 0: không theme mới", () => {
+    assert.deepEqual(BG.getTheme(0), {}, "sid 0 không có theme riêng");
   });
-  it("endless: màu quái = e.color gốc (không shift)", () => {
+  it("themeSid invalid: màu quái = e.color gốc (không shift)", () => {
     const ctx = loadThemeTint();
-    BG.build(3, 1280, 720); // endless vẫn dùng palette ải (ACTS bgStage), nhưng tint tắt
-    ctx.V2 = { stageId: 0 };
-    ctx.window = { V2: ctx.V2, G: {} };
+    BG.build(3, 1280, 720);
+    ctx.G.themeSid = 99;
+    ctx.window.G = ctx.G;
     const got = vm.runInContext(`themeTint({ color: "#c084fc", type: "chewer" })`, ctx);
-    assert.equal(got, "#c084fc", "endless: tint TẮT");
+    assert.equal(got, "#c084fc", "themeSid invalid: tint TẮT");
   });
 });

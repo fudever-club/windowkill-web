@@ -175,9 +175,9 @@ describe("S2 telemetry call sites (js/game.js)", () => {
     assert.ok(body.includes("trackWaveReached(n"), "startWave phải gọi trackWaveReached(n, ...)");
     assert.ok(body.includes("DIFF_KEY"), "phải truyền difficulty");
     assert.ok(body.includes("G.score"), "phải truyền score");
-    // phải nằm trước các early-return (boss wave) để boss wave vẫn được track
-    assert.ok(body.indexOf("trackWaveReached") < body.indexOf("V2.stageWave"),
-      "track phải đặt trước early-return của V2/boss wave");
+    // phải nằm trước early-return của boss wave (spawnBoss()) để boss wave vẫn được track
+    assert.ok(body.indexOf("trackWaveReached") < body.indexOf("spawnBoss()"),
+      "track phải đặt trước early-return của boss wave");
   });
 
   it("die() gọi Telemetry.log(\"death\") với reason/wave/score", () => {

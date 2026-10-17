@@ -16,31 +16,32 @@ const U = require(path.join(ROOT, "js", "upgrades2.js"));
 describe("Upgrades2 — unit (động)", () => {
   beforeEach(() => { U.resetAll(); });
 
-  it("U1: LIST đủ 6 nâng cấp, đúng id và pool", () => {
+  it("U1: LIST đủ 6 nâng cấp, tất cả pool common (F3: không còn độc quyền ải)", () => {
     assert.deepEqual(U.LIST.map((u) => u.id),
       ["gai_phan", "neo_quan_tinh", "mat_cu", "dan_no", "dan_xich", "keo_tu_va"]);
-    assert.equal(U.LIST.filter((u) => u.pool === "common").length, 3);
-    assert.equal(U.LIST.filter((u) => u.pool.indexOf("stage") === 0).length, 3);
+    assert.equal(U.LIST.filter((u) => u.pool === "common").length, 6);
+    assert.ok(U.LIST.every((u) => u.bossStage === undefined), "không còn bossStage");
   });
 
-  it("U2: draftPool khi chưa hạ boss chỉ có 3 món common", () => {
+  it("U2: draftPool đầu run có đủ 6 món (không lock vĩnh viễn)", () => {
     const pool = U.draftPool();
-    assert.equal(pool.length, 3);
-    assert.ok(!pool.some((u) => u.id === "gai_phan"));
+    assert.equal(pool.length, 6);
+    assert.ok(pool.some((u) => u.id === "gai_phan"));
   });
 
-  it("U3: unlockBossStage(2) mở Gai Phản và trả đúng upgrade", () => {
-    const up = U.unlockBossStage(2);
-    assert.ok(up && up.id === "gai_phan");
-    assert.ok(U.draftPool().some((u) => u.id === "gai_phan"));
-    assert.equal(U.unlockBossStage(5), null);
-    assert.equal(U.unlockBossStage(1), null);
+  it("U3: không còn unlockBossStage; isUnlocked(u) luôn true với upgrade hợp lệ", () => {
+    assert.equal(U.unlockBossStage, undefined, "unlockBossStage đã xóa");
+    assert.equal(U.isUnlocked(U.get("gai_phan")), true);
+    assert.equal(U.isUnlocked(U.get("mat_cu")), true);
+    assert.equal(U.isUnlocked(null), false);
   });
 
-  it("U4: applyUpgrade bị khoá trả null, ship không đổi", () => {
+  it("U4: applyUpgrade gai_phan áp ngay (không còn khoá), ship có thornBorder", () => {
     const ship = {};
-    assert.equal(U.applyUpgrade("gai_phan", ship), null);
-    assert.equal(ship.thornBorder, undefined);
+    const up = U.applyUpgrade("gai_phan", ship);
+    assert.ok(up && up.id === "gai_phan");
+    assert.deepEqual(ship.thornBorder, { dmg: 3, r: 120 });
+    assert.equal(U.applyUpgrade("gai_phan", ship), null, "lấy trùng → null");
   });
 
   it("U5: applyUpgrade dan_no gán explosive và chặn lấy trùng", () => {
@@ -52,12 +53,12 @@ describe("Upgrades2 — unit (động)", () => {
     assert.equal(U.hasTaken("dan_no"), true);
   });
 
-  it("U6: resetRun mở lại pool nhưng giữ unlock boss", () => {
-    U.unlockBossStage(2);
+  it("U6: resetRun mở lại các món đã lấy", () => {
     U.applyUpgrade("dan_no", {});
+    U.applyUpgrade("gai_phan", {});
     U.resetRun();
     assert.equal(U.hasTaken("dan_no"), false);
-    assert.ok(U.draftPool().some((u) => u.id === "gai_phan"), "unlock ải vẫn giữ sau resetRun");
+    assert.equal(U.draftPool().length, 6, "đủ 6 món sau resetRun");
   });
 
   it("U7: explodeAt chỉ lan quái trong 60px, trừ quái trúng trực tiếp", () => {
@@ -207,15 +208,21 @@ describe("M22 wiring — tĩnh (call-site trong engine)", () => {
     assert.equal(mods.secondLife, true);
   });
 
-  it("S6: v2glue.js onStageBossDead gọi unlockBossStage", () => {
-    assert.match(glue, /onStageBossDead: function \(b\) \{[\s\S]*?Upgrades2\.unlockBossStage\(self\.stageId\)/);
-    assert.equal(count(glue, /Upgrades2\.unlockBossStage\(/g), 1);
+  it("S6: campaign đã xóa — unlockBossStage/_bossBeaten/bossStage không còn tồn tại", () => {
+    assert.ok(!glue.includes("onStageBossDead"), "v2glue không được chứa onStageBossDead");
+    assert.ok(!glue.includes("unlockBossStage"), "v2glue không được gọi unlockBossStage");
+    assert.ok(!game.includes("unlockBossStage"), "bundle không được gọi unlockBossStage");
+    // RFC fix-round-final F3: dọn dead code — unlockBossStage/_bossBeaten/bossStage
+    // đã xóa khỏi js/upgrades2.js (không còn "dọn ở PR riêng" như NOTE cũ).
+    const u2 = read("js/upgrades2.js");
+    assert.ok(!u2.includes("unlockBossStage"), "upgrades2.js còn sót unlockBossStage");
+    assert.ok(!u2.includes("_bossBeaten"), "upgrades2.js còn sót _bossBeaten");
+    assert.ok(!u2.includes("bossStage"), "upgrades2.js còn sót bossStage");
+    assert.ok(game.includes("Upgrades2.resetRun"), "resetRun của Upgrades2 vẫn được gọi mỗi run");
   });
 
-  it("S7: game.js render vẽ Mắt Cú (owlTargets) SAU V2.drawOver (sau lớp blackout)", () => {
-    const iDraw = game.indexOf("V2.drawOver(ctx, W, H)");
-    const iOwl = game.indexOf("Upgrades2.owlTargets");
-    assert.ok(iDraw >= 0 && iOwl > iDraw, "owlTargets phải nằm sau drawOver trong render()");
-    assert.match(game, /s\.owlEye && window\.StageFX && StageFX\.isDark\(\)/);
+  it("S7: render không còn vẽ Mắt Cú qua StageFX (campaign đã xóa)", () => {
+    assert.ok(!game.includes("Upgrades2.owlTargets"), "bundle không được chứa owlTargets");
+    assert.ok(!/StageFX/.test(game), "bundle không được chứa StageFX");
   });
 });

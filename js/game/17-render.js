@@ -3,11 +3,11 @@
  * Gọi BG.build khi đổi ải / resize; mỗi frame chỉ BG.draw. */
 
 /* =====================================================================
-   RFC stage-themes-modes §2.1 — theme theo ải:
+   RFC ui-audit-boss-cleanup §3.6 — theme theo run (campaign đã xóa):
    (c) themeTint(e): shift hue màu quái ±15° (chỉ đổi hue, không đổi shape/hitbox);
-       TẮT ở endless/mode mới (V2.stageId ∉ 1..5) và không áp cho boss/đạn/particle.
-   (b) drawThemeBorder(): motif viền theo ải — vẽ SAU BorderFX.draw, DƯỚI StageFX.draw
-       (mechanic ải luôn là lớp trên cùng — gameplay readability ưu tiên).
+       chạy mọi run với G.themeSid random 1-5, không áp cho boss/đạn/particle.
+   (b) drawThemeBorder(): motif viền theo theme — vẽ SAU BorderFX.draw,
+       reduced-motion được tôn trọng.
    ===================================================================== */
 const _tintMemo = {};
 /* P2: hoist array literal khỏi per-frame draw (tránh alloc mỗi frame) */
@@ -45,8 +45,8 @@ function themeTint(e) {
   if (!e || !e.color) return "#ffffff";
   try {
     if (window.G && G.themeTint === false) return e.color; // override tắt tường minh
-    const st = window.V2 ? V2.stageId : 0;
-    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: endless/mode mới → TẮT
+    const st = (window.G && G.themeSid) || 0;
+    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: theme invalid → TẮT
     const th = (typeof BG !== "undefined" && BG.getTheme(st).tintHue) || 0;
     if (!th) return e.color;
     const k = st + "|" + e.color;
@@ -73,8 +73,8 @@ function _lerpColor(c1, c2, t) {
 function drawThemeBorder(ctx, W, H, now) {
   let bd = null;
   try {
-    const st = window.V2 ? V2.stageId : 0;
-    if (!(st >= 1 && st <= 5)) return; // endless/mode mới: không motif viền
+    const st = (window.G && G.themeSid) || 0;
+    if (!(st >= 1 && st <= 5)) return; // theme invalid: không motif viền
     if (typeof BG === "undefined") return;
     bd = BG.getTheme(st).border;
   } catch (e) { return; }
@@ -89,11 +89,9 @@ function drawThemeBorder(ctx, W, H, now) {
     rr(inset, inset, W - inset * 2, H - inset * 2, 14); ctx.stroke();
     ctx.fillStyle = "#66B2FF"; ctx.globalAlpha = 0.9;
     for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(inset + 18 + i * 17, inset + 18, 4, 0, Math.PI * 2); ctx.fill(); }
-  } else if (bd.kind === "fire") { // ải 2: hào quang lửa đồng bộ chu kỳ gai (cùng state StageFX)
-    let on = true;
-    try { on = !!(window.StageFX && StageFX.spikesOn && StageFX.spikesOn()); } catch (e) {}
+  } else if (bd.kind === "fire") { // hào quang lửa (campaign đã xóa: luôn sáng, không còn chu kỳ gai)
     ctx.strokeStyle = bd.colors[0]; ctx.lineWidth = wdt;
-    ctx.globalAlpha = on ? 0.45 : 0.25;
+    ctx.globalAlpha = 0.45;
     ctx.strokeRect(inset + 3, inset + 3, W - (inset + 3) * 2, H - (inset + 3) * 2);
   } else if (bd.kind === "swirl") { // ải 3: viền gradient tím + sheen chạy vòng quanh (chu kỳ 8s)
     const g = ctx.createLinearGradient(0, 0, W, 0);
@@ -615,7 +613,7 @@ function render(now) {
         ctx.fillStyle = "#ff3b30"; ctx.font = "bold 13px sans-serif";
         ctx.fillText("!", 0, -e.r - 8);
       } else {
-        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "11px sans-serif";
+        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "12px sans-serif"; // UI-07: 11px → 12px dễ đọc trên mobile
         ctx.fillText("HỌP", 0, -e.r - 8);
       }
     } else if (e.type === "snatcher") {
@@ -827,7 +825,7 @@ function render(now) {
   // H1/B2: viền màn hình = thanh máu — decal notch cache (borderfx.js), flash xanh khi bắn vào viền
   if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now,
     G.lastStand ? heartbeatPulse(now) : (Math.sin(now / 280) + 1) / 2, !!G.lastStand);
-  // RFC stage-themes-modes §2.1: motif viền theo ải — SAU BorderFX, DƯỚI StageFX (mechanic trên cùng)
+  // RFC ui-audit-boss-cleanup §3.6: theme theo run (campaign đã xóa) — motif viền SAU BorderFX
   drawThemeBorder(ctx, W, H, now);
   // RFC stage-themes-modes §3.3 (DEV-05/DEV-06): HUD mode mới (countdown / tiến trình boss)
   try { if (window.Modes) Modes.drawHUD(ctx, W); } catch (e) {}
@@ -1033,8 +1031,6 @@ function render(now) {
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = 1;
   }
-  // STAGE-MECH ải 1: flash xanh "reboot" khi hạ boss tốt nghiệp tân binh
-  try { if (window.StageMech) StageMech.drawFlash(ctx, W, H); } catch (erf) {}
   // touch sticks
   if (touch.active) {
     if (touch.moveId !== null) {
@@ -1050,18 +1046,7 @@ function render(now) {
       ctx.beginPath(); ctx.arc(touch.aimX + clamp(touch.aimDX, -52, 52), touch.aimY + clamp(touch.aimDY, -52, 52), 22, 0, Math.PI * 2); ctx.fill();
     }
   }
-  // v2.0: Juice2 overlays + Bosses/StageFX draw + Tutorial coach-marks
+  // v2.0: Juice2 overlays + Bosses draw + Tutorial coach-marks
   if (window.V2) { try { V2.drawOver(ctx, W, H); } catch (e) {} }
-  /* M22: Mắt Cú — outline quái quanh tàu, CHỈ khi mất điện, vẽ SAU lớp blackout ở trên */
-  if (window.Upgrades2 && s && s.owlEye && window.StageFX && StageFX.isDark()) {
-    try {
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1.5;
-      for (const e of Upgrades2.owlTargets(s, G.enemies)) {
-        ctx.beginPath(); ctx.arc(e.x, e.y, (e.r || 12) + 3, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
-    } catch (er) {}
-  }
 }
 

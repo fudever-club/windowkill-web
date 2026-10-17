@@ -417,6 +417,7 @@ describe("snatcher/B6: buildSpawnQueue tôn trọng maxPerWave = 1", () => {
       wkSpawnCfg: () => ({ base_count: 4, per_wave: 3 }),
       smoothCountMul: () => 1,
       onboardCountMul: () => 1,
+      mobileAssistActive: () => false, // RFC fix-round-final F2: stub (test này kiểm tra maxPerWave, không phải assist)
     };
     vm.createContext(ctx);
     vm.runInContext(extractFunctionDecl(src, "buildSpawnQueue"), ctx, { filename: "buildSpawnQueue" });

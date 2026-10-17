@@ -83,8 +83,8 @@ function buildSandbox() {
 }
 
 const SCRIPTS = ["js/portal.js", "js/pwa.js", "js/analytics.js", "js/i18n.js", "js/audio.js",
-  "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js", "js/tuning.js", "js/campaign.js", "js/monsters.js",
-  "js/bosses.js", "js/stagefx.js", "js/tutorial.js", "js/meta.js", "js/juice2.js", "js/sfx2.js",
+  "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js", "js/tuning.js", "js/monsters.js",
+  "js/bosses.js", "js/tutorial.js", "js/meta.js", "js/juice2.js", "js/sfx2.js",
   "js/upgrades2.js", "js/v2glue.js", "js/game.js", "js/mobile.js"];
 
 function bootGame() {

@@ -1885,8 +1885,8 @@ function checkDebut(G, type) {
 }
 
 /* =====================================================================
-   MINI-BOSS — elite variant wave 5 mỗi ải (§5)
-   HP ×8, to 2.5×, +1 đòn mới. Hạ: 20 gem (coordinator lo draft + vá).
+   MINI-BOSS — elite variant debut wave 4/9/14/19/24, ngay trước boss
+   (RFC fix-round-final F1). HP ×8, to 2.5×. Hạ: 20 gem.
    ===================================================================== */
 var MINIBOSSES = {
   1: { id: "ancient", base: "chewer", nameVi: "Chewer Cổ Đại",
@@ -1905,23 +1905,6 @@ var MINIBOSSES = {
        color: "#c084fc", extraVi: "Gặm kép: mỗi giây bám viền, vùng an toàn thu thêm 4px",
        rMul: 2.5, hpMul: 8, gems: 20 },
 };
-function makeMiniBoss(stageId) {
-  const mb = MINIBOSSES[stageId];
-  return mb ? Object.assign({}, mb) : null;
-}
-/* chỉ số mini-boss ở wave w với diff */
-function miniBossStats(stageId, wave, diff) {
-  const mb = MINIBOSSES[stageId];
-  if (!mb) return null;
-  const def = MONSTER_REGISTRY[mb.base];
-  return {
-    nameVi: mb.nameVi, extraVi: mb.extraVi, gems: mb.gems,
-    r: def.r * mb.rMul,
-    hp: def.hpAt(wave, diff) * mb.hpMul,
-    speed: def.speedAt(wave, diff),
-    xp: def.xp * 4,
-  };
-}
 
 /* =====================================================================
    SPAWN — tỉ lệ gợi ý (bestiary §2) + factory entity standalone
@@ -2129,7 +2112,7 @@ var Monsters = {
   snatcherOnDeath,
   applyShipSlow, shipSpeedMul, shipPullVec,
   debutInfo, checkDebut,
-  makeMiniBoss, miniBossStats, spawnWeights,
+  spawnWeights,
   STRINGS, t, setLang,
   version: "2.0.0-monsters",
 };

@@ -309,6 +309,7 @@ describe("quai/R3: glimmer — entry mới game-side + BEHAVIORS.flee", () => {
       wkSpawnCfg: () => ({ base_count: 4, per_wave: 3 }),
       smoothCountMul: () => 1,
       onboardCountMul: () => 1,
+      mobileAssistActive: () => false, // RFC fix-round-final F2: stub (test này kiểm tra pool weight, không phải assist)
     };
     vm.createContext(ctx);
     vm.runInContext(fnSrc, ctx, { filename: "buildSpawnQueue" });

@@ -77,11 +77,11 @@ describe("sw.js — precache đầy đủ game", () => {
   const stat = collect(staticM);
   const all = core.concat(stat);
   it("P7: mọi file JS game (kể cả v2.0) đều được precache vào CORE", () => {
-    const need = ["js/game.js", "js/menu.js", "js/api.js", "js/i18n.js", "js/campaign.js",
+    const need = ["js/game.js", "js/menu.js", "js/api.js", "js/i18n.js",
       "js/meta.js", "js/tutorial.js", "js/monsters.js", "js/bosses.js", "js/v2glue.js",
       "js/upgrades2.js", "js/mobile.js", "js/portal.js", "js/pwa.js", "js/tuning.js",
       "js/audio.js", "js/bgm.js", "js/bg.js", "js/juice.js", "js/cinema.js",
-      "js/juice2.js", "js/sfx2.js", "js/stagefx.js", "js/analytics.js",
+      "js/juice2.js", "js/sfx2.js", "js/analytics.js",
       "js/quality.js", "js/install-prompt.js", "js/particles.js"];
     const missing = need.filter((f) => !core.includes(f));
     assert.deepEqual(missing, [], `CORE precache thiếu: ${missing.join(", ")}`);

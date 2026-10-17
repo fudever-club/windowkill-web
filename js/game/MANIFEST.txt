@@ -16,6 +16,7 @@
 15-ui.js
 16-update.js
 17-render.js
+22-modes.js
 19-onboard.js
 20-telemetry.js
 21-qaoverlay.js

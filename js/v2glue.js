@@ -31,6 +31,7 @@
     stageId: 0,          // ?stage=1..5 (campaign mode) | 0 = endless cũ
     endless: false,      // ?endless=1
     daily: false,        // ?daily=1
+    mode: null,          // RFC stage-themes-modes §2.3: ?mode=timeattack|bossrush (whitelist)
     stageDone: false,    // đã hạ boss ải → các wave sau chạy endless thường
     runMods: null,       // Meta.getRunModifiers() — áp vào newShip
     bossActive: false,   // Bosses module đang điều khiển boss
@@ -49,6 +50,14 @@
       var q = Q(), self = this;
       this.diffKey = opts.diffKey || "normal";
       this.profileId = opts.profileId || null;
+      /* RFC stage-themes-modes §3.3/F1/F2: ?mode= whitelist + precedence.
+         Mode hợp lệ ĐỘC QUYỀN: đè ?stage=/?endless=1/?daily=1. Sai → null, game như cũ. */
+      var modeQ = q.get("mode");
+      var modeOk = (modeQ === "timeattack" || modeQ === "bossrush");
+      this.mode = modeOk ? modeQ : null;
+      if (this.mode) {
+        this.stageId = 0; this.endless = false; this.daily = false;
+      } else {
       var st = parseInt(q.get("stage") || "0", 10);
       if (st >= 1 && st <= 5 && window.Campaign) {
         this.stageId = st;
@@ -61,6 +70,12 @@
       }
       if (q.get("endless") === "1" && window.Campaign) this.endless = true;
       if (q.get("daily") === "1" && window.Meta) this.daily = true;
+      }
+      safe(function () { if (window.Modes) window.Modes.init(self.mode); });
+      /* RFC stage-themes-modes §2.3.2: boss rush — spawn boss_1 ngay khi vào game */
+      safe(function () {
+        if (self.mode === "bossrush" && window.Modes && window.Modes.startBossRush) window.Modes.startBossRush();
+      });
 
       safe(function () { self.runMods = (window.Meta) ? Meta.getRunModifiers() : null; });
       safe(function () { if (window.Meta) Meta.check("runStart", { stage: self.stageId, diff: opts.diffKey }); });

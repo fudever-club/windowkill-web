@@ -2474,6 +2474,19 @@ if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") 
     "monster.snatcher.escaped": "GEMS LOST! 😭",
   },
 });
+/* RFC stage-themes-modes §2.2.8: key i18n riêng của quái glimmer ("ĐOM ĐÓM VÀNG").
+ * Đăng ký qua I18N.register() (pattern snatcher) — KHÔNG thêm key mới vào js/i18n.js.
+ * Đặt TRƯỚC MONSTER_REGISTRY vì entry gọi I18N.t() lúc load. */
+if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+  vi: {
+    "monster.glimmer.name": "Đom Đóm Vàng",
+    "monster.glimmer.desc": "Đom đóm đèn lồng chỉ biết chạy trốn — hạ nó trước khi nó chui qua viền!",
+  },
+  en: {
+    "monster.glimmer.name": "Golden Firefly",
+    "monster.glimmer.desc": "A fleeing lantern firefly — take it down before it slips through the edge!",
+  },
+});
 const MONSTER_REGISTRY = {
   "chaser": { id: "chaser", name: I18N.t("monster.chaser.name"), behavior: "chase", color: "#ff5470",
     r: 12, dmg: 1, score: 10, xp: 1, minWave: 1, weight: 100, acts: [1, 2, 3],
@@ -2554,7 +2567,16 @@ const MONSTER_REGISTRY = {
     init: e => { e.phase = "hunt"; e.carried = []; e.idleT = 0; e.escaped = false; },
     onDeath: e => { releaseSnatcherGems(e, true); }, // bất kể nguồn sát thương — không bao giờ nuốt gem
     desc: I18N.t("monster.snatcher.desc") },
-};const BEHAVIORS = {
+  /* RFC stage-themes-modes §2.2.8: ĐOM ĐÓM ĐÈN LỒNG — bonus rượt đuổi, dmg 0, không
+   * tấn công. weight 0 → KHÔNG vào pool spawn endless (không đổi balance);
+   * chạm viền/thọ 12s → thoát (không điểm — cùng pattern snatcher). */
+  "glimmer": { id: "glimmer", name: I18N.t("monster.glimmer.name"), behavior: "flee", color: "#fbbf24",
+    r: 9, dmg: 0, score: 40, xp: 1, minWave: 6, weight: 0, maxPerWave: 1, acts: [1, 2, 3],
+    hp: () => 2, spd: () => 175,
+    init: e => { e.lifeT = 12; },
+    desc: I18N.t("monster.glimmer.desc") },
+};
+const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     const wob = Math.sin(e.t * 6) * 12;
@@ -2806,6 +2828,20 @@ const MONSTER_REGISTRY = {
         addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.steal"), "#f0abfc");
         if (e.carried.length >= 3) e.phase = "flee";
       }
+    }
+  } },
+  /* RFC stage-themes-modes §3.2.1: FLEE (glimmer) — chạy TRÁNH tàu, hướng ra viền
+   * gần nhất. Hết lifeT (12s) hoặc chạm viền → thoát, KHÔNG qua killEnemy
+   * → không điểm/xp (cùng pattern snatcher RFC nest-removal). */
+  flee: { update(e, dt, s, spd) {
+    e.lifeT = (e.lifeT == null ? 12 : e.lifeT) - dt;
+    const p = nearestEdgePoint(e.x, e.y);
+    const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 5) * 30; // lượn nhẹ cho vui mắt
+    e.x += (dx / d * spd + -dy / d * wob) * dt;
+    e.y += (dy / d * spd + dx / d * wob) * dt;
+    if (d < 14 || e.lifeT <= 0) {
+      e.escaped = true; e.dead = true;
     }
   } },
 };
@@ -3069,6 +3105,16 @@ function buildSpawnQueue(n) {
     if (cap) { _cap[q[i]] = (_cap[q[i]] || 0) + 1; if (_cap[q[i]] > cap) q.splice(i, 1); }
   }
   return q;
+}
+
+/* RFC stage-themes-modes §2.3.1 (DEV-05): Time Attack — spawn dồn dập.
+   wkSpawnInterval × Modes.spawnScale().intervalMul (0.75 khi timeattack). */
+function modeSpawnInterval(wave) {
+  var iv = wkSpawnInterval(wave);
+  try {
+    if (window.V2 && V2.mode === "timeattack" && window.Modes) iv *= Modes.spawnScale().intervalMul;
+  } catch (e) {}
+  return iv;
 }
 /* ================= VARIETY PACK 1 (2026-10-03) =================
  * Triết lý CEO: variety cho VUI, không tăng khó. Mọi modifier/event đều
@@ -3672,6 +3718,17 @@ function die(reason) {
   } catch (e) {}
   $("ov-over").classList.add("show");
 }
+/* RFC stage-themes-modes §3.3 (DEV-05/DEV-06): overlay kết quả dùng chung cho mode mới.
+   Tái dùng DOM #ov-over (over-title/over-score/over-stats/over-record).
+   kind="timeup": hết 180s Time Attack. kind="victory": thắng Boss Rush. */
+function showEndScreen(o) {
+  o = o || {};
+  try { $("over-title").textContent = o.title || ""; } catch (e) {}
+  try { $("over-score").textContent = ""; } catch (e2) {}
+  try { $("over-stats").innerHTML = (o.lines || []).join("<br>"); } catch (e3) {}
+  try { $("over-record").innerHTML = o.recordLine || ""; } catch (e4) {}
+  try { $("ov-over").classList.add("show"); } catch (e5) {}
+}
 function resetGame() {
   Object.assign(G, {
     phase: "play", wave: 0, act: 0, score: 0, kills: 0, time: 0,
@@ -3938,6 +3995,10 @@ function shipSlowMult() {
 function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
+  /* RFC stage-themes-modes §2.3.1/F3: Time Attack — timer chỉ trừ khi phase==="play" */
+  try { if (window.V2 && V2.mode === "timeattack" && window.Modes) Modes.tickTimer(dt); } catch (e) {}
+  /* RFC stage-themes-modes §2.3.2: Boss Rush — rest 5s giữa boss cũng qua tickTimer */
+  try { if (window.V2 && V2.mode === "bossrush" && window.Modes) Modes.tickTimer(dt); } catch (e2) {}
   lastStandTick(); // "Cửa Sổ Cuối Cùng": bật/tắt theo % nguyên vẹn cửa sổ
   SatManager.poll(dt); SatManager.updateSims(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
@@ -4020,7 +4081,10 @@ function update(dt) {
   if (wantFire && s.fireT <= 0) { s.fireT = s.fireInt / lsFireMul() * (s.overdriveT > 0 ? 0.55 : 1); fireBullet(); }
 
   /* wave */
-  if (G.spawnQueue.length) {
+  /* RFC stage-themes-modes §2.3.2: boss rush — chặn wave quái thường (chỉ boss + adds) */
+  var _blockWaves = false;
+  try { _blockWaves = !!(window.Modes && Modes.blocksWaves && Modes.blocksWaves()); } catch (e) {}
+  if (!_blockWaves && G.spawnQueue.length) {
     G.spawnT -= dt;
     if (G.spawnT <= 0) {
       const TS = wkSpawnCfg();
@@ -4031,14 +4095,20 @@ function update(dt) {
         // Item 6: báo cho người chơi biết còn quái đang chờ spawn (throttle bằng bannerT)
         if (G.bannerT <= 0) setBanner(I18N.t("vp1.cap.banner"), "");
       } else {
-        G.spawnT = wkSpawnInterval(G.wave);
+        /* RFC stage-themes-modes §2.3.1: time attack — wkSpawnInterval × 0.75 */
+        G.spawnT = modeSpawnInterval(G.wave);
         spawnEnemy(G.spawnQueue.pop());
       }
     }
-  } else if (!G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
+  } else if (!_blockWaves && !G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
     G.waveBreak -= dt;
     if (G.waveBreak <= 0) {
-      G.waveBreak = 2.6;
+      /* RFC stage-themes-modes §2.3.1: nhịp dồn dập của time attack qua Modes.spawnScale().breakMul
+         (2.6 × 1.2/2.6 = 1.2s; các mode khác ×1 = 2.6s). Gate !_blockWaves: boss rush KHÔNG
+         được nổ wave-break endless trong 5s rest giữa boss (thừa HP/repair + chen startWave). */
+      var _brkMul = 1;
+      try { if (window.Modes && Modes.spawnScale) _brkMul = Modes.spawnScale().breakMul || 1; } catch (e) {}
+      G.waveBreak = 2.6 * _brkMul;
       s.hp = Math.min(s.maxHp, s.hp + 1);
       // Phụ lục A node 6 — Keo siêu dính: vá cuối wave theo modifiers Xưởng (mặc định 40px)
       const wrPx = (G.runMods && G.runMods.waveRepairPx) || 40;
@@ -4376,6 +4446,128 @@ function damageEnemy(e, dmg, bl) {
 /* Nền "Deep Dever": js/bg.js (procedural, prerender offscreen).
  * Gọi BG.build khi đổi ải / resize; mỗi frame chỉ BG.draw. */
 
+/* =====================================================================
+   RFC stage-themes-modes §2.1 — theme theo ải:
+   (c) themeTint(e): shift hue màu quái ±15° (chỉ đổi hue, không đổi shape/hitbox);
+       TẮT ở endless/mode mới (V2.stageId ∉ 1..5) và không áp cho boss/đạn/particle.
+   (b) drawThemeBorder(): motif viền theo ải — vẽ SAU BorderFX.draw, DƯỚI StageFX.draw
+       (mechanic ải luôn là lớp trên cùng — gameplay readability ưu tiên).
+   ===================================================================== */
+const _tintMemo = {};
+/* P2: hoist array literal khỏi per-frame draw (tránh alloc mỗi frame) */
+const _CHASER_FLAMES = ["#FF9A3D", "#FFD166", "#FF9A3D"]; // đuôi lửa chaser flicker
+const _SNATCHER_GEM_COLORS = ["#7df9ff", "#ffd166", "#c084fc"]; // gem trên miệng túi snatcher
+function _shiftHue(hex, deg) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || "")) return hex;
+  const n = parseInt(hex.slice(1), 16);
+  let r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h = 0, st = 0; const l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn;
+    st = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  h = (h + deg + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * st;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m2 = l - c / 2;
+  let rr2, gg2, bb2;
+  if (h < 60) { rr2 = c; gg2 = x; bb2 = 0; }
+  else if (h < 120) { rr2 = x; gg2 = c; bb2 = 0; }
+  else if (h < 180) { rr2 = 0; gg2 = c; bb2 = x; }
+  else if (h < 240) { rr2 = 0; gg2 = x; bb2 = c; }
+  else if (h < 300) { rr2 = x; gg2 = 0; bb2 = c; }
+  else { rr2 = c; gg2 = 0; bb2 = x; }
+  const to = v => Math.round((v + m2) * 255);
+  return "#" + ((1 << 24) + (to(rr2) << 16) + (to(gg2) << 8) + to(bb2)).toString(16).slice(1);
+}
+function themeTint(e) {
+  if (!e || !e.color) return "#ffffff";
+  try {
+    if (window.G && G.themeTint === false) return e.color; // override tắt tường minh
+    const st = window.V2 ? V2.stageId : 0;
+    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: endless/mode mới → TẮT
+    const th = (typeof BG !== "undefined" && BG.getTheme(st).tintHue) || 0;
+    if (!th) return e.color;
+    const k = st + "|" + e.color;
+    if (!_tintMemo[k]) _tintMemo[k] = _shiftHue(e.color, th);
+    return _tintMemo[k];
+  } catch (err) { return e.color; }
+}
+function _perimPoint(x, y, w, h, d) { // điểm trên chu vi hình chữ nhật tại khoảng cách d
+  const tot = 2 * (w + h);
+  d = ((d % tot) + tot) % tot;
+  if (d < w) return { x: x + d, y };
+  d -= w;
+  if (d < h) return { x: x + w, y: y + d };
+  d -= h;
+  if (d < w) return { x: x + w - d, y: y + h };
+  d -= w;
+  return { x, y: y + h - d };
+}
+function _lerpColor(c1, c2, t) {
+  const p = c => { const n = parseInt(String(c).slice(1), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const a = p(c1), b = p(c2), m = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return "#" + ((1 << 24) + (m[0] << 16) + (m[1] << 8) + m[2]).toString(16).slice(1);
+}
+function drawThemeBorder(ctx, W, H, now) {
+  let bd = null;
+  try {
+    const st = window.V2 ? V2.stageId : 0;
+    if (!(st >= 1 && st <= 5)) return; // endless/mode mới: không motif viền
+    if (typeof BG === "undefined") return;
+    bd = BG.getTheme(st).border;
+  } catch (e) { return; }
+  if (!bd || !bd.kind) return;
+  let reducedM = false;
+  try { reducedM = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+  const inset = 5, wdt = bd.width || 3;
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+  ctx.save();
+  if (bd.kind === "rounded") { // ải 1: viền cobalt như cửa sổ Windows + nút tiêu đề
+    ctx.strokeStyle = bd.colors[0]; ctx.lineWidth = wdt; ctx.globalAlpha = 0.85;
+    rr(inset, inset, W - inset * 2, H - inset * 2, 14); ctx.stroke();
+    ctx.fillStyle = "#66B2FF"; ctx.globalAlpha = 0.9;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(inset + 18 + i * 17, inset + 18, 4, 0, Math.PI * 2); ctx.fill(); }
+  } else if (bd.kind === "fire") { // ải 2: hào quang lửa đồng bộ chu kỳ gai (cùng state StageFX)
+    let on = true;
+    try { on = !!(window.StageFX && StageFX.spikesOn && StageFX.spikesOn()); } catch (e) {}
+    ctx.strokeStyle = bd.colors[0]; ctx.lineWidth = wdt;
+    ctx.globalAlpha = on ? 0.45 : 0.25;
+    ctx.strokeRect(inset + 3, inset + 3, W - (inset + 3) * 2, H - (inset + 3) * 2);
+  } else if (bd.kind === "swirl") { // ải 3: viền gradient tím + sheen chạy vòng quanh (chu kỳ 8s)
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, bd.colors[0]); g.addColorStop(1, bd.colors[1] || bd.colors[0]);
+    ctx.strokeStyle = g; ctx.lineWidth = wdt; ctx.globalAlpha = 0.9;
+    rr(inset, inset, W - inset * 2, H - inset * 2, 10); ctx.stroke();
+    const per = 2 * (W + H - inset * 4);
+    const d = reducedM ? per * 0.15 : ((now / 8000) % 1) * per;
+    const pt = _perimPoint(inset, inset, W - inset * 2, H - inset * 2, d);
+    ctx.globalAlpha = 0.95; ctx.fillStyle = "#e9d5ff";
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 10, 0, Math.PI * 2); ctx.fill();
+  } else if (bd.kind === "neon") { // ải 4: viền neon theo blackout (cùng state BG.setBlackout)
+    let dark = false;
+    try { dark = !!(typeof BG !== "undefined" && BG.blackoutOn && BG.blackoutOn()); } catch (e) {}
+    ctx.strokeStyle = bd.colors[0]; ctx.lineWidth = wdt;
+    ctx.globalAlpha = dark ? 0.15 : 0.8;
+    rr(inset, inset, W - inset * 2, H - inset * 2, 6); ctx.stroke();
+  } else if (bd.kind === "danger") { // ải 5: viền lerp xanh→đỏ theo danger nội bộ của BG
+    let dg = 0;
+    try { dg = (typeof BG !== "undefined" && BG.getDanger) ? BG.getDanger() : 0; } catch (e) {}
+    dg = Math.max(0, Math.min(1, dg));
+    ctx.strokeStyle = _lerpColor(bd.colors[0], bd.colors[1] || bd.colors[0], dg);
+    ctx.lineWidth = wdt; ctx.globalAlpha = 0.9;
+    rr(inset, inset, W - inset * 2, H - inset * 2, 8); ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
 function render(now) {
   const W = window.innerWidth, H = window.innerHeight, b = bounds(), s = G.ship; // MOBILE 2026-10-03: CSS px (canvas.width = device px)
   ctx.save();
@@ -4499,39 +4691,234 @@ function render(now) {
       } catch (err) {}
     }
     const slow = e.slowT > 0;
-    if (e.type === "chaser" || e.type === "mini") {
+    if (e.type === "chaser") {
+      // RFC §2.2.1 "Tên Lửa Đồ Chơi": thân tên lửa mũi tròn, cánh đuôi bo tròn,
+      // cửa sổ buồng lái, đuôi lửa 3 lưỡi flicker; elite giữ vệt đỏ + sọc đỏ.
+      const _ca = Math.atan2(s.y - e.y, s.x - e.x);
+      ctx.rotate(_ca);
+      const r = e.r, _cBody = slow ? "#7dd3fc" : themeTint(e);
+      if (e.elite) { // vệt đỏ của elite (giữ nguyên)
+        ctx.fillStyle = "rgba(255,60,60,0.25)";
+        for (let i = 1; i <= 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-r - i * 9, 0); ctx.lineTo(-r - i * 9 - 7, -5); ctx.lineTo(-r - i * 9 - 7, 5);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      const _fl = Math.sin(now / 60) * 0.5 + 0.5; // đuôi lửa flicker
+      for (let fi = 0; fi < 3; fi++) {
+        const _fy = (fi - 1) * r * 0.42, _flen = 8 + _fl * 5 + (fi === 1 ? 3 : 0);
+        ctx.fillStyle = _CHASER_FLAMES[fi];
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.9, _fy - 2.5); ctx.lineTo(-r * 0.9 - _flen, _fy); ctx.lineTo(-r * 0.9, _fy + 2.5);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = _cBody; // thân tên lửa: mũi tròn + cánh đuôi bo
+      ctx.beginPath(); ctx.arc(r * 0.45, 0, r * 0.62, -Math.PI / 2, Math.PI / 2); ctx.fill();
+      ctx.fillRect(-r * 0.9, -r * 0.62, r * 1.35, r * 1.24);
+      ctx.beginPath(); ctx.ellipse(-r * 0.75, -r * 0.72, r * 0.42, r * 0.26, -0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-r * 0.75, r * 0.72, r * 0.42, r * 0.26, 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#bfe9ff"; // cửa sổ buồng lái
+      ctx.beginPath(); ctx.arc(r * 0.25, 0, r * 0.30, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(20,60,100,0.5)"; ctx.lineWidth = 1.5; ctx.stroke();
+      if (e.elite) { // vạch sọc đỏ trên thân elite
+        ctx.strokeStyle = "#ff2222"; ctx.lineWidth = 2.5;
+        for (let si = -1; si <= 1; si++) {
+          ctx.beginPath(); ctx.moveTo(-r * 0.5 + si * 6, -r * 0.55); ctx.lineTo(-r * 0.5 + si * 6, r * 0.55); ctx.stroke();
+        }
+      }
+      const _cd = Math.hypot(s.x - e.x, s.y - e.y); // telegraph chạm <60px: chớp đỏ
+      if (_cd < 60 && Math.floor(now / 120) % 2 === 0) {
+        ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = "#ff2222";
+        ctx.beginPath(); ctx.arc(0, 0, r + 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    } else if (e.type === "mini") {
+      // RFC §2.2.6 "Ong Bắp Cày Mini": thân ong bầu dục + sọc bụng, cánh vỗ nhanh,
+      // ngòi sau, mắt tròn ngố.
+      const r = e.r, _mBody = slow ? "#7dd3fc" : themeTint(e);
       ctx.rotate(Math.atan2(s.y - e.y, s.x - e.x));
-      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
-      ctx.beginPath(); ctx.moveTo(e.r + 2, 0); ctx.lineTo(-e.r, -e.r * 0.85); ctx.lineTo(-e.r * 0.4, 0); ctx.lineTo(-e.r, e.r * 0.85); ctx.closePath(); ctx.fill();
+      const _flap = 0.6 + 0.4 * Math.abs(Math.sin(e.t * 30)); // cánh vỗ nhanh
+      ctx.save(); ctx.globalAlpha *= 0.6;
+      ctx.fillStyle = "#ffffff";
+      for (const _wy of [-1, 1]) {
+        ctx.save(); ctx.translate(-r * 0.1, _wy * r * 0.55); ctx.scale(1, _flap);
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r * 0.38, _wy * 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.fillStyle = _mBody; // thân ong bầu dục
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#c243c9"; ctx.lineWidth = 2.5; // 2 sọc bụng đậm
+      for (const _sx of [-0.35, 0.25]) {
+        ctx.beginPath(); ctx.ellipse(_sx * r, 0, r * 0.16, r * 0.68, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = "#7a2d7a"; // ngòi nhỏ phía sau
+      ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(-r - 5, -3); ctx.lineTo(-r - 5, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#fff"; // mắt tròn ngố (không dữ)
+      ctx.beginPath(); ctx.arc(r * 0.55, -r * 0.22, r * 0.26, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.55, r * 0.22, r * 0.26, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#3a0a3a";
+      ctx.beginPath(); ctx.arc(r * 0.60, -r * 0.22, r * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.60, r * 0.22, r * 0.12, 0, Math.PI * 2); ctx.fill();
     } else if (e.type === "chewer") {
-      const q = e.r + Math.sin(e.t * 8) * 1.5;
-      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
-      ctx.fillRect(-q, -q, q * 2, q * 2);
+      // RFC §2.2.2 "Sâu Gặm Pixel": 3 đốt tròn nối nhau viền đậm, hàm răng cưa nhai
+      // theo sin(e.t*10) (latched → ×2), vết cắn zigzag khi bám viền.
+      const r = e.r, _chBody = slow ? "#7dd3fc" : themeTint(e);
+      const _latched = !!e.latched;
+      const _la = e.latched === "left" ? Math.PI : e.latched === "right" ? 0
+        : e.latched === "top" ? -Math.PI / 2 : e.latched === "bottom" ? Math.PI / 2 : 0;
+      if (_latched) ctx.rotate(_la); // mặt hướng về viền đang gặm
+      const _chew = Math.sin(e.t * (_latched ? 20 : 10)); // nhai đóng/mở
+      ctx.fillStyle = _chBody;
+      for (let si = -1; si <= 1; si++) { // 3 đốt tròn (thay hình vuông)
+        ctx.beginPath(); ctx.arc(si * r * 0.62, 0, r * 0.58, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2;
+      for (let si = -1; si <= 1; si++) {
+        ctx.beginPath(); ctx.arc(si * r * 0.62, 0, r * 0.58, 0, Math.PI * 2); ctx.stroke();
+      }
+      const _mouthX = r * 1.05, _open = 2 + (_chew * 0.5 + 0.5) * 5;
+      ctx.fillStyle = "#ffffff"; // hàm răng cưa: 2 hàng răng trắng mặt trước
+      for (let ti = -1; ti <= 1; ti++) {
+        const _ty = ti * r * 0.32;
+        ctx.beginPath();
+        ctx.moveTo(_mouthX - 4, _ty - _open * 0.5 - 3); ctx.lineTo(_mouthX + 5, _ty - _open * 0.5); ctx.lineTo(_mouthX - 4, _ty - _open * 0.5 + 3);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(_mouthX - 4, _ty + _open * 0.5 - 3); ctx.lineTo(_mouthX + 5, _ty + _open * 0.5); ctx.lineTo(_mouthX - 4, _ty + _open * 0.5 + 3);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = "#fff"; // mắt tròn trên đốt đầu
+      ctx.beginPath(); ctx.arc(-r * 0.62, -r * 0.25, r * 0.22, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#2a0a3a";
-      ctx.fillRect(-5, -5 + (e.latched ? Math.sin(e.t * 10) * 2 : 0), 10, 10);
-      if (e.latched && window.HUDIcons) { HUDIcons.draw(ctx, "i-alert", 14, "#ffd23f", 0, -q - 11); }
+      ctx.beginPath(); ctx.arc(-r * 0.62, -r * 0.25, r * 0.10, 0, Math.PI * 2); ctx.fill();
+      if (_latched) { // vết cắn: 3 vết zigzag trắng ngay mép viền
+        ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2;
+        for (let bi = -1; bi <= 1; bi++) {
+          const _bx = _mouthX + 8, _by = bi * r * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(_bx, _by); ctx.lineTo(_bx + 5, _by - 4); ctx.lineTo(_bx + 10, _by + 2); ctx.lineTo(_bx + 15, _by - 3);
+          ctx.stroke();
+        }
+        if (window.HUDIcons) {
+          ctx.save(); ctx.rotate(-_la);
+          HUDIcons.draw(ctx, "i-alert", 14, "#ffd23f", 0, -r - 11);
+          ctx.restore();
+        }
+      }
     } else if (e.type === "tank") {
-      ctx.rotate(e.t * 0.8);
-      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; ctx.lineTo(Math.cos(a) * e.r, Math.sin(a) * e.r); }
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#5b2d00"; ctx.beginPath(); ctx.arc(0, 0, e.r * 0.45, 0, Math.PI * 2); ctx.fill();
+      // RFC §2.2.3 "Xe Tăng Đồ Chơi": thân tròn bo, 2 dải xích đồ chơi có bánh xe
+      // quay theo e.t, tháp pháo decor chĩa hướng tàu, lõi phát sáng (weakness).
+      const r = e.r, _tBody = slow ? "#7dd3fc" : themeTint(e);
+      ctx.rotate(e.t * 0.8); // xoay chậm giữ nguyên
+      ctx.fillStyle = "#8a5a00"; // 2 dải xích đồ chơi 2 bên
+      const _tw = r * 1.5, _th2 = r * 0.34, _ty = r * 0.62;
+      for (const _sy of [-1, 1]) {
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-_tw / 2, _sy * _ty - _th2 / 2, _tw, _th2, _th2 / 2);
+        else ctx.rect(-_tw / 2, _sy * _ty - _th2 / 2, _tw, _th2);
+        ctx.fill();
+        for (let wi = -1; wi <= 1; wi++) { // 3 bánh xe tròn nhỏ quay theo e.t
+          const _wx = wi * r * 0.45, _wy = _sy * _ty;
+          ctx.fillStyle = "#5b3a00";
+          ctx.beginPath(); ctx.arc(_wx, _wy, r * 0.14, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "#ffd98a"; ctx.lineWidth = 1.5;
+          const _wa = e.t * 5 + wi;
+          ctx.beginPath(); ctx.moveTo(_wx, _wy);
+          ctx.lineTo(_wx + Math.cos(_wa) * r * 0.14, _wy + Math.sin(_wa) * r * 0.14); ctx.stroke();
+          ctx.fillStyle = "#8a5a00";
+        }
+      }
+      ctx.fillStyle = _tBody; // thân tròn bo (thay lục giác)
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(90,45,0,0.6)"; ctx.lineWidth = 2; ctx.stroke();
+      const _pulse = 0.7 + 0.3 * Math.sin(now / 150); // lõi phát sáng: "bắn vào chỗ sáng"
+      ctx.save(); ctx.globalAlpha = 0.25 * _pulse; // hào quang mờ
+      ctx.fillStyle = "#FFE14D";
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.globalAlpha = _pulse; // nhân lõi
+      ctx.fillStyle = "#FFE14D";
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save(); // tháp pháo decor: vành quanh lõi + nòng ngắn chĩa hướng tàu
+      ctx.rotate(Math.atan2(s.y - e.y, s.x - e.x) - e.t * 0.8);
+      ctx.strokeStyle = "#a86a00"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.44, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "#a86a00";
+      ctx.fillRect(r * 0.32, -r * 0.08, r * 0.55, r * 0.16);
+      ctx.restore();
     } else if (e.type === "dasher") {
+      // RFC §2.2.4 "Phi Tiêu Ninja": thân thon, ruy-băng headband bay sau đuôi,
+      // aim: dải aim chuyển ĐỎ ở 0.2s cuối; mắt ninja trên thân.
+      const r = e.r;
+      const _aiming = e.state === "aim" || e.state === "dash";
       if (e.state === "aim") { // telegraph
-        ctx.strokeStyle = `rgba(255,225,77,${0.4 + 0.4 * Math.sin(now / 80)})`; ctx.lineWidth = 3;
+        const _remain = e.stateT == null ? 0.7 : e.stateT;
+        const _last02 = _remain <= 0.2; // ngưỡng 0.2s cuối → ĐỎ
+        ctx.strokeStyle = _last02
+          ? `rgba(255,59,48,${0.75 + 0.25 * Math.sin(now / 60)})`
+          : `rgba(255,225,77,${0.4 + 0.4 * Math.sin(now / 80)})`;
+        ctx.lineWidth = _last02 ? 4 : 3;
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(e.dx * 320, e.dy * 320); ctx.stroke();
       }
-      ctx.rotate(Math.atan2(e.state === "aim" || e.state === "dash" ? e.dy : s.y - e.y, e.state === "aim" || e.state === "dash" ? e.dx : s.x - e.x));
-      ctx.fillStyle = e.state === "aim" ? "#fff3a0" : slow ? "#7dd3fc" : e.color;
-      ctx.beginPath(); ctx.moveTo(e.r + 3, 0); ctx.lineTo(-e.r, -e.r); ctx.lineTo(-e.r * 0.3, 0); ctx.lineTo(-e.r, e.r); ctx.closePath(); ctx.fill();
+      ctx.rotate(Math.atan2(_aiming ? e.dy : s.y - e.y, _aiming ? e.dx : s.x - e.x));
+      ctx.strokeStyle = "#ff5470"; ctx.lineWidth = 3; ctx.lineCap = "round"; // ruy-băng headband
+      for (let ri = 0; ri < 2; ri++) {
+        const _ry0 = (ri === 0 ? -1 : 1) * r * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.8, _ry0);
+        ctx.quadraticCurveTo(-r * 1.4, _ry0 + Math.sin(e.t * 12 + ri * 2) * 6,
+          -r * 1.9, _ry0 + Math.sin(e.t * 12 + ri * 2 + 1) * 9);
+        ctx.stroke();
+      }
+      ctx.fillStyle = slow ? "#7dd3fc" : e.state === "aim" ? "#fff3a0" : themeTint(e); // thân thon (slow tint ưu tiên)
+      ctx.beginPath();
+      ctx.moveTo(r + 3, 0); ctx.lineTo(-r * 0.7, -r * 0.55); ctx.lineTo(-r, 0); ctx.lineTo(-r * 0.7, r * 0.55);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#1a1a2e"; // dải băng ninja
+      ctx.fillRect(-r * 0.25, -r * 0.38, r * 0.75, r * 0.76);
+      ctx.fillStyle = "#fff"; // 2 mắt trắng sắc lẹm
+      ctx.beginPath();
+      ctx.moveTo(r * 0.05, -r * 0.22); ctx.lineTo(r * 0.38, -r * 0.10); ctx.lineTo(r * 0.05, -r * 0.02);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(r * 0.05, r * 0.02); ctx.lineTo(r * 0.38, r * 0.10); ctx.lineTo(r * 0.05, r * 0.22);
+      ctx.closePath(); ctx.fill();
     } else if (e.type === "splitter") {
-      ctx.rotate(e.t * 1.2);
-      ctx.fillStyle = slow ? "#7dd3fc" : e.color;
-      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#0b3b4a"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-e.r, 0); ctx.lineTo(e.r, 0); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, -e.r); ctx.lineTo(0, e.r); ctx.stroke();
+      // RFC §2.2.5 "Bong Bóng Xà Phòng": trong suốt + highlight, wobble căng phồng,
+      // máu <50%: 3 vết nứt trắng + xẹp nhẹ (báo vỡ). Chết vẫn tách 2 mini (logic cũ).
+      const r = e.r;
+      const _frac = e.maxHp ? e.hp / e.maxHp : 1;
+      const _cracked = _frac < 0.5;
+      const _sc = (_cracked ? 0.95 : 1) * (1 + Math.sin(e.t * 6) * 0.04); // wobble căng phồng
+      ctx.scale(_sc, _sc);
+      if (slow) { // slow tint #7dd3fc giữ nguyên ở mọi nhánh (QA-02) — alpha giữ độ trong suốt bong bóng
+        ctx.save(); ctx.globalAlpha = 0.55;
+        ctx.fillStyle = "#7dd3fc";
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "rgba(125,249,255,0.55)";
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = slow ? "#7dd3fc" : themeTint(e); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.save(); ctx.globalAlpha *= 0.7; // vệt sáng highlight góc trên-trái
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.42, r * 0.28, r * 0.16, -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      if (_cracked) { // 3 vết nứt trắng chạy dọc — báo trước "sắp vỡ"
+        ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.5;
+        for (let ci = -1; ci <= 1; ci++) {
+          const _cx = ci * r * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(_cx, -r * 0.8); ctx.lineTo(_cx + 4, -r * 0.3);
+          ctx.lineTo(_cx - 3, r * 0.2); ctx.lineTo(_cx + 4, r * 0.75);
+          ctx.stroke();
+        }
+      }
     } else if (e.type === "weaver") {
       ctx.rotate(e.t * 2);
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;
@@ -4555,11 +4942,80 @@ function render(now) {
       ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#0b3b1a"; ctx.fillRect(-3, -8, 6, 16); ctx.fillRect(-8, -3, 16, 6);
     } else if (e.type === "kamikaze") {
-      ctx.rotate(Math.atan2(s.y - e.y, s.x - e.x));
+      // RFC §2.2.7 "Bom Bi Cartoon": bom bi tròn đen-xám, fuse cháy đọc được 0.7s
+      // (tia lửa to dần khi e.fuse giảm), mặt lo lắng hề hước khi armed.
+      // Nổ vẫn detonateKamikaze như cũ (không đổi logic).
+      const r = e.r;
       const armed = e.fuse >= 0;
-      ctx.fillStyle = armed && Math.floor(now / 90) % 2 === 0 ? "#ffffff" : (slow ? "#7dd3fc" : e.color);
-      ctx.beginPath(); ctx.moveTo(e.r + 2, 0); ctx.lineTo(-e.r, -e.r * 0.8); ctx.lineTo(-e.r, e.r * 0.8); ctx.closePath(); ctx.fill();
-      if (armed) { ctx.fillStyle = "#ff7a1a"; ctx.font = "13px sans-serif"; ctx.textAlign = "center"; ctx.fillText("!", 0, -e.r - 6); }
+      const _fuseFrac = armed ? Math.max(0, Math.min(1, 1 - e.fuse / 0.8)) : 0;
+      const _flashW = armed && Math.floor(now / 90) % 2 === 0;
+      ctx.fillStyle = _flashW ? "#ffffff" : (slow ? "#7dd3fc" : "#3a3a44");
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.globalAlpha *= 0.5; // highlight trắng góc trên
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.4, r * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = "#8a6a3a"; ctx.lineWidth = 2.5; // dây fuse trên đỉnh
+      ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(4, -r - 7, 9, -r - 5); ctx.stroke();
+      const _sparkR = 2.5 + _fuseFrac * 4 + (armed ? Math.sin(now / 50) * 1.2 : 0);
+      ctx.fillStyle = "#FFD166"; // tia lửa fuse
+      ctx.beginPath(); ctx.arc(9, -r - 5, Math.max(1.5, _sparkR), 0, Math.PI * 2); ctx.fill();
+      if (armed) { // khói xám bay lên
+        ctx.save(); ctx.globalAlpha *= 0.3;
+        ctx.fillStyle = "#9aa0aa";
+        for (let ki = 0; ki < 2; ki++) {
+          const _ky = -r - 12 - ki * 10 - ((now / 40 + ki * 20) % 20);
+          ctx.beginPath(); ctx.arc(9 + Math.sin(now / 200 + ki) * 4, _ky, 4 + ki * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        ctx.fillStyle = "#fff"; // mặt lo lắng hề hước (không creepy)
+        ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.05, r * 0.20, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(r * 0.3, -r * 0.05, r * 0.20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#1a1a2e";
+        ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.02, r * 0.09, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(r * 0.3, -r * 0.02, r * 0.09, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = 2; ctx.lineCap = "round";
+        ctx.beginPath();
+        for (let wi = 0; wi <= 4; wi++) {
+          const _wx = -r * 0.4 + wi * r * 0.2, _wy = r * 0.45 + Math.sin(wi * Math.PI) * 2.5;
+          if (wi === 0) ctx.moveTo(_wx, _wy); else ctx.lineTo(_wx, _wy);
+        }
+        ctx.stroke();
+        ctx.fillStyle = "#ff7a1a"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("!", 0, -r - 8);
+      }
+    } else if (e.type === "glimmer") {
+      // RFC §2.2.8 "Đom Đóm Đèn Lồng" (NHÁNH MỚI): đèn lồng tròn nan cong, hào quang
+      // pulse (sáng gấp đôi khi người chơi trong 200px), cánh nhỏ, vệt lấp lánh.
+      const r = e.r;
+      const _near = Math.hypot(s.x - e.x, s.y - e.y) < 200; // "thèm" đuổi theo
+      const _haloA = (0.25 + 0.2 * Math.sin(e.t * 5)) * (_near ? 2 : 1);
+      ctx.save(); ctx.globalAlpha = Math.min(0.85, _haloA); // hào quang
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      const _gflap = 0.6 + 0.4 * Math.abs(Math.sin(e.t * 18)); // 2 cánh nhỏ vỗ
+      ctx.save(); ctx.globalAlpha *= 0.55;
+      ctx.fillStyle = "#ffffff";
+      for (const _wy of [-1, 1]) {
+        ctx.save(); ctx.translate(0, _wy * r * 0.75); ctx.scale(1, _gflap);
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.42, r * 0.30, _wy * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.fillStyle = slow ? "#7dd3fc" : themeTint(e); // thân đèn lồng tròn
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#b45309"; ctx.lineWidth = 1.5; // nan lồng: 3 đường dọc cong
+      for (let ni = -1; ni <= 1; ni++) {
+        ctx.beginPath(); ctx.ellipse(ni * r * 0.35, 0, r * 0.30, r * 0.92, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = "#b45309"; // nắp + đáy đậm
+      ctx.fillRect(-r * 0.4, -r - 5, r * 0.8, 5);
+      ctx.fillRect(-r * 0.4, r, r * 0.8, 5);
+      if (!e._glimSpark || now - e._glimSpark > 200) { // vệt lấp lánh: 1 sparkle/0.2s
+        e._glimSpark = now;
+        try { burst(e.x + (Math.random() - 0.5) * 20, e.y + (Math.random() - 0.5) * 20, 1, ["#fbbf24", "#fff7ae"], 40); } catch (err) {}
+      }
     } else if (e.type === "deadline") {
       const urgent = e.countdown <= 3;
       ctx.fillStyle = slow ? "#7dd3fc" : e.color;
@@ -4607,43 +5063,67 @@ function render(now) {
         ctx.fillText("HỌP", 0, -e.r - 8);
       }
     } else if (e.type === "snatcher") {
-      // RFC nest-removal: TRỘM VẶT CHẠY LÀNG — body tím + mặt nạ đen + túi gem sau lưng
+      // RFC §2.2.9 — giữ concept PR #77, nâng chi tiết: túi phồng theo gem cướp
+      // (scale 1+0.18×carried), miệng túi mở to dần, dây đeo mặt nạ, chùm chìa khóa,
+      // flee: giữ giọt mồ hôi + 2 vệt bụi chân (1 puff/0.15s).
       const flee = e.phase === "flee";
+      const r = e.r;
+      const bag = e.carried || [];
+      const _bagScale = 1 + 0.18 * bag.length; // túi phồng theo carried.length (0→3 viên)
       ctx.translate(0, Math.sin(e.t * 9) * 2); // nhún nhảy ranh mãnh
-      ctx.fillStyle = "#b08968"; // túi vải sau lưng
-      ctx.beginPath(); ctx.arc(-e.r * 0.95, e.r * 0.35, e.r * 0.55, 0, Math.PI * 2); ctx.fill();
-      const bag = e.carried || []; // gem đã cướp — hình thoi nhỏ trên miệng túi
-      for (let gi = 0; gi < bag.length; gi++) {
-        const gx = -e.r * 0.95 + (gi - 1) * 7, gy = e.r * 0.35 - e.r * 0.55 - 5;
-        ctx.fillStyle = ["#7df9ff", "#ffd166", "#c084fc"][gi % 3];
+      ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = 2; // dây đeo mặt nạ (cong sau đầu)
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.02, Math.PI * 0.9, Math.PI * 1.6); ctx.stroke();
+      ctx.save(); // túi vải sau lưng: phồng + miệng mở to dần
+      ctx.translate(-r * 0.95, r * 0.35); ctx.scale(_bagScale, _bagScale);
+      ctx.fillStyle = "#b08968";
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#7a5a3a";
+      ctx.beginPath();
+      ctx.ellipse(0, -r * 0.45, r * (0.28 + bag.length * 0.06), r * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      for (let gi = 0; gi < bag.length; gi++) { // gem hình thoi trên miệng túi
+        const gx = -r * 0.95 + (gi - 1) * 7, gy = r * 0.35 - r * 0.55 * _bagScale - 5;
+        ctx.fillStyle = _SNATCHER_GEM_COLORS[gi % 3];
         ctx.beginPath();
         ctx.moveTo(gx, gy - 5); ctx.lineTo(gx + 4, gy); ctx.lineTo(gx, gy + 5); ctx.lineTo(gx - 4, gy);
         ctx.closePath(); ctx.fill();
       }
-      ctx.fillStyle = slow ? "#7dd3fc" : e.color; // body tròn tím
-      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+      const _jing = Math.sin(e.t * 11) * 2; // chùm chìa khóa đồ chơi leng keng ở hông
+      for (let ki = 0; ki < 3; ki++) {
+        const _kx = r * 0.85 + ki * 6 - 6, _ky = r * 0.75 + _jing * (ki % 2 ? 1 : -1);
+        ctx.fillStyle = "#d1d5db";
+        ctx.beginPath(); ctx.arc(_kx, _ky, 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#9ca3af"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(_kx, _ky, 3.2, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = slow ? "#7dd3fc" : themeTint(e); // body tròn tím
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#1a1a2e"; // dải mặt nạ đen
-      ctx.fillRect(-e.r * 0.85, -e.r * 0.35, e.r * 1.7, e.r * 0.55);
-      const look = Math.sin(e.t * 5) * e.r * 0.18; // mắt láo liên
+      ctx.fillRect(-r * 0.85, -r * 0.35, r * 1.7, r * 0.55);
+      const look = Math.sin(e.t * 5) * r * 0.18; // mắt láo liên
       ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.arc(-e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2);
-      ctx.arc(e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2); ctx.fill();
+      ctx.arc(-r * 0.32 + look, -r * 0.08, r * 0.16, 0, Math.PI * 2);
+      ctx.arc(r * 0.32 + look, -r * 0.08, r * 0.16, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#1a1a2e";
       ctx.beginPath();
-      ctx.arc(-e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2);
-      ctx.arc(e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.arc(-r * 0.32 + look * 1.4, -r * 0.08, r * 0.07, 0, Math.PI * 2);
+      ctx.arc(r * 0.32 + look * 1.4, -r * 0.08, r * 0.07, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = 2; ctx.lineCap = "round"; // cười ranh mãnh
-      ctx.beginPath(); ctx.arc(0, e.r * 0.25, e.r * 0.35, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, r * 0.25, r * 0.35, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
       if (flee) { // giọt mồ hôi lo lắng khi chạy trốn
         const swy = (Math.sin(e.t * 6) + 1) / 2 * 3;
         ctx.fillStyle = "#7dd3fc";
-        ctx.beginPath(); ctx.arc(e.r * 0.95, -e.r * 0.9 + swy, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(r * 0.95, -r * 0.9 + swy, 4.5, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(e.r * 0.95, -e.r * 0.9 - 4 + swy);
-        ctx.lineTo(e.r * 0.95 - 4.5, -e.r * 0.9 + 2 + swy);
-        ctx.lineTo(e.r * 0.95 + 4.5, -e.r * 0.9 + 2 + swy);
+        ctx.moveTo(r * 0.95, -r * 0.9 - 4 + swy);
+        ctx.lineTo(r * 0.95 - 4.5, -r * 0.9 + 2 + swy);
+        ctx.lineTo(r * 0.95 + 4.5, -r * 0.9 + 2 + swy);
         ctx.closePath(); ctx.fill();
+        if (!e._snPuff || now - e._snPuff > 150) { // 2 vệt bụi chân sau lưng
+          e._snPuff = now;
+          try { burst(e.x - r, e.y + r * 0.8, 2, ["#d1d5db", "#9ca3af"], 60); } catch (err) {}
+        }
       }
     } else {
       // fallback: quái mới chưa có nhánh vẽ riêng vẫn chạy được — hình tròn màu registry
@@ -4791,6 +5271,10 @@ function render(now) {
   // H1/B2: viền màn hình = thanh máu — decal notch cache (borderfx.js), flash xanh khi bắn vào viền
   if (window.BorderFX) BorderFX.draw(ctx, W, H, winPct, G._borderFlash, now,
     G.lastStand ? heartbeatPulse(now) : (Math.sin(now / 280) + 1) / 2, !!G.lastStand);
+  // RFC stage-themes-modes §2.1: motif viền theo ải — SAU BorderFX, DƯỚI StageFX (mechanic trên cùng)
+  drawThemeBorder(ctx, W, H, now);
+  // RFC stage-themes-modes §3.3 (DEV-05/DEV-06): HUD mode mới (countdown / tiến trình boss)
+  try { if (window.Modes) Modes.drawHUD(ctx, W); } catch (e) {}
 
   /* ---------- HUD (H3: 2 cụm — pill trái + % nguyên vẹn phải) ---------- */
   ctx.textAlign = "left";
@@ -5025,6 +5509,333 @@ function render(now) {
   }
 }
 
+/* =====================================================================
+   MODES (RFC stage-themes-modes §2.3/§3.3) — 2 mode mới:
+   - Time Attack "Chạy Deadline" (?mode=timeattack): 180s, spawn ×0.75, kỷ lục riêng.
+   - Boss Rush "Xếp Hình Sếp" (?mode=bossrush): boss_1→5, nghỉ 5s + sửa 30% + +1HP.
+   Quy tắc §6: KHÔNG nhân điểm ở bất kỳ mode nào (kill = điểm gốc, boss = 500).
+   ===================================================================== */
+/* i18n keys qua I18N.register() literal — KHÔNG thêm vào js/i18n.js (RFC §0/F12). */
+if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+  vi: {
+    "mode.ta.name": "Chạy Deadline",
+    "mode.ta.desc": "180 giây farm điểm tốc độ cao — spawn dồn dập, hết giờ là chốt sổ!",
+    "mode.ta.timeup_title": "HẾT GIỜ! ⏱",
+    "mode.ta.hud": "⏱ {m}:{s}",
+    "mode.ta.new_record": "KỶ LỤC MỚI! 🏆",
+    "mode.br.name": "Xếp Hình Sếp",
+    "mode.br.desc": "5 sếp liên tiếp! Hạ sếp → nghỉ 5s, sửa cửa sổ, hồi 1 HP.",
+    "mode.br.banner": "XẾP HÌNH SẾP — 5 SẾP LIÊN TIẾP! 👔",
+    "mode.br.rest_banner": "Nghỉ {s}s — sửa cửa sổ! 🔧",
+    "mode.br.victory_title": "THẮNG BOSS RUSH! 🏆",
+    "mode.br.best_line": "Kỷ lục: {t}s",
+    "mode.br.progress": "SẾP {n}/5",
+  },
+  en: {
+    "mode.ta.name": "Deadline Rush",
+    "mode.ta.desc": "180 seconds of high-speed farming — dense spawns, time's up means score's locked!",
+    "mode.ta.timeup_title": "TIME'S UP! ⏱",
+    "mode.ta.hud": "⏱ {m}:{s}",
+    "mode.ta.new_record": "NEW RECORD! 🏆",
+    "mode.br.name": "Boss Parade",
+    "mode.br.desc": "5 bosses in a row! Down a boss → 5s rest, window repair, +1 HP.",
+    "mode.br.banner": "BOSS PARADE — 5 BOSSES IN A ROW! 👔",
+    "mode.br.rest_banner": "Rest {s}s — repairing window! 🔧",
+    "mode.br.victory_title": "BOSS RUSH CLEARED! 🏆",
+    "mode.br.best_line": "Best: {t}s",
+    "mode.br.progress": "BOSS {n}/5",
+  },
+});
+
+window.Modes = {
+  /* ---- helpers nội bộ ---- */
+  _V2: function () {
+    try { if (typeof V2 !== "undefined" && V2) return V2; } catch (e) {}
+    try { if (typeof window !== "undefined" && window.V2) return window.V2; } catch (e2) {}
+    return null;
+  },
+  _G: function () {
+    try { if (typeof G !== "undefined" && G) return G; } catch (e) {}
+    try { if (typeof window !== "undefined" && window.G) return window.G; } catch (e2) {}
+    return null;
+  },
+  _diffKey: function () {
+    var V2o = this._V2();
+    if (V2o && V2o.diffKey) return V2o.diffKey;
+    try { if (typeof DIFF_KEY !== "undefined" && DIFF_KEY) return DIFF_KEY; } catch (e) {}
+    return "normal";
+  },
+  _profileId: function () {
+    var V2o = this._V2();
+    if (V2o && V2o.profileId) return V2o.profileId;
+    try { if (typeof PROFILE_ID !== "undefined" && PROFILE_ID) return PROFILE_ID; } catch (e) {}
+    return "default";
+  },
+  _t: function (k, fallback) {
+    try {
+      if (typeof I18N !== "undefined" && I18N && typeof I18N.t === "function") {
+        var v = I18N.t(k);
+        if (v && v !== k) return v;
+      }
+    } catch (e) {}
+    return fallback;
+  },
+  /* Tôn trọng reduced-motion như các chỗ khác (17-render drawThemeBorder). */
+  _reducedMotion: function () {
+    try {
+      if (typeof window !== "undefined" && window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches) return true;
+    } catch (e) {}
+    return false;
+  },
+
+  /* ---- init(mode): gọi trong V2.boot() ---- */
+  init: function (mode) {
+    var V2o = this._V2();
+    if (!V2o) return;
+    if (mode === "timeattack") {
+      V2o.mode = "timeattack";
+      V2o.ta = { total: 180, left: 180, done: false };
+    } else if (mode === "bossrush") {
+      V2o.mode = "bossrush";
+      V2o.br = { idx: 0, order: [1, 2, 3, 4, 5], restT: 0, won: false, t0: Date.now() };
+    } else {
+      V2o.mode = null;
+    }
+  },
+
+  /* ---- tickTimer(dt): driver per-frame của Modes (gọi từ update()) ----
+     Time Attack: trừ giờ CHỈ khi G.phase==="play" (F3).
+     Boss Rush: đếm ngược restT giữa các boss; hết rest → boss kế. */
+  tickTimer: function (dt) {
+    var V2o = this._V2(), Go = this._G();
+    if (!V2o || !Go) return;
+    if (Go.phase !== "play") return;
+    if (V2o.mode === "timeattack" && V2o.ta && !V2o.ta.done) {
+      V2o.ta.left -= dt;
+      /* RFC §2.3.1: <10s → tick sound mỗi giây (tái dùng AudioEngine.sfx.click) */
+      var _secs = Math.max(0, Math.ceil(V2o.ta.left));
+      if (V2o.ta.left < 10 && _secs !== V2o.ta.tickLast) {
+        V2o.ta.tickLast = _secs;
+        try { if (typeof AudioEngine !== "undefined" && AudioEngine && AudioEngine.sfx) AudioEngine.sfx.click(); } catch (e) {}
+      }
+      if (V2o.ta.left <= 0) { V2o.ta.left = 0; this.timeUp(); }
+    } else if (V2o.mode === "bossrush" && V2o.br && V2o.br.restT > 0) {
+      V2o.br.restT -= dt;
+      if (V2o.br.restT <= 0) { V2o.br.restT = 0; this._nextBoss(); }
+    }
+  },
+
+  /* ---- timeUp(): hết 180s (F4) — freeze, KHÔNG phải thua (không gọi die()) ---- */
+  timeUp: function () {
+    var V2o = this._V2(), Go = this._G();
+    if (!V2o || !Go) return;
+    if (V2o.ta) V2o.ta.done = true;
+    Go.phase = "over"; // tận dụng guard sẵn có: quái/spawn ngừng; đè cả "draft"
+    try { if (typeof Bosses !== "undefined" && Bosses && Bosses.stop) Bosses.stop(); } catch (e) {}
+    Go.boss = null;
+    // kỷ lục riêng (không đụng endless/campaign)
+    var key = "wk_ta_high_" + this._diffKey() + "_" + this._profileId();
+    var rec = { score: Go.score || 0, wave: Go.wave || 0, kills: Go.kills || 0,
+      date: new Date().toISOString().slice(0, 10) };
+    var isRecord = true;
+    try {
+      var prev = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(key)) || "null");
+      if (prev && (prev.score || 0) >= rec.score) isRecord = false;
+    } catch (e2) {}
+    if (isRecord) { try { localStorage.setItem(key, JSON.stringify(rec)); } catch (e3) {} }
+    try {
+      if (typeof showEndScreen === "function") showEndScreen({
+        kind: "timeup",
+        title: this._t("mode.ta.timeup_title", "HẾT GIỜ! ⏱"),
+        lines: ["Điểm: " + rec.score, "Wave: " + rec.wave, "Hạ: " + rec.kills],
+        recordLine: isRecord ? this._t("mode.ta.new_record", "KỶ LỤC MỚI! 🏆") : "",
+      });
+    } catch (e4) {}
+    try { if (V2o.onGameOver) V2o.onGameOver("timeup"); } catch (e5) {}
+  },
+
+  /* ---- spawnScale(): hệ số nhịp spawn cho time attack (§2.3.1) ---- */
+  spawnScale: function () {
+    var V2o = this._V2();
+    if (V2o && V2o.mode === "timeattack") return { intervalMul: 0.75, breakMul: 1.2 / 2.6 };
+    return { intervalMul: 1, breakMul: 1 };
+  },
+
+  /* ---- blocksWaves(): boss rush — chặn wave quái thường (chỉ boss + adds theo def) ---- */
+  blocksWaves: function () {
+    var V2o = this._V2();
+    return !!(V2o && V2o.mode === "bossrush");
+  },
+
+  /* ---- startBossRush(): dựng chuỗi boss_1..5 qua Bosses API ---- */
+  startBossRush: function () {
+    var V2o = this._V2();
+    if (!V2o || !V2o.br) return;
+    V2o.br.idx = 0;
+    V2o.br.won = false;
+    V2o.br.restT = 0;
+    try { if (!V2o.br.t0) V2o.br.t0 = Date.now(); } catch (e) {}
+    try {
+      var msg = this._t("mode.br.banner", "XẾP HÌNH SẾP — 5 SẾP LIÊN TIẾP! 👔");
+      if (typeof banner === "function") banner(msg, "");
+      else if (typeof addFloat === "function") addFloat(400, 300, msg, "#ffd479", true);
+    } catch (e2) {}
+    this._startBoss(V2o.br.order[0]);
+  },
+
+  /* ---- _startBoss(n): spawn boss thứ n qua Bosses.startBoss + hooks ---- */
+  _startBoss: function (n) {
+    var V2o = this._V2(), Go = this._G();
+    if (!V2o || !Go) return false;
+    var diff = { bossHpMul: 1, telegraphMul: 1, enemySpdMul: 1 };
+    try {
+      if (typeof Campaign !== "undefined" && Campaign && Campaign.getRunParams) {
+        var rp = Campaign.getRunParams(V2o.diffKey || "normal");
+        if (rp) {
+          diff.bossHpMul = rp.bossHpMult || 1;
+          diff.telegraphMul = rp.telegraphMult || 1;
+          diff.enemySpdMul = rp.monsterSpeedMult || 1;
+        }
+      }
+      if (n === 5 && typeof Campaign !== "undefined" && Campaign && Campaign.getStageMechanic) {
+        var mech = Campaign.getStageMechanic(5, V2o.diffKey || "normal");
+        if (mech && mech.boss5P3CountdownS) diff.boss5Timer = mech.boss5P3CountdownS;
+      }
+    } catch (e) {}
+    var self = this;
+    try {
+      if (typeof Bosses === "undefined" || !Bosses || !Bosses.startBoss) return false;
+      // Hooks — copy pattern V2.startStageBoss, onBossDead → Modes.onBossDown
+      // (setHooks optional — test mock có thể không có)
+      try {
+        if (typeof Bosses.setHooks === "function") Bosses.setHooks({
+          spawnEnemy: function (type, x, y) { try { window.WKSpawnEnemy(type, x, y); } catch (e2) {} },
+          spawnPickup: function (kind, x, y) { try { window.WKSpawnPickup(kind, x, y); } catch (e2) {} },
+          spawnGems: function (cn, x, y) { try { window.WKSpawnGems(cn, x, y); } catch (e2) {} },
+          fireEB: function (x, y, vx, vy, o) { try { window.WKFireEB(x, y, vx, vy, o); } catch (e2) {} },
+          hurtShip: function (dmg, x, y) { try { window.WKHurtShip(dmg, x, y); } catch (e2) {} },
+          banner: function (t, s) { try { window.WKSetBanner(t, s); } catch (e2) {} },
+          onBossDead: function (b) { self.onBossDown(b); },
+          onTimeout: function () { try { window.WKDie("window"); } catch (e2) {} },
+        });
+      } catch (eHook) {}
+      var b = Bosses.startBoss(n, diff, Go);
+      if (b) { try { V2o.bossActive = true; } catch (e3) {} return true; }
+    } catch (e4) {}
+    return false;
+  },
+
+  /* ---- _nextBoss(): hết rest → boss kế ---- */
+  _nextBoss: function () {
+    var V2o = this._V2();
+    if (!V2o || !V2o.br) return;
+    V2o.br.idx++;
+    if (V2o.br.idx < V2o.br.order.length) this._startBoss(V2o.br.order[V2o.br.idx]);
+  },
+
+  /* ---- onBossDown(b): hạ boss → dọn sân (F7) → rest 5s + sửa 30% (F5) + +1HP ---- */
+  onBossDown: function (b) {
+    var V2o = this._V2(), Go = this._G();
+    if (!V2o || !V2o.br || !Go) return;
+    // F7: dọn sạch đạn địch + adds còn lại TRƯỚC khi nghỉ
+    Go.ebullets = [];
+    Go.enemies = [];
+    try { if (typeof Bosses !== "undefined" && Bosses && Bosses.stop) Bosses.stop(); } catch (e) {}
+    Go.boss = null;
+    var lastIdx = V2o.br.order.length - 1;
+    if (V2o.br.idx >= lastIdx) { this.victory(); return; }
+    V2o.br.restT = 5;
+    // F5: sửa cửa sổ 30% phần đã mất — chỉ dùng growWindow() có sẵn (đã cap ở START)
+    try {
+      var SW = 980;
+      try { if (typeof START_W !== "undefined" && START_W) SW = START_W; } catch (e2) {}
+      var ow = 0;
+      try { ow = (typeof window !== "undefined" && window.outerWidth) || 0; } catch (e3) {}
+      var missing = Math.max(0, SW - ow);
+      if (missing > 0 && typeof growWindow === "function") {
+        var dw = Math.round(missing * 0.3);
+        growWindow(dw, Math.round(dw * 0.75));
+      }
+    } catch (e4) {}
+    // +1 HP (đầy → 200 điểm an ủi)
+    try {
+      var s = Go.ship;
+      if (s) {
+        if ((s.hp || 0) < (s.maxHp || 0)) s.hp = Math.min(s.maxHp, (s.hp || 0) + 1);
+        else {
+          Go.score = (Go.score || 0) + 200;
+          if (typeof addFloat === "function") addFloat(s.x, s.y - 40, "+200", "#fde68a", true);
+        }
+      }
+    } catch (e5) {}
+    try {
+      var msg = this._t("mode.br.rest_banner", "Nghỉ 5s — sửa cửa sổ! 🔧").replace("{s}", "5");
+      if (typeof banner === "function") banner(msg, "");
+    } catch (e6) {}
+  },
+
+  /* ---- victory(): hạ boss_5 → thắng ---- */
+  victory: function () {
+    var V2o = this._V2(), Go = this._G();
+    if (!V2o || !V2o.br || !Go) return;
+    V2o.br.won = true;
+    Go.phase = "over";
+    var timeSec = 0;
+    try { timeSec = Math.round((Date.now() - (V2o.br.t0 || Date.now())) / 1000); } catch (e) {}
+    // kỷ lục: thời gian NGẮN hơn là thắng (điểm là phụ)
+    var key = "wk_br_best_" + this._diffKey() + "_" + this._profileId();
+    var rec = { timeSec: timeSec, score: Go.score || 0, date: new Date().toISOString().slice(0, 10) };
+    var isRecord = true;
+    try {
+      var prev = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(key)) || "null");
+      if (prev && (prev.timeSec || 0) <= rec.timeSec) isRecord = false;
+    } catch (e2) {}
+    if (isRecord) { try { localStorage.setItem(key, JSON.stringify(rec)); } catch (e3) {} }
+    try {
+      if (typeof showEndScreen === "function") showEndScreen({
+        kind: "victory",
+        title: this._t("mode.br.victory_title", "THẮNG BOSS RUSH! 🏆"),
+        lines: ["Thời gian: " + timeSec + "s", "Điểm: " + rec.score],
+        recordLine: isRecord ? this._t("mode.ta.new_record", "KỶ LỤC MỚI! 🏆") : "",
+      });
+    } catch (e4) {}
+    try { if (V2o.onGameOver) V2o.onGameOver("victory"); } catch (e5) {}
+  },
+
+  /* ---- drawHUD(ctx, W): countdown / tiến trình boss (gọi từ 17-render HUD) ---- */
+  drawHUD: function (ctx, W) {
+    var V2o = this._V2();
+    if (!V2o || !V2o.mode || !ctx) return;
+    try {
+      ctx.save();
+      ctx.textAlign = "center";
+      if (V2o.mode === "timeattack" && V2o.ta) {
+        var left = Math.max(0, V2o.ta.left || 0);
+        var m = Math.floor(left / 60), s = Math.floor(left % 60);
+        var txt = this._t("mode.ta.hud", "⏱ {m}:{s}")
+          .replace("{m}", "" + m).replace("{s}", (s < 10 ? "0" : "") + s);
+        ctx.font = "bold 28px sans-serif";
+        // <30s: đỏ + pulse (WOW lúc nước rút) — pulse TẮT khi reduced-motion
+        var urgent = left < 30 && !V2o.ta.done;
+        ctx.fillStyle = urgent ? "#ff3b30" : "#ffffff";
+        if (urgent && !this._reducedMotion()) ctx.globalAlpha = 0.75 + 0.25 * Math.sin(Date.now() / 150);
+        ctx.fillText(txt, W / 2, 38);
+      } else if (V2o.mode === "bossrush" && V2o.br) {
+        ctx.font = "bold 22px sans-serif";
+        ctx.fillStyle = "#ffd479";
+        ctx.fillText(this._t("mode.br.progress", "SẾP {n}/5").replace("{n}", "" + (V2o.br.idx + 1)), W / 2, 34);
+        if (V2o.br.restT > 0) {
+          ctx.font = "16px sans-serif";
+          ctx.fillStyle = "#9df3ff";
+          ctx.fillText(this._t("mode.br.rest_banner", "Nghỉ {s}s — sửa cửa sổ! 🔧")
+            .replace("{s}", "" + Math.ceil(V2o.br.restT)), W / 2, 58);
+        }
+      }
+      ctx.restore();
+    } catch (e) {}
+  },
+};
 /* =====================================================================
    19-onboard.js — WAVE 0 ONBOARDING (scripted, ~60 giây)
    FU-DEVER Game Studio · Game Design + Dev
@@ -5457,6 +6268,7 @@ const Telemetry = (() => {
   function mapCause(reason) {
     if (reason === "window") return "window"; // gặm viền: arena bị gặm vỡ
     if (reason === "ship") return "enemy";    // hết máu
+    if (reason === "timeup") return "timeout"; // RFC stage-themes-modes §2.3.1: hết giờ Time Attack
     return "unknown";
   }
 

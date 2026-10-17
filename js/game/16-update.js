@@ -157,6 +157,10 @@ function shipSlowMult() {
 function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
+  /* RFC stage-themes-modes §2.3.1/F3: Time Attack — timer chỉ trừ khi phase==="play" */
+  try { if (window.V2 && V2.mode === "timeattack" && window.Modes) Modes.tickTimer(dt); } catch (e) {}
+  /* RFC stage-themes-modes §2.3.2: Boss Rush — rest 5s giữa boss cũng qua tickTimer */
+  try { if (window.V2 && V2.mode === "bossrush" && window.Modes) Modes.tickTimer(dt); } catch (e2) {}
   lastStandTick(); // "Cửa Sổ Cuối Cùng": bật/tắt theo % nguyên vẹn cửa sổ
   SatManager.poll(dt); SatManager.updateSims(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
@@ -239,7 +243,10 @@ function update(dt) {
   if (wantFire && s.fireT <= 0) { s.fireT = s.fireInt / lsFireMul() * (s.overdriveT > 0 ? 0.55 : 1); fireBullet(); }
 
   /* wave */
-  if (G.spawnQueue.length) {
+  /* RFC stage-themes-modes §2.3.2: boss rush — chặn wave quái thường (chỉ boss + adds) */
+  var _blockWaves = false;
+  try { _blockWaves = !!(window.Modes && Modes.blocksWaves && Modes.blocksWaves()); } catch (e) {}
+  if (!_blockWaves && G.spawnQueue.length) {
     G.spawnT -= dt;
     if (G.spawnT <= 0) {
       const TS = wkSpawnCfg();
@@ -250,14 +257,20 @@ function update(dt) {
         // Item 6: báo cho người chơi biết còn quái đang chờ spawn (throttle bằng bannerT)
         if (G.bannerT <= 0) setBanner(I18N.t("vp1.cap.banner"), "");
       } else {
-        G.spawnT = wkSpawnInterval(G.wave);
+        /* RFC stage-themes-modes §2.3.1: time attack — wkSpawnInterval × 0.75 */
+        G.spawnT = modeSpawnInterval(G.wave);
         spawnEnemy(G.spawnQueue.pop());
       }
     }
-  } else if (!G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
+  } else if (!_blockWaves && !G.enemies.length && !G.boss && !(G.pendingSpawns > 0) && G.phase === "play") {
     G.waveBreak -= dt;
     if (G.waveBreak <= 0) {
-      G.waveBreak = 2.6;
+      /* RFC stage-themes-modes §2.3.1: nhịp dồn dập của time attack qua Modes.spawnScale().breakMul
+         (2.6 × 1.2/2.6 = 1.2s; các mode khác ×1 = 2.6s). Gate !_blockWaves: boss rush KHÔNG
+         được nổ wave-break endless trong 5s rest giữa boss (thừa HP/repair + chen startWave). */
+      var _brkMul = 1;
+      try { if (window.Modes && Modes.spawnScale) _brkMul = Modes.spawnScale().breakMul || 1; } catch (e) {}
+      G.waveBreak = 2.6 * _brkMul;
       s.hp = Math.min(s.maxHp, s.hp + 1);
       // Phụ lục A node 6 — Keo siêu dính: vá cuối wave theo modifiers Xưởng (mặc định 40px)
       const wrPx = (G.runMods && G.runMods.waveRepairPx) || 40;

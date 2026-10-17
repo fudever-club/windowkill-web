@@ -114,6 +114,7 @@ const Telemetry = (() => {
   function mapCause(reason) {
     if (reason === "window") return "window"; // gặm viền: arena bị gặm vỡ
     if (reason === "ship") return "enemy";    // hết máu
+    if (reason === "timeup") return "timeout"; // RFC stage-themes-modes §2.3.1: hết giờ Time Attack
     return "unknown";
   }
 

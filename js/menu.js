@@ -461,7 +461,7 @@
         });
       } catch (e) {}
 
-      let v2sel = { kind: "free" }; // free | stage | daily
+      let v2sel = { kind: "free" }; // free | stage | daily | mode (RFC stage-themes-modes DEV-07)
       let v2skipTut = null;         // null = hỏi lần đầu; true = bỏ qua; false = học
 
       function launchGame() {
@@ -477,6 +477,7 @@
         });
         if (v2sel.kind === "stage") q.set("stage", String(v2sel.n));
         if (v2sel.kind === "daily") q.set("daily", "1");
+        if (v2sel.kind === "mode") q.set("mode", v2sel.mode); // RFC stage-themes-modes DEV-07
         if (v2skipTut === true) q.set("tut", "0");
         else if (v2skipTut === false) q.set("tut", "1");
         if (window.WK_PORTAL_MODE) {
@@ -501,9 +502,13 @@
           function paintStages() {
             const unlocked = Campaign.getUnlockedStage(activeId);
             const best = Campaign.getStageBest(activeId);
+            // RFC stage-themes-modes DEV-02: accent màu theme/ải trên stage card
+            // (1 #0066CC, 2 #CC3300, 3 #9D4EDD, 4 #00E5FF, 5 #4ADE80) — inline style.
+            const STAGE_ACCENT = { 1: "#0066CC", 2: "#CC3300", 3: "#9D4EDD", 4: "#00E5FF", 5: "#4ADE80" };
             const cards = Campaign.STAGES.map(st => {
               const lock = st.id > unlocked;
               const b = best[String(st.id)] || {};
+              const accent = STAGE_ACCENT[st.id] || "#0080FF";
               // STAGE-OBJ: huy hiệu objective phụ (per profile) — hiện icon + tên ngắn khi đã đạt
               let badgeRow = "";
               try {
@@ -514,7 +519,7 @@
                 }
               } catch (e) {}
               return `<button class="btn-ghost v2-stage" data-stage="${st.id}" ${lock ? "disabled" : ""}
-                style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1}">
+                style="min-width:148px;text-align:left;opacity:${lock ? 0.55 : 1};border-top:3px solid ${accent}">
                 <div style="font-weight:800">${lock ? svgIcon("i-lock") : svgIcon("i-window")} ${escapeHtml(vt("campaign.stage", "Ải"))} ${st.id}</div>
                 <div style="font-size:12.5px">${escapeHtml(stName(st))}</div>
                 <div style="font-size:13px;color:#8fb0d8">${b.score ? (svgIcon("i-trophy") + " " + I18N.fmtNum(b.score)) : (lock ? escapeHtml(vt("campaign.locked_hint", "Phá đảo ải trước để mở")) : "—")}</div>${badgeRow}
@@ -541,6 +546,77 @@
           }
           paintStages();
           window.__wkRefreshV2 = paintStages;
+        }
+      } catch (e) {}
+
+      /* RFC stage-themes-modes DEV-07: panel "Chế độ chơi" — 2 nút mode mới.
+         Keys qua I18N.register() literal — KHÔNG thêm vào js/i18n.js (F12). */
+      if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+        vi: {
+          "menu.mode.title": "Chế độ chơi",
+          "menu.mode.ta": "Chạy Deadline",
+          "menu.mode.ta_desc": "180 giây farm điểm tốc độ cao — spawn dồn dập!",
+          "menu.mode.br": "Xếp Hình Sếp",
+          "menu.mode.br_desc": "5 sếp liên tiếp — nghỉ giữa boss, sửa cửa sổ!",
+          "menu.mode.locked_hint": "Phá đảo ải 1 để mở Xếp Hình Sếp",
+        },
+        en: {
+          "menu.mode.title": "Game Modes",
+          "menu.mode.ta": "Deadline Rush",
+          "menu.mode.ta_desc": "180 seconds of high-speed farming — dense spawns!",
+          "menu.mode.br": "Boss Parade",
+          "menu.mode.br_desc": "5 bosses in a row — rest between, repair window!",
+          "menu.mode.locked_hint": "Clear Stage 1 to unlock Boss Parade",
+        },
+      });
+      try {
+        const modesPanel = document.querySelector("#v2-modes");
+        const stagesWrap = document.querySelector("#v2-stages");
+        if (modesPanel && stagesWrap && stagesWrap.parentNode) {
+          // đặt panel mode ngay sau panel ải (RFC §3.3)
+          stagesWrap.parentNode.insertBefore(modesPanel, stagesWrap.nextSibling);
+        }
+        // whitelist mode id (đồng bộ với v2glue whitelist)
+        const MODE_IDS = ["timeattack", "bossrush"];
+        // guard: boss rush chỉ mở khi đã unlock ải ≥ 2 (đã biết boss là gì)
+        const unlocked = (window.Campaign && typeof Campaign.getUnlockedStage === "function")
+          ? Campaign.getUnlockedStage(activeId) : 5;
+        const brBtn = modesPanel ? modesPanel.querySelector('[data-mode="bossrush"]') : null;
+        if (brBtn && unlocked < 2) {
+          brBtn.disabled = true;
+          brBtn.style.opacity = 0.55;
+          const hintEl = document.querySelector("#v2-mode-hint");
+          if (hintEl) {
+            hintEl.hidden = false;
+            hintEl.textContent = vt("menu.mode.locked_hint", "Phá đảo ải 1 để mở Xếp Hình Sếp");
+          }
+        }
+        if (modesPanel) {
+          modesPanel.querySelectorAll(".v2-mode").forEach(b => {
+            b.onclick = () => {
+              if (b.disabled) return;
+              const mid = b.dataset.mode;
+              if (!MODE_IDS.includes(mid)) return; // chỉ nhận 2 mode hợp lệ
+              modesPanel.querySelectorAll(".v2-mode").forEach(x => {
+                const s = x === b;
+                x.classList.toggle("sel", s);
+                x.setAttribute("aria-pressed", s ? "true" : "false");
+              });
+              v2sel = { kind: "mode", mode: mid };
+              // chọn mode → bỏ chọn ải (không có trạng thái lai, F2)
+              const sw = document.querySelector("#v2-stages");
+              if (sw) sw.querySelectorAll(".v2-stage").forEach(x => {
+                x.classList.remove("sel"); x.setAttribute("aria-pressed", "false");
+              });
+            };
+          });
+          // chọn ải → bỏ chọn mode (delegated để sống sót qua paintStages repaint)
+          document.addEventListener("click", (ev) => {
+            const st = ev.target && ev.target.closest ? ev.target.closest(".v2-stage") : null;
+            if (st) modesPanel.querySelectorAll(".v2-mode").forEach(x => {
+              x.classList.remove("sel"); x.setAttribute("aria-pressed", "false");
+            });
+          });
         }
       } catch (e) {}
 

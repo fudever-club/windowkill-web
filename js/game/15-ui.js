@@ -143,6 +143,17 @@ function die(reason) {
   } catch (e) {}
   $("ov-over").classList.add("show");
 }
+/* RFC stage-themes-modes §3.3 (DEV-05/DEV-06): overlay kết quả dùng chung cho mode mới.
+   Tái dùng DOM #ov-over (over-title/over-score/over-stats/over-record).
+   kind="timeup": hết 180s Time Attack. kind="victory": thắng Boss Rush. */
+function showEndScreen(o) {
+  o = o || {};
+  try { $("over-title").textContent = o.title || ""; } catch (e) {}
+  try { $("over-score").textContent = ""; } catch (e2) {}
+  try { $("over-stats").innerHTML = (o.lines || []).join("<br>"); } catch (e3) {}
+  try { $("over-record").innerHTML = o.recordLine || ""; } catch (e4) {}
+  try { $("ov-over").classList.add("show"); } catch (e5) {}
+}
 function resetGame() {
   Object.assign(G, {
     phase: "play", wave: 0, act: 0, score: 0, kills: 0, time: 0,

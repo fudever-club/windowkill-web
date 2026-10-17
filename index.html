@@ -356,6 +356,22 @@
     <button class="btn-big" id="btn-play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span data-i18n="common.play">CHƠI NGAY</span></button>
     <p class="popup-note" data-i18n-html="menu.popup_note">Game mở trong <b>popup riêng</b> &mdash; hãy cho phép popup cho trang này.</p>
   </section>
+  <!-- RFC stage-themes-modes DEV-07: panel "Chế độ chơi" — 2 mode mới.
+       menu.js di chuyển panel này xuống ngay sau #v2-stages và gắn logic chọn/guard. -->
+  <div class="panel" id="v2-modes">
+    <h3><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> <span data-i18n="menu.mode.title">Chế độ chơi</span></h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn-ghost v2-mode" data-mode="timeattack" style="min-width:148px;text-align:left" aria-pressed="false">
+        <div style="font-weight:800"><span data-i18n="menu.mode.ta">Chạy Deadline</span></div>
+        <div style="font-size:12.5px" data-i18n="menu.mode.ta_desc">180 giây farm điểm tốc độ cao</div>
+      </button>
+      <button class="btn-ghost v2-mode" data-mode="bossrush" style="min-width:148px;text-align:left" aria-pressed="false">
+        <div style="font-weight:800"><span data-i18n="menu.mode.br">Xếp Hình Sếp</span></div>
+        <div style="font-size:12.5px" data-i18n="menu.mode.br_desc">5 sếp liên tiếp</div>
+      </button>
+    </div>
+    <div id="v2-mode-hint" style="font-size:12.5px;color:#8fb0d8;margin-top:6px" hidden></div>
+  </div>
   <!-- CTA web→desktop (Sprint R2 item 5): card Desktop Edition cạnh nút Play.
        Ẩn mặc định (hidden); menu.js chỉ mở khi web non-portal, non-Electron. -->
   <section id="desktop-cta-card" class="desktop-cta-card" hidden>

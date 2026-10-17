@@ -258,8 +258,10 @@ describe("game.js — hardcode đã thay bằng giá trị config", () => {
     assert.ok(!/Math\.max\(\s*0\.22\s*,\s*0\.85/.test(src),
       "không còn hardcode Math.max(0.22, 0.85*...) ở spawn tick");
     // Item 6: spawn tick gọi wkSpawnInterval(G.wave) — công thức band
-    // max(1.1s, 3.8s × 0.93^w) cho wave 15–30 (data), công thức cũ ngoài band
-    assert.match(src, /G\.spawnT = wkSpawnInterval\(G\.wave\)/,
+    // max(1.1s, 3.8s × 0.93^w) cho wave 15–30 (data), công thức cũ ngoài band.
+    // RFC stage-themes-modes DEV-05: time attack bọc qua modeSpawnInterval
+    // (vẫn gọi wkSpawnInterval bên trong — không hardcode).
+    assert.match(src, /G\.spawnT = (wkSpawnInterval|modeSpawnInterval)\(G\.wave\)/,
       "spawn tick dùng wkSpawnInterval(G.wave)");
     assert.match(src, /function wkSpawnInterval\(wave\)/,
       "helper wkSpawnInterval tồn tại");

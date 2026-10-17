@@ -4,7 +4,6 @@
 03-bossflair.js
 04-satellite.js
 05-chainpopups.js
-06-bossfrag.js
 07-input.js
 08-state.js
 09-upgrades.js

@@ -25,7 +25,7 @@ function loop(now) {
   if (window.Cinema) { try { cineLocked = !!Cinema.locked; } catch (e) {} }
   if (window.Juice && Juice.draftOpen) cineLocked = true;
   if (G.phase === "play" && !cineLocked) update(dt);
-  // v2.0: Tutorial / Bosses module / StageFX
+  // v2.0: Tutorial / Bosses module
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
   // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0
   if (window.Onboard) { try { Onboard.tick(dt); } catch (e) {} }

@@ -597,7 +597,7 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
 
 const SatManager = (() => {
   const MAX_SATS = 3;
-  const PRI = { fragment: 0, debris: 1, nest: 2, shield: 3, lover: 4, superlove: 4, mirror: 5, blackhole: 6 }; // hàng đợi ưu tiên
+  const PRI = { fragment: 0, debris: 1, shield: 2, lover: 3, superlove: 3, mirror: 4, blackhole: 5 }; // hàng đợi ưu tiên
   const queue = [];
   const sats = new Map(); // id -> sat
   let permAsked = false, pollT = 0, blockedWarned = false;
@@ -802,11 +802,10 @@ const SatManager = (() => {
 
   // DESIGN-SYSTEM v1.1 §8 — tint title bar mô phỏng theo role (giữ tương phản thấp)
   const ROLE_TB_TINT = {
-    nest: ["#3a1d5c", "#190b2c"], fragment: ["#274b63", "#10222f"],
+    fragment: ["#274b63", "#10222f"],
     shield: ["#1d3a52", "#0c1c2c"], debris: ["#4a1d1d", "#260d0d"],
     giant: ["#1d4224", "#0d2112"], minion: ["#2d4416", "#141f0a"],
-    mother: ["#4d2f0d", "#261505"], chick: ["#4d4211", "#261f09"],
-    bomb: ["#4d2113", "#270f08"], lover: ["#4d1428", "#270a14"],
+    lover: ["#4d1428", "#270a14"],
     superlove: ["#521226", "#2a0a13"], mirror: ["#1f3a46", "#0d1a21"],
     blackhole: ["#22133d", "#0f0820"],
   };
@@ -941,19 +940,7 @@ const SatManager = (() => {
 
   function drawSimContent(s) {
     const cx = s.x + s.sw / 2, cy = s.y + 26 + (s.sh - 26) / 2, t = performance.now();
-    if (s.role === "nest") {
-      ctx.fillStyle = "#120a24"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      for (let i = 0; i < 5; i++) {
-        const a = i / 5 * Math.PI * 2, pulse = 1 + 0.16 * Math.sin(t / 420 + i * 1.7);
-        const x = cx + Math.cos(a) * s.sw * 0.26, y = cy + Math.sin(a) * s.sh * 0.2, r = 11 * pulse;
-        const g = ctx.createRadialGradient(x, y, 1, x, y, r);
-        g.addColorStop(0, "#e9a8ff"); g.addColorStop(0.55, s.color); g.addColorStop(1, "#3b0764");
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, a, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "rgba(255,80,80,.9)";
-        ctx.beginPath(); ctx.arc(x, y - r * 0.2, 2, 0, Math.PI * 2); ctx.fill();
-      }
-    } else if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá
+    if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá
       ctx.fillStyle = "#140a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const wob = Math.sin(t / 180) * 0.12;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
@@ -969,24 +956,6 @@ const SatManager = (() => {
       ctx.restore();
       ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
-    } else if (s.role === "bomb") { // M8
-      const urgent = (s.fuseT === undefined ? 15 : s.fuseT) <= 3;
-      const blink = Math.floor(t / (urgent ? 120 : 300)) % 2 === 0;
-      ctx.fillStyle = blink ? "#3a0d02" : "#1c0701"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const r = Math.min(s.sw, s.sh - 26) * 0.22;
-      ctx.fillStyle = "#2b2f36"; ctx.beginPath(); ctx.arc(cx, cy - 8, r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#4a5058"; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - 8 - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#c98a3a"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(cx + r * 0.6, cy - 8 - r * 0.7);
-      ctx.quadraticCurveTo(cx + r * 1.2, cy - 8 - r * 1.5, cx + r * 0.9, cy - 8 - r * 1.9); ctx.stroke();
-      const sp = (Math.sin(t / 70) + 1) / 2;
-      ctx.fillStyle = `rgba(255,${140 + Math.floor(80 * sp)},40,.95)`;
-      ctx.beginPath(); ctx.arc(cx + r * 0.9, cy - 8 - r * 1.9, 4 + 3 * sp, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = urgent ? "#ff3b30" : "#ffd166"; ctx.font = "700 44px system-ui";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(Math.max(0, Math.ceil(s.fuseT === undefined ? 15 : s.fuseT))), cx, cy + r * 1.15);
-      ctx.fillStyle = "#ff8f8f"; ctx.font = "700 13px system-ui";
-      ctx.fillText(I18N.t("sat.click_break"), cx, s.y + s.sh - 22);
     } else if (s.role === "giant") { // M6
       ctx.fillStyle = "#0a1a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, "#4caf50", false, t);
@@ -998,42 +967,6 @@ const SatManager = (() => {
       drawGoofyFace(cx, cy, Math.min(s.sw, s.sh - 26) * 0.3, enr ? "#ff5252" : "#8bc34a", enr, t);
       ctx.fillStyle = enr ? "#ff8f8f" : "#c5f0a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(enr ? I18N.t("sat.giant_angry") : I18N.t("sat.giant_idle"), cx, s.y + s.sh - 22);
-    } else if (s.role === "mother") { // M5
-      ctx.fillStyle = "#241105"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const r = Math.min(s.sw, s.sh - 26) * 0.26;
-      ctx.fillStyle = "#ff9800";
-      ctx.beginPath(); ctx.ellipse(cx, cy + 8, r * 1.15, r * 0.85, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffa726";
-      ctx.beginPath(); ctx.arc(cx + r * 0.72, cy - r * 0.55, r * 0.45, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#e53935";
-      for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(cx + r * 0.72 + i * r * 0.28, cy - r * 0.98, r * 0.16, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = "#1a1a1a";
-      ctx.beginPath(); ctx.arc(cx + r * 0.84, cy - r * 0.6, r * 0.07, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffca28";
-      ctx.beginPath(); ctx.moveTo(cx + r * 1.12, cy - r * 0.55); ctx.lineTo(cx + r * 1.38, cy - r * 0.42); ctx.lineTo(cx + r * 1.12, cy - r * 0.3); ctx.closePath(); ctx.fill();
-      const flap = Math.sin(t / 240) * 0.5;
-      ctx.save(); ctx.translate(cx - r * 0.35, cy + 8); ctx.rotate(-0.4 + flap * 0.3);
-      ctx.fillStyle = "#f57c00"; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-      ctx.fillStyle = "#ffd9a0"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(I18N.t("sat.mother_lay_telegraph"), cx, s.y + s.sh - 22);
-    } else if (s.role === "chick") { // M5
-      const enr = (s.enrageT || 0) > 0;
-      ctx.fillStyle = enr ? "#200808" : "#1d1503"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
-      const hop = Math.abs(Math.sin(t / 280 + (s.hopPh || 0))) * (enr ? 26 : 16);
-      const cr = Math.min(s.sw, s.sh - 26) * (enr ? 0.3 : 0.24);
-      ctx.fillStyle = enr ? "#ff8a65" : "#ffd54f";
-      ctx.beginPath(); ctx.arc(cx, cy - hop, cr, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#1a1a1a";
-      ctx.beginPath(); ctx.arc(cx - cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2);
-      ctx.arc(cx + cr * 0.3, cy - hop - cr * 0.15, cr * 0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ff9800";
-      ctx.beginPath(); ctx.moveTo(cx - cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx + cr * 0.12, cy - hop + cr * 0.1); ctx.lineTo(cx, cy - hop + cr * 0.32); ctx.closePath(); ctx.fill();
-      if (enr) {
-        ctx.fillStyle = "#ff5252";
-        ctx.beginPath(); ctx.arc(cx - cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.arc(cx + cr * 0.55, cy - hop, cr * 0.16, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.fillStyle = enr ? "#ff8f8f" : "#ffe9a8"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(enr ? I18N.t("sat.chick_angry") : I18N.t("sat.chick_idle"), cx, s.y + s.sh - 22);
     } else if (s.role === "lover") { // M7: người yêu — trái tim đập thình thịch
       const hb = !!(s.heartbroken);
       ctx.fillStyle = hb ? "#2a0a12" : "#2a0a1a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
@@ -1171,78 +1104,9 @@ const SatManager = (() => {
   }
 
   return { request, flush, poll, closeAll, count, list, values, anyRole, damage, kill, hitSim, drawSims, updateSims,
-    send: (id, msg) => post(id, msg), // M8: gửi sat-tick cho popup thật
     steer: (id, vx, vy) => post(id, { type: "sat-steer", id, vx, vy }),
     warn: (id) => post(id, { type: "sat-warn", id }) };
 })();
-
-/* ---------------- M1 — Ổ QUÁI BAY (Nest Window) ---------------- */
-function nestSpawnPoint(sat) {
-  // vị trí ổ trong tọa độ screen → đổi sang arena, spawn ở viền gần nhất
-  let cx, cy;
-  if (sat.sim) { cx = sat.x + sat.sw / 2; cy = sat.y + sat.sh / 2; }
-  else {
-    cx = (sat.x + sat.w / 2) - window.screenX;
-    cy = (sat.y + sat.h / 2) - window.screenY;
-  }
-  return nearestEdgePoint(clamp(cx, 0, window.innerWidth), clamp(cy, 0, window.innerHeight));
-}
-
-function onNestClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-    // đóng tay: ổ vỡ tung, nhả tối đa 4 con dồn (risk/reward)
-    const n = Math.min(4, Math.max(0, sat.opts.maxSpawns - sat.spawned));
-    for (let i = 0; i < n; i++) {
-      const type = sat.opts.pool[(Math.random() * sat.opts.pool.length) | 0];
-      spawnEnemyAt(type, p.x + rand(-40, 40), p.y + rand(-40, 40));
-    }
-    addFloat(p.x, p.y - 24, I18N.t("sat.nest_burst"), "#ff7ad9", true);
-    AudioEngine.sfx.bigboom();
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 26, ["#c084fc", "#8b2fc9", "#fff"], 320);
-    addFloat(p.x, p.y - 24, I18N.t("sat.nest_killed"), "#c084fc", true);
-  }
-  // "timeout": tự rút êm, không phạt
-}
-
-function updateNests(dt) {
-  const now = performance.now();
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "nest" || sat.dead) continue;
-    if (now - sat.born > 60000) { SatManager.kill(sat.id, "timeout"); continue; } // TTL 60s
-    sat.spawnT -= dt;
-    if (sat.spawnT <= 0 && sat.spawned < sat.opts.maxSpawns) {
-      sat.spawnT = sat.opts.spawnEvery;
-      sat.spawned++;
-      const type = sat.opts.pool[(Math.random() * sat.opts.pool.length) | 0];
-      const p = nestSpawnPoint(sat);
-      spawnEnemyAt(type, p.x, p.y);
-      AudioEngine.sfx.shrink();
-      addFloat(p.x, p.y - 20, I18N.t("sat.nest_released"), "#c084fc");
-    }
-  }
-}
-
-function maybeTriggerNest(n) {
-  if (SAT_MODE === "off" || SatManager.anyRole("nest")) return;
-  const act = actOf(n);
-  const want = (act === 1 && n >= 6) || (act === 3 && n > 0 && n % 5 === 0);
-  if (!want) return;
-  const sat = SatManager.request("nest", {
-    hp: 6, color: "#8b2fc9", label: I18N.t("sat.nest_label"), w: 340, h: 220,
-    spawnEvery: 6, pool: ["chewer", "chaser"], maxSpawns: 8,
-    onClose: onNestClose,
-  });
-  if (sat) {
-    sat.spawnT = 2; // nhả con đầu sau 2s
-    setBanner(I18N.t("sat.nest_spawn"), "");
-  } else {
-    // SAT_MODE=off hoặc hết quota: spawn thường tương đương, giữ cân bằng
-    const p1 = edgeSpawn(), p2 = edgeSpawn();
-    spawnEnemyAt("chewer", p1.x, p1.y); spawnEnemyAt("chewer", p2.x, p2.y);
-  }
-}
 
 /* ---------------- M3 — CỬA SỔ KHIÊN (Shield Window) ----------------
  * Pickup "shieldwin" (wave 4+): gọi cửa sổ khiên xanh bám cạnh cửa sổ chính.
@@ -1444,12 +1308,20 @@ function drawCracks() {
   }
 }
 
-/* ---------------- M8 — QUẢ BOM CƯỜI (Bomb Window) ----------------
- * Act 2+, wave ≥ 8, mỗi wave tối đa 2 quả, không cùng lúc với M5.
- * Đếm ngược 15s (số to trong popup qua sat-tick + khung giả vẽ số).
- * Hết giờ → nổ: 5-6 mini + hất tàu văng. Phá kịp (8 click) → +2 gem +500.
- * ĐÓNG TAY = nổ ngay, toàn dasher. Fallback: khung giả nhấp nháy đỏ-cam. */
-/* nảy khung giả */
+/* -------- helpers chung (M6/M7/M9/M10) -------- */
+/* điểm spawn quanh vệ tinh: tọa độ screen → đổi sang arena, lấy viền gần nhất
+ * (đổi tên từ hàm cũ trong block M1; vẫn dùng bởi M6/M7/M10/M9) */
+function satSpawnPoint(sat) {
+  let cx, cy;
+  if (sat.sim) { cx = sat.x + sat.sw / 2; cy = sat.y + sat.sh / 2; }
+  else {
+    cx = (sat.x + sat.w / 2) - window.screenX;
+    cy = (sat.y + sat.h / 2) - window.screenY;
+  }
+  return nearestEdgePoint(clamp(cx, 0, window.innerWidth), clamp(cy, 0, window.innerHeight));
+}
+
+/* nảy khung giả (trước đây nằm trong block M8) */
 function bounceSimSat(s, mul, dt) {
   s.x += s.vx * mul * dt; s.y += s.vy * mul * dt;
   const b = bounds();
@@ -1466,75 +1338,6 @@ function knockShip(fx, fy, power) {
   const p = Math.min(power, 700);
   s.kbvx = (s.kbvx || 0) + dx / d * p;
   s.kbvy = (s.kbvy || 0) + dy / d * p;
-}
-
-function explodeBomb(sat, manual) {
-  if (sat.exploded) return;
-  sat.exploded = true;
-  const p = nestSpawnPoint(sat);
-  const n = 5 + (Math.random() < 0.5 ? 1 : 0);
-  const type = manual ? "dasher" : "mini";
-  for (let i = 0; i < n; i++) spawnEnemyAt(type, p.x + rand(-60, 60), p.y + rand(-60, 60));
-  knockShip(p.x, p.y, 460);
-  burst(p.x, p.y, 40, ["#ff5722", "#ff9800", "#ffd166", "#ffffff"], 420);
-  jxShake(10, 400, 8); windowJitter(26);
-  AudioEngine.sfx.bigboom();
-  addFloat(p.x, p.y - 30, manual ? I18N.t("sat.bomb_tick") : I18N.t("sat.bomb_boom"), "#ff5722", true);
-}
-
-function onBombClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-    explodeBomb(sat, true);
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 24, ["#ff9800", "#ffd166", "#ffffff"], 300);
-    for (let i = 0; i < 2; i++) {
-      const a = Math.random() * Math.PI * 2;
-      G.gems.push({ x: p.x, y: p.y, vx: Math.cos(a) * 130, vy: Math.sin(a) * 130, v: 1, t: rand(0, 9) });
-    }
-    G.score += 500;
-    addFloat(p.x, p.y - 30, I18N.t("sat.bomb_killed"), "#ffd166", true);
-    AudioEngine.sfx.pickup();
-  }
-
-}
-
-function updateBombs(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "bomb" || sat.dead) continue;
-    sat.fuseT -= dt;
-    const secs = Math.max(0, Math.ceil(sat.fuseT));
-    if (secs !== sat.tickLast) {
-      sat.tickLast = secs;
-      if (!sat.sim) SatManager.send(sat.id, { type: "sat-tick", id: sat.id, t: secs }); // popup thật hiện số
-      AudioEngine.sfx.click();
-    }
-    if (sat.fuseT <= 0) {
-      explodeBomb(sat, false);
-      SatManager.kill(sat.id, "exploded");
-    }
-  }
-}
-
-function maybeTriggerBomb(n) {
-  if (n < 8 || G.bombWave === n) return;
-  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
-  G.bombWave = n;
-  let made = 0;
-  for (let i = 0; i < 2; i++) {
-    const sat = SatManager.request("bomb", {
-      hp: 8, color: "#ff5722", label: I18N.t("sat.bomb_label"), w: 300, h: 220,
-      onClose: onBombClose,
-    });
-    if (sat) { made++; sat.fuseT = 15; sat.tickLast = -1; }
-    else break;
-  }
-  if (made > 0) {
-    setBanner(I18N.t("sat.bomb_spawn"), "");
-    AudioEngine.sfx.wave();
-  } else if (SAT_MODE === "off") {
-    spawnEnemy("dasher"); spawnEnemy("dasher");
-  }
 }
 
 /* ---------------- M6 — MỘT THÀNH HAI (Giant/Minion) ----------------
@@ -1565,7 +1368,7 @@ function liveMinion(exceptId) {
 }
 
 function onGiantClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   if (mode === "killed" || mode === "manual") {
     const enraged = mode === "manual";
     burst(p.x, p.y, 30, ["#4caf50", "#8bc34a", "#ffffff"], 340);
@@ -1578,7 +1381,7 @@ function onGiantClose(mode, sat) {
 }
 
 function onMinionClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   if (mode === "manual") {
     const other = liveMinion(sat.id);
     if (other) {
@@ -1625,7 +1428,7 @@ function updateMinions(dt) {
     sat.spawnT -= dt;
     if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
       sat.spawnT = interval; sat.spawned++;
-      const p = nestSpawnPoint(sat);
+      const p = satSpawnPoint(sat);
       spawnEnemyAt("mini", p.x + rand(-30, 30), p.y + rand(-30, 30));
       AudioEngine.sfx.shrink();
     }
@@ -1649,141 +1452,6 @@ function maybeTriggerGiant(n) {
   }
 }
 
-/* ---------------- M5 — MẸ GÀ ĐẺ TRỨNG VÀNG (Mother/Chick) ----------------
- * Act 2+, wave ≥ 7, mỗi wave 1 lần, cần ≥ 2 slot trống (mẹ + 2 con = 3 popup).
- * Mẹ mỗi 8s đẻ 1 con (tối đa 2); con nhảy tưng tưng, mỗi 5s nhả 1 mini.
- * Phá MẸ → con "NỔI GIẬN MẤT MẸ": to x1.5, nhanh x2, nhả x2 trong 10s rồi tự vỡ
- * (rơi gem an ủi). ĐÓNG TAY mẹ = con giận + mất 1 HP. ĐÓNG TAY con = nổ, 2 mini. */
-function motherChicks(motherId) {
-  return SatManager.list().filter(s => s.role === "chick" && !s.dead && s.motherId === motherId);
-}
-// GC-2026-10: bản đếm không alloc cho check per-frame trong updateMothers
-function motherChickCount(motherId) {
-  let n = 0;
-  for (const s of SatManager.values()) if (s.role === "chick" && !s.dead && s.motherId === motherId) n++;
-  return n;
-}
-
-function enrageChicks(motherId, msg) {
-  const chicks = motherChicks(motherId);
-  for (const c of chicks) c.enrageT = 10;
-  if (chicks.length) {
-    const p = nestSpawnPoint(chicks[0]);
-    addFloat(p.x, p.y - 30, msg, "#ff9800", true);
-    AudioEngine.sfx.boss();
-  }
-}
-
-function onMotherClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "killed") {
-    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
-    enrageChicks(sat.id, I18N.t("sat.chick_enraged"));
-  } else if (mode === "manual") {
-    burst(p.x, p.y, 26, ["#ff9800", "#ffd54f", "#ffffff"], 320);
-    enrageChicks(sat.id, I18N.t("sat.chick_manual"));
-    hurtShip(1, p.x, p.y);
-  }
-
-}
-
-function onChickClose(mode, sat) {
-  const p = nestSpawnPoint(sat);
-  if (mode === "manual") {
-
-    burst(p.x, p.y, 22, ["#ffd54f", "#ff9800", "#ffffff"], 320);
-    spawnEnemyAt("mini", p.x - 22, p.y);
-    spawnEnemyAt("mini", p.x + 22, p.y);
-    addFloat(p.x, p.y - 26, I18N.t("sat.chick_dead"), "#ffd54f", true);
-    AudioEngine.sfx.boom();
-  } else if (mode === "killed") {
-    burst(p.x, p.y, 14, ["#ffd54f", "#ffffff"], 240);
-    AudioEngine.sfx.hit();
-  }
-
-}
-
-function layChick(mother) {
-  const sat = SatManager.request("chick", {
-    hp: 4, color: "#ffd54f", label: I18N.t("sat.chick_label"), w: 170, h: 120,
-    onClose: onChickClose,
-  });
-  if (!sat) return null;
-  sat.motherId = mother.id;
-  const sp = 90 + Math.random() * 60, a = Math.random() * Math.PI * 2;
-  sat.vx = Math.cos(a) * sp; sat.vy = Math.sin(a) * sp;
-  sat.spawnT = 2; sat.spawned = 0; sat.maxSpawns = 8; sat.enrageT = 0;
-  sat.hopPh = Math.random() * 9;
-  if (sat.sim && mother.sim) {
-    const b = bounds();
-    sat.x = clamp(mother.x + mother.sw / 2 - sat.sw / 2 + rand(-70, 70), b.x, Math.max(b.x, b.x + b.w - sat.sw));
-    sat.y = clamp(mother.y + mother.sh / 2 - sat.sh / 2 + rand(-50, 50), b.y, Math.max(b.y, b.y + b.h - sat.sh));
-  }
-  const p = nestSpawnPoint(mother);
-  addFloat(p.x, p.y - 20, I18N.t("sat.mother_lay"), "#ffd54f");
-  AudioEngine.sfx.pickup();
-  return sat;
-}
-
-function updateMothers(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "mother" || sat.dead) continue;
-    if (performance.now() - sat.born > 75000) { SatManager.kill(sat.id, "timeout"); continue; }
-    sat.layT = (sat.layT === undefined ? 3 : sat.layT) - dt;
-    if (sat.layT <= 0) {
-      if (motherChickCount(sat.id) < 2) layChick(sat);
-      sat.layT = 8;
-    }
-  }
-}
-
-function updateChicks(dt) {
-  for (const sat of SatManager.values()) {
-    if (sat.role !== "chick" || sat.dead) continue;
-    const enraged = sat.enrageT > 0;
-    if (enraged) {
-      sat.enrageT -= dt;
-      if (sat.enrageT <= 0) {
-
-        const p = nestSpawnPoint(sat);
-        G.gems.push({ x: p.x, y: p.y, vx: rand(-90, 90), vy: rand(-90, 90), v: 1, t: rand(0, 9) });
-        addFloat(p.x, p.y - 24, I18N.t("sat.chick_calm"), "#ffd54f");
-        burst(p.x, p.y, 16, ["#ffd54f", "#ffffff"], 220);
-        AudioEngine.sfx.pickup();
-        SatManager.kill(sat.id, "timeout");
-        continue;
-      }
-    }
-    const speedMul = enraged ? 2 : 1;
-    if (sat.sim) bounceSimSat(sat, speedMul, dt);
-    sat.spawnT -= dt;
-    if (sat.spawnT <= 0 && sat.spawned < sat.maxSpawns) {
-      sat.spawnT = enraged ? 2.5 : 5; sat.spawned++;
-      const p = nestSpawnPoint(sat);
-      spawnEnemyAt("mini", p.x + rand(-24, 24), p.y + rand(-24, 24));
-      AudioEngine.sfx.shrink();
-    }
-  }
-}
-
-function maybeTriggerMother(n) {
-  if (n < 10 || G.motherWave === n) return;
-  if (SatManager.anyRole("mother") || SatManager.anyRole("bomb")) return;
-  if (SatManager.count() > 1) return;
-  G.motherWave = n;
-  const sat = SatManager.request("mother", {
-    hp: 8, color: "#ff9800", label: I18N.t("sat.mother_label"), w: 340, h: 240,
-    onClose: onMotherClose,
-  });
-  if (sat) {
-    sat.layT = 3;
-    setBanner(I18N.t("sat.mother_spawn"), "");
-    AudioEngine.sfx.pickup();
-  } else if (SAT_MODE === "off") {
-    spawnEnemy("chewer"); spawnEnemy("chewer");
-  }
-}
-
 /* ---------------- M7 — TÌNH YÊU SÉT ĐÁNH (Lightning Love) ----------------
  * Act 2+, wave ≥ 12, mỗi wave 1 lần, cần cả 3 slot trống.
  * 2 popup "người yêu" (5 HP) trôi về phía nhau; chạm nhau → "BÙM! TÌNH YÊU SÉT ĐÁNH!"
@@ -1803,7 +1471,7 @@ function loverScreen(sat) {
 
 function loverAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -2040,7 +1708,7 @@ function maybeTriggerLove(n) {
  * Fallback: khung giả — vùng gương vẽ quanh khung. */
 function mirrorAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -2132,7 +1800,7 @@ function maybeTriggerMirror(n) {
  * Fallback: khung giả vẽ hố đen + vòng xoáy hút. */
 function vacAnchor(sat) {
   if (sat.sim) return { x: sat.x + sat.sw / 2, y: sat.y + sat.sh / 2 };
-  const p = nestSpawnPoint(sat);
+  const p = satSpawnPoint(sat);
   return { x: p.x, y: p.y };
 }
 
@@ -2210,6 +1878,10 @@ function updateBlackholes(dt) {
         if (d < 26) {
           // M9 websim (2026-10-06): quái lọt đúng tâm (d ≤ 1) trước đây kẹt vĩnh viễn
           // vì nhánh hút nằm trong `if (d > 1)` — đưa check nuốt ra ngoài để luôn nuốt.
+          // RFC nest-removal (edge 7): snatcher bị nuốt khi đang ôm gem → gem văng ra,
+          // không bị nuốt mất (swallow không qua killEnemy nên onDeath không chạy).
+          if (e.type === "snatcher" && e.carried && e.carried.length && typeof releaseSnatcherGems === "function")
+            releaseSnatcherGems(e, true);
           e.dead = true; // nuốt: mất luôn, không điểm/kill
           sat.swallowed.push(e.type);
           burst(p.x, p.y, 6, ["#7c3aed", "#ffffff"], 140);
@@ -2781,6 +2453,27 @@ function gainXp(n) {
    - ACTS: 3 Act (stage) — palette, nhạc, pool quái, boss variant riêng.
    - PICKUP_DEFS: vật phẩm rơi, chia tỉ lệ theo trọng số w.
    ===================================================================== */
+/* RFC nest-removal (2026-10-17): key i18n riêng của quái snatcher ("TRỘM VẶT CHẠY LÀNG").
+ * Đăng ký qua I18N.register() (pattern của stagemech.js/stageobj.js) — KHÔNG thêm key
+ * mới vào js/i18n.js. Đặt TRƯỚC MONSTER_REGISTRY vì entry gọi I18N.t() lúc load. */
+if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+  vi: {
+    "monster.snatcher.name": "Trộm Vặt Chạy Làng",
+    "monster.snatcher.desc": "Không đánh bạn — chỉ cướp gem rồi chạy! Chặn đầu đường ra viền, giết là đòi lại hết.",
+    "monster.snatcher.counter": "Đừng đuổi thẳng — chặn đầu đường ra viền; giết khi nó đang ôm gem.",
+    "monster.snatcher.steal": "CƯỚP ĐÂY! 😈",
+    "monster.snatcher.caught": "ĐÒI LẠI ĐƯỢC! 💎",
+    "monster.snatcher.escaped": "MẤT GEM RỒI! 😭",
+  },
+  en: {
+    "monster.snatcher.name": "Sneaky Gem Thief",
+    "monster.snatcher.desc": "It doesn't attack — it just steals gems and runs! Cut off its escape route, kill it to get everything back.",
+    "monster.snatcher.counter": "Don't chase straight — block its path to the edge; kill it while it's carrying gems.",
+    "monster.snatcher.steal": "MINE NOW! 😈",
+    "monster.snatcher.caught": "GOT THEM BACK! 💎",
+    "monster.snatcher.escaped": "GEMS LOST! 😭",
+  },
+});
 const MONSTER_REGISTRY = {
   "chaser": { id: "chaser", name: I18N.t("monster.chaser.name"), behavior: "chase", color: "#ff5470",
     r: 12, dmg: 1, score: 10, xp: 1, minWave: 1, weight: 100, acts: [1, 2, 3],
@@ -2852,6 +2545,15 @@ const MONSTER_REGISTRY = {
     init: e => { e.rolled = false; },
     onDeath: e => { addFloat(e.x, e.y - 30, I18N.t("vp1.director.cut"), "#f472b6", true); },
     desc: I18N.t("monster.director.desc") },
+  /* RFC nest-removal (2026-10-17): TRỘM VẶT CHẠY LÀNG — kẻ cướp gem, dmg 0, không tấn công.
+   * Debut wave 6, tối đa 1 con/wave (buildSpawnQueue tôn trọng maxPerWave). Behavior ở
+   * BEHAVIORS.snatch: săn gem (ôm tối đa 3) → chạy ra viền; giết → gem văng ra đòi lại hết. */
+  "snatcher": { id: "snatcher", name: I18N.t("monster.snatcher.name"), behavior: "snatch", color: "#f0abfc",
+    r: 12, dmg: 0, score: 10, xp: 3, minWave: 6, weight: 6, maxPerWave: 1, acts: [1, 2, 3],
+    hp: w => 6 + w * 0.6, spd: w => 140 + w * 4,
+    init: e => { e.phase = "hunt"; e.carried = []; e.idleT = 0; e.escaped = false; },
+    onDeath: e => { releaseSnatcherGems(e, true); }, // bất kể nguồn sát thương — không bao giờ nuốt gem
+    desc: I18N.t("monster.snatcher.desc") },
 };const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
@@ -3061,7 +2763,69 @@ const MONSTER_REGISTRY = {
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     e.x += dx / d * spd * dt; e.y += dy / d * spd * dt;
   } },
+  /* RFC nest-removal (2026-10-17): TRỘM VẶT CHẠY LÀNG — state machine hunt/flee.
+   * hunt: lao vào gem gần nhất, chạm → cướp (tối đa 3 viên, giữ nguyên v từng viên);
+   *   đủ 3 hoặc 6s không còn gem → flee. flee: chạy ra viền gần nhất; chạm viền →
+   *   escaped (gem mất, không điểm). dmg 0: va chạm tàu chỉ hất nhẹ ra (loop chung). */
+  snatch: { update(e, dt, s, spd) {
+    if (e.phase === "flee") {
+      const p = nearestEdgePoint(e.x, e.y);
+      const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
+      const wob = Math.sin(e.t * 7) * 40; // chạy thục mạng, lạng lách cho vui mắt
+      e.x += (dx / d * spd + -dy / d * wob) * dt;
+      e.y += (dy / d * spd + dx / d * wob) * dt;
+      if (d < 14) {
+        e.escaped = true; e.dead = true; // trốn thoát: gem mất, KHÔNG qua killEnemy → không điểm/xp
+        addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.escaped"), "#ff8f8f", true);
+      }
+      return;
+    }
+    // hunt
+    let tgt = null, bd = Infinity;
+    for (const g of G.gems) {
+      const d2 = dist2(e.x, e.y, g.x, g.y);
+      if (d2 < bd) { bd = d2; tgt = g; }
+    }
+    if (!tgt) {
+      e.idleT += dt;
+      if (e.idleT >= 6) e.phase = "flee"; // không còn gem → chạy tay không
+      return;
+    }
+    e.idleT = 0;
+    const dx = tgt.x - e.x, dy = tgt.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 6) * 30;
+    e.x += (dx / d * spd + -dy / d * wob) * dt;
+    e.y += (dy / d * spd + dx / d * wob) * dt;
+    if (d < e.r + 10) {
+      // RACE với vacuum/magnet/timeout: luôn indexOf + guard, không cache gem qua frame
+      const idx = G.gems.indexOf(tgt);
+      if (idx >= 0) {
+        G.gems.splice(idx, 1);
+        e.carried.push(tgt.v);
+        try { AudioEngine.sfx.slurp(); } catch (err) {}
+        addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.steal"), "#f0abfc");
+        if (e.carried.length >= 3) e.phase = "flee";
+      }
+    }
+  } },
 };
+/* RFC nest-removal: trả lại gem snatcher đang ôm về G.gems tại vị trí chết.
+ * Dùng chung cho onDeath (killEnemy — mọi nguồn sát thương) VÀ trường hợp bị hố đen
+ * M9 nuốt trực tiếp (set e.dead = true, không qua killEnemy). withFx: float + boing. */
+function releaseSnatcherGems(e, withFx) {
+  const bag = e.carried || [];
+  if (!bag.length) return false;
+  e.carried = [];
+  for (const v of bag) {
+    const a = Math.random() * Math.PI * 2;
+    G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, v, t: rand(0, 9) });
+  }
+  if (withFx) {
+    addFloat(e.x, e.y - 30, I18N.t("monster.snatcher.caught"), "#7df9ff", true);
+    try { AudioEngine.sfx.boing(); } catch (err) {}
+  }
+  return true;
+}
 const ACTS = [
   { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, bgStage: 1,
     palette: { bg0: "#0b1e3a", bg1: "#04080f", grid: "#ffffff08", edge: "rgba(255,110,196,0.28)" },
@@ -3297,6 +3061,12 @@ function buildSpawnQueue(n) {
     let r = Math.random() * totalW, type = pool[0].id;
     for (const d of pool) { r -= wOf(d); if (r <= 0) { type = d.id; break; } }
     q.push(type);
+  }
+  // RFC nest-removal: quái có maxPerWave (vd snatcher = 1) → cắt bớt bản sao thừa
+  const _cap = {};
+  for (let i = q.length - 1; i >= 0; i--) {
+    const def = MONSTER_REGISTRY[q[i]], cap = def && def.maxPerWave;
+    if (cap) { _cap[q[i]] = (_cap[q[i]] || 0) + 1; if (_cap[q[i]] > cap) q.splice(i, 1); }
   }
   return q;
 }
@@ -3612,8 +3382,7 @@ function startWave(n) {
     const vp1ev = vp1RollEvent(n);
     if (vp1ev) vp1TriggerEvent(vp1ev, n);
   }
-  maybeTriggerNest(n); // M1: ổ quái vệ tinh (act 1 wave 6+, endless mỗi 5 wave)
-  maybeTriggerBomb(n); maybeTriggerGiant(n); maybeTriggerMother(n); // M8/M6/M5
+  maybeTriggerGiant(n); // M6
   maybeTriggerLove(n); maybeTriggerMirror(n); maybeTriggerVacuum(n); // M7/M10/M9
   const sub = n === 1 ? I18N.t("banner.wave1") : pickSub();
   // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)
@@ -3911,7 +3680,7 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     lastStand: false, // "Cửa Sổ Cuối Cùng": reset khi chơi lại
-    bombWave: 0, giantWave: 0, motherWave: 0,
+    giantWave: 0,
     _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
@@ -3934,7 +3703,7 @@ function resetGame() {
   G.upgTaken = {}; // D-03: đếm distinct upgrade theo run
   G.ship = newShip();
   // AUDIT 2026-10-02: resetGame() trước đây không dọn vệ tinh/boss module/Juice2 —
-  // restart từ pause hoặc sau game-over để sót bomb/mother/nest và boss ma của run cũ
+  // restart từ pause hoặc sau game-over để sót vệ tinh và boss ma của run cũ
   // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
@@ -4156,11 +3925,10 @@ function update(dt) {
   const s = G.ship, b = bounds();
   G.time += dt;
   lastStandTick(); // "Cửa Sổ Cuối Cùng": bật/tắt theo % nguyên vẹn cửa sổ
-  SatManager.poll(dt); SatManager.updateSims(dt); updateNests(dt); // multi-window P1a
+  SatManager.poll(dt); SatManager.updateSims(dt); // multi-window P1a
   if (typeof updateShield === "function") { updateShield(dt); updateDebris(dt); } // P1b/P1c
   if (typeof updateFragments === "function") updateFragments(dt); // P1d
-  if (typeof updateBombs === "function") updateBombs(dt);
-  if (typeof updateMinions === "function") { updateMinions(dt); updateMothers(dt); updateChicks(dt); }
+  if (typeof updateMinions === "function") { updateMinions(dt); }
   if (typeof updateLovers === "function") { updateLovers(dt); updateSuperlove(dt); } // M7
   if (typeof updateMirrors === "function") updateMirrors(dt); // M10
   if (typeof updateBlackholes === "function") updateBlackholes(dt); // M9
@@ -4823,6 +4591,45 @@ function render(now) {
       } else {
         ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "11px sans-serif";
         ctx.fillText("HỌP", 0, -e.r - 8);
+      }
+    } else if (e.type === "snatcher") {
+      // RFC nest-removal: TRỘM VẶT CHẠY LÀNG — body tím + mặt nạ đen + túi gem sau lưng
+      const flee = e.phase === "flee";
+      ctx.translate(0, Math.sin(e.t * 9) * 2); // nhún nhảy ranh mãnh
+      ctx.fillStyle = "#b08968"; // túi vải sau lưng
+      ctx.beginPath(); ctx.arc(-e.r * 0.95, e.r * 0.35, e.r * 0.55, 0, Math.PI * 2); ctx.fill();
+      const bag = e.carried || []; // gem đã cướp — hình thoi nhỏ trên miệng túi
+      for (let gi = 0; gi < bag.length; gi++) {
+        const gx = -e.r * 0.95 + (gi - 1) * 7, gy = e.r * 0.35 - e.r * 0.55 - 5;
+        ctx.fillStyle = ["#7df9ff", "#ffd166", "#c084fc"][gi % 3];
+        ctx.beginPath();
+        ctx.moveTo(gx, gy - 5); ctx.lineTo(gx + 4, gy); ctx.lineTo(gx, gy + 5); ctx.lineTo(gx - 4, gy);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = slow ? "#7dd3fc" : e.color; // body tròn tím
+      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a2e"; // dải mặt nạ đen
+      ctx.fillRect(-e.r * 0.85, -e.r * 0.35, e.r * 1.7, e.r * 0.55);
+      const look = Math.sin(e.t * 5) * e.r * 0.18; // mắt láo liên
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(-e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2);
+      ctx.arc(e.r * 0.32 + look, -e.r * 0.08, e.r * 0.16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a2e";
+      ctx.beginPath();
+      ctx.arc(-e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2);
+      ctx.arc(e.r * 0.32 + look * 1.4, -e.r * 0.08, e.r * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#1a1a2e"; ctx.lineWidth = 2; ctx.lineCap = "round"; // cười ranh mãnh
+      ctx.beginPath(); ctx.arc(0, e.r * 0.25, e.r * 0.35, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
+      if (flee) { // giọt mồ hôi lo lắng khi chạy trốn
+        const swy = (Math.sin(e.t * 6) + 1) / 2 * 3;
+        ctx.fillStyle = "#7dd3fc";
+        ctx.beginPath(); ctx.arc(e.r * 0.95, -e.r * 0.9 + swy, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(e.r * 0.95, -e.r * 0.9 - 4 + swy);
+        ctx.lineTo(e.r * 0.95 - 4.5, -e.r * 0.9 + 2 + swy);
+        ctx.lineTo(e.r * 0.95 + 4.5, -e.r * 0.9 + 2 + swy);
+        ctx.closePath(); ctx.fill();
       }
     } else {
       // fallback: quái mới chưa có nhánh vẽ riêng vẫn chạy được — hình tròn màu registry

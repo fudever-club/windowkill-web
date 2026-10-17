@@ -5,6 +5,27 @@
    - ACTS: 3 Act (stage) — palette, nhạc, pool quái, boss variant riêng.
    - PICKUP_DEFS: vật phẩm rơi, chia tỉ lệ theo trọng số w.
    ===================================================================== */
+/* RFC nest-removal (2026-10-17): key i18n riêng của quái snatcher ("TRỘM VẶT CHẠY LÀNG").
+ * Đăng ký qua I18N.register() (pattern của stagemech.js/stageobj.js) — KHÔNG thêm key
+ * mới vào js/i18n.js. Đặt TRƯỚC MONSTER_REGISTRY vì entry gọi I18N.t() lúc load. */
+if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") I18N.register({
+  vi: {
+    "monster.snatcher.name": "Trộm Vặt Chạy Làng",
+    "monster.snatcher.desc": "Không đánh bạn — chỉ cướp gem rồi chạy! Chặn đầu đường ra viền, giết là đòi lại hết.",
+    "monster.snatcher.counter": "Đừng đuổi thẳng — chặn đầu đường ra viền; giết khi nó đang ôm gem.",
+    "monster.snatcher.steal": "CƯỚP ĐÂY! 😈",
+    "monster.snatcher.caught": "ĐÒI LẠI ĐƯỢC! 💎",
+    "monster.snatcher.escaped": "MẤT GEM RỒI! 😭",
+  },
+  en: {
+    "monster.snatcher.name": "Sneaky Gem Thief",
+    "monster.snatcher.desc": "It doesn't attack — it just steals gems and runs! Cut off its escape route, kill it to get everything back.",
+    "monster.snatcher.counter": "Don't chase straight — block its path to the edge; kill it while it's carrying gems.",
+    "monster.snatcher.steal": "MINE NOW! 😈",
+    "monster.snatcher.caught": "GOT THEM BACK! 💎",
+    "monster.snatcher.escaped": "GEMS LOST! 😭",
+  },
+});
 const MONSTER_REGISTRY = {
   "chaser": { id: "chaser", name: I18N.t("monster.chaser.name"), behavior: "chase", color: "#ff5470",
     r: 12, dmg: 1, score: 10, xp: 1, minWave: 1, weight: 100, acts: [1, 2, 3],
@@ -76,6 +97,15 @@ const MONSTER_REGISTRY = {
     init: e => { e.rolled = false; },
     onDeath: e => { addFloat(e.x, e.y - 30, I18N.t("vp1.director.cut"), "#f472b6", true); },
     desc: I18N.t("monster.director.desc") },
+  /* RFC nest-removal (2026-10-17): TRỘM VẶT CHẠY LÀNG — kẻ cướp gem, dmg 0, không tấn công.
+   * Debut wave 6, tối đa 1 con/wave (buildSpawnQueue tôn trọng maxPerWave). Behavior ở
+   * BEHAVIORS.snatch: săn gem (ôm tối đa 3) → chạy ra viền; giết → gem văng ra đòi lại hết. */
+  "snatcher": { id: "snatcher", name: I18N.t("monster.snatcher.name"), behavior: "snatch", color: "#f0abfc",
+    r: 12, dmg: 0, score: 10, xp: 3, minWave: 6, weight: 6, maxPerWave: 1, acts: [1, 2, 3],
+    hp: w => 6 + w * 0.6, spd: w => 140 + w * 4,
+    init: e => { e.phase = "hunt"; e.carried = []; e.idleT = 0; e.escaped = false; },
+    onDeath: e => { releaseSnatcherGems(e, true); }, // bất kể nguồn sát thương — không bao giờ nuốt gem
+    desc: I18N.t("monster.snatcher.desc") },
 };const BEHAVIORS = {
   chase: { update(e, dt, s, spd) { // tìm tàu + lượn sóng nhẹ
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
@@ -285,7 +315,69 @@ const MONSTER_REGISTRY = {
     const dx = s.x - e.x, dy = s.y - e.y, d = hypot(dx, dy) || 1;
     e.x += dx / d * spd * dt; e.y += dy / d * spd * dt;
   } },
+  /* RFC nest-removal (2026-10-17): TRỘM VẶT CHẠY LÀNG — state machine hunt/flee.
+   * hunt: lao vào gem gần nhất, chạm → cướp (tối đa 3 viên, giữ nguyên v từng viên);
+   *   đủ 3 hoặc 6s không còn gem → flee. flee: chạy ra viền gần nhất; chạm viền →
+   *   escaped (gem mất, không điểm). dmg 0: va chạm tàu chỉ hất nhẹ ra (loop chung). */
+  snatch: { update(e, dt, s, spd) {
+    if (e.phase === "flee") {
+      const p = nearestEdgePoint(e.x, e.y);
+      const dx = p.x - e.x, dy = p.y - e.y, d = hypot(dx, dy) || 1;
+      const wob = Math.sin(e.t * 7) * 40; // chạy thục mạng, lạng lách cho vui mắt
+      e.x += (dx / d * spd + -dy / d * wob) * dt;
+      e.y += (dy / d * spd + dx / d * wob) * dt;
+      if (d < 14) {
+        e.escaped = true; e.dead = true; // trốn thoát: gem mất, KHÔNG qua killEnemy → không điểm/xp
+        addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.escaped"), "#ff8f8f", true);
+      }
+      return;
+    }
+    // hunt
+    let tgt = null, bd = Infinity;
+    for (const g of G.gems) {
+      const d2 = dist2(e.x, e.y, g.x, g.y);
+      if (d2 < bd) { bd = d2; tgt = g; }
+    }
+    if (!tgt) {
+      e.idleT += dt;
+      if (e.idleT >= 6) e.phase = "flee"; // không còn gem → chạy tay không
+      return;
+    }
+    e.idleT = 0;
+    const dx = tgt.x - e.x, dy = tgt.y - e.y, d = hypot(dx, dy) || 1;
+    const wob = Math.sin(e.t * 6) * 30;
+    e.x += (dx / d * spd + -dy / d * wob) * dt;
+    e.y += (dy / d * spd + dx / d * wob) * dt;
+    if (d < e.r + 10) {
+      // RACE với vacuum/magnet/timeout: luôn indexOf + guard, không cache gem qua frame
+      const idx = G.gems.indexOf(tgt);
+      if (idx >= 0) {
+        G.gems.splice(idx, 1);
+        e.carried.push(tgt.v);
+        try { AudioEngine.sfx.slurp(); } catch (err) {}
+        addFloat(e.x, e.y - 24, I18N.t("monster.snatcher.steal"), "#f0abfc");
+        if (e.carried.length >= 3) e.phase = "flee";
+      }
+    }
+  } },
 };
+/* RFC nest-removal: trả lại gem snatcher đang ôm về G.gems tại vị trí chết.
+ * Dùng chung cho onDeath (killEnemy — mọi nguồn sát thương) VÀ trường hợp bị hố đen
+ * M9 nuốt trực tiếp (set e.dead = true, không qua killEnemy). withFx: float + boing. */
+function releaseSnatcherGems(e, withFx) {
+  const bag = e.carried || [];
+  if (!bag.length) return false;
+  e.carried = [];
+  for (const v of bag) {
+    const a = Math.random() * Math.PI * 2;
+    G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, v, t: rand(0, 9) });
+  }
+  if (withFx) {
+    addFloat(e.x, e.y - 30, I18N.t("monster.snatcher.caught"), "#7df9ff", true);
+    try { AudioEngine.sfx.boing(); } catch (err) {}
+  }
+  return true;
+}
 const ACTS = [
   { id: 1, name: "NEON GRID", waves: [1, 10], hpMul: 1.0, spMul: 1.0, bgStage: 1,
     palette: { bg0: "#0b1e3a", bg1: "#04080f", grid: "#ffffff08", edge: "rgba(255,110,196,0.28)" },

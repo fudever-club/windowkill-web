@@ -145,5 +145,11 @@ function buildSpawnQueue(n) {
     for (const d of pool) { r -= wOf(d); if (r <= 0) { type = d.id; break; } }
     q.push(type);
   }
+  // RFC nest-removal: quái có maxPerWave (vd snatcher = 1) → cắt bớt bản sao thừa
+  const _cap = {};
+  for (let i = q.length - 1; i >= 0; i--) {
+    const def = MONSTER_REGISTRY[q[i]], cap = def && def.maxPerWave;
+    if (cap) { _cap[q[i]] = (_cap[q[i]] || 0) + 1; if (_cap[q[i]] > cap) q.splice(i, 1); }
+  }
   return q;
 }

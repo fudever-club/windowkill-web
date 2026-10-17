@@ -194,6 +194,16 @@ var MONSTER_REGISTRY = {
     hpAt: hp1(w => 12 + w * 1.0), speedAt: sp1(() => 55),
     weaknessVi: "Chậm chạp (tốc 55), không tấn công. Modifier giữ nguyên dù bị giết.",
     counterVi: "Tập trung bắn hạ lấy 10 gem + 100 điểm thưởng." },
+
+  /* ---- Variety Pack 2 (RFC nest-removal §3.2) — 1 quái mới: TRỘM VẶT CHẠY LÀNG ---- */
+  snatcher: { id: "snatcher", nameVi: "Trộm Vặt Chạy Làng", role: "cướp gem",
+    color: "#f0abfc", shape: "tên trộm túi vải + mặt nạ", r: 12, dmg: 0, xp: 3,
+    gems: 40, behavior: "snatch",
+    debutWave: 6, maxPerWave: 1,
+    debutHintVi: "Nó chỉ cướp gem rồi chạy — chặn đầu hướng viền, giết là đòi lại hết!",
+    hpAt: hp1(w => 6 + w * 0.6), speedAt: sp1(w => 140 + w * 4),
+    weaknessVi: "Máu 6; không tấn công — nhưng nhanh. Đạn băng làm chậm 50%.",
+    counterVi: "Đừng đuổi thẳng — chặn đầu đường ra viền; giết khi nó đang ôm gem." },
 };
 
 /* entry phụ: trứng của broodmother (entity riêng trong G.enemies) */
@@ -1188,6 +1198,96 @@ var BEHAVIORS = {
       ctx.restore(); ctx.globalAlpha = 1;
     }
   },
+
+  /* ---------- snatch: SNATCHER "Trộm Vặt Chạy Làng" (RFC nest-removal §3.2) ----------
+     State machine hunt/flee. hunt: lao vào gem gần nhất → chạm (dist < m.r + 10)
+     thì cướp (ôm tối đa 3 viên, giữ nguyên v). flee: đủ 3 viên HOẶC idle 6s không
+     còn gem → chạy thục mạng ra viền gần nhất; ed < 14 → escaped (gem mất,
+     không điểm/xp). Giết khi đang ôm gem → snatcherOnDeath (coordinator gọi
+     trong killEnemy) scatter gem về G.gems. */
+  snatch: {
+    init(m, wave) { m.phase = "hunt"; m.carried = []; m.idleT = 0; m.escaped = false; },
+    update(m, dt, G) {
+      const spd = effSpeed(m, G);
+      const b = boundsOf();
+      if (m.phase === "flee") { // chạy thục mạng ra viền gần nhất
+        const p = edgePoint(m.x, m.y, b);
+        const dx = p.x - m.x, dy = p.y - m.y, d = hyp(dx, dy) || 1;
+        const wob = Math.sin(m.t * 7) * 40; // lạng lách cho vui mắt
+        m.x += (dx / d * spd + -dy / d * wob) * dt;
+        m.y += (dy / d * spd + dx / d * wob) * dt;
+        const ed = Math.min(m.x - b.x, b.x + b.w - m.x, m.y - b.y, b.y + b.h - m.y);
+        if (ed < 14 && !m.escaped) {
+          m.escaped = true; m.dead = true; // trốn thoát: gem mất, không điểm/xp
+          float(m.x, m.y - 24, t("monster.snatcher.escaped"), "#ff8f8f", true);
+          puff(m.x, m.y, 10, ["#f0abfc", "#ffffff"], 140);
+        }
+        return;
+      }
+      // hunt: tìm gem gần nhất trong G.gems
+      const gems = (G && G.gems) || [];
+      let tgt = null, bd = Infinity;
+      for (const g of gems) {
+        const d2 = (g.x - m.x) * (g.x - m.x) + (g.y - m.y) * (g.y - m.y);
+        if (d2 < bd) { bd = d2; tgt = g; }
+      }
+      if (!tgt) {
+        m.idleT += dt;
+        if (m.idleT >= 6) m.phase = "flee"; // không còn gem → chạy tay không
+        return;
+      }
+      m.idleT = 0;
+      const dx = tgt.x - m.x, dy = tgt.y - m.y, d = hyp(dx, dy) || 1;
+      const wob = Math.sin(m.t * 6) * 30;
+      m.x += (dx / d * spd + -dy / d * wob) * dt;
+      m.y += (dy / d * spd + dx / d * wob) * dt;
+      if (d < m.r + 10) { // cướp — race với hệ khác: luôn indexOf + guard
+        const idx = gems.indexOf(tgt);
+        if (idx >= 0) {
+          gems.splice(idx, 1);
+          m.carried.push(tgt.v == null ? 1 : tgt.v); // giữ nguyên mệnh giá từng viên
+          sfx("slurp");
+          float(m.x, m.y - 24, t("monster.snatcher.steal"), "#f0abfc");
+          if (m.carried.length >= 3) m.phase = "flee";
+        }
+      }
+    },
+    draw(m, ctx) {
+      ctx.save(); ctx.translate(m.x, m.y);
+      if (m.flash > 0) ctx.globalAlpha = 0.45;
+      const fleeing = m.phase === "flee";
+      // túi vải sau lưng: hiện gem đã cướp (hình thoi nhỏ, tối đa 3)
+      const bag = m.carried || [];
+      if (bag.length) {
+        ctx.fillStyle = "#a16207";
+        ctx.beginPath(); ctx.arc(-m.r - 5, 5, 8, 0, TAU); ctx.fill();
+        for (let i = 0; i < bag.length; i++) {
+          ctx.fillStyle = "#7df9ff";
+          const gx = -m.r - 8 + i * 6, gy = 2;
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - 4); ctx.lineTo(gx + 3, gy);
+          ctx.lineTo(gx, gy + 4); ctx.lineTo(gx - 3, gy);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // body tròn tím
+      ctx.fillStyle = m.slowT > 0 ? "#7dd3fc" : m.color;
+      ctx.beginPath(); ctx.arc(0, 0, m.r, 0, TAU); ctx.fill();
+      // dải mặt nạ đen + mắt láo liên
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(-m.r * 0.7, -5, m.r * 1.4, 9);
+      const look = Math.sin(m.t * 9) * 3;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-4 + look, -1, 3, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(4 + look, -1, 3, 0, TAU); ctx.fill();
+      // flee → giọt mồ hôi xanh (cartoon)
+      if (fleeing) {
+        ctx.fillStyle = "#7dd3fc";
+        ctx.beginPath(); ctx.arc(m.r * 0.65, -m.r * 0.65, 3.2, 0, TAU); ctx.fill();
+      }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+  },
 };
 
 /* =====================================================================
@@ -1485,6 +1585,23 @@ function boosterOnDeath(e) {
   float(e.x, e.y - 24, Monsters.t("booster.dead"), "#22c55e", true);
   sfx("boom");
 }
+/* snatcher chết khi đang ôm gem (bất kể nguồn sát thương — đạn, ebullet, say-nắng
+ * M7) → scatter toàn bộ m.carried về G.gems tại (e.x, e.y), vận tốc ngẫu nhiên,
+ * giữ nguyên v từng viên. Coordinator gọi trong killEnemy (pattern bomberOnDeath). */
+function snatcherOnDeath(e, G) {
+  G = G || lastG || {};
+  const bag = e.carried || [];
+  if (!bag.length) return false;
+  e.carried = [];
+  if (!G.gems) G.gems = [];
+  for (const v of bag) {
+    const a = Math.random() * TAU;
+    G.gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, v, t: rand(0, 9) });
+  }
+  float(e.x, e.y - 30, t("monster.snatcher.caught"), "#7df9ff", true);
+  sfx("boing");
+  return true;
+}
 /* vẽ viền sáng cho quái được buff (coordinator gọi sau drawOneEnemy) */
 function drawBuffed(m, ctx) {
   if (!m.buffed || m.dead) return;
@@ -1599,6 +1716,7 @@ var SPAWN_SUGGEST = [
   { type: "warden", minWave: 4, weight: 6 },
   { type: "phantom", minWave: 5, weight: 8 },
   { type: "broodmother", minWave: 5, weight: 5, maxPerWave: 1 },
+  { type: "snatcher", minWave: 6, weight: 6, maxPerWave: 1 },
 ];
 function spawnWeights(wave) {
   return SPAWN_SUGGEST.filter(s => wave >= s.minWave)
@@ -1653,6 +1771,11 @@ var STRINGS = {
     "monster.otworker.name": "Nhân Viên OT", "monster.otworker.counter": "Giết nhanh; đạn băng reset stack Cáu.",
     "monster.meeting.name": "Kẻ Họp Hành", "monster.meeting.counter": "Đứng ngoài vòng họp; đạn nổ dọn cụm.",
     "monster.egg.name": "Trứng Lỗi", "monster.egg.counter": "Bắn ngay — 1 hit vỡ.",
+    "monster.snatcher.name": "Trộm Vặt Chạy Làng",
+    "monster.snatcher.counter": "Đừng đuổi thẳng — chặn đầu đường ra viền; giết khi nó đang ôm gem.",
+    "monster.snatcher.steal": "CƯỚP ĐÂY! 😈",
+    "monster.snatcher.caught": "ĐÒI LẠI ĐƯỢC! 💎",
+    "monster.snatcher.escaped": "MẤT GEM RỒI! 😭",
     "edge.crackWarn": "⚠ Viền nứt!",
     "edge.slashWarn": "⚠ Bóng ma rạch viền!",
     "edge.freezeWarn": "❄ Sắp đóng băng!",
@@ -1685,6 +1808,11 @@ var STRINGS = {
     "monster.otworker.name": "OT Worker", "monster.otworker.counter": "Kill fast; ice resets Anger stacks.",
     "monster.meeting.name": "Meeting Goblin", "monster.meeting.counter": "Stay out of the zone; explosives clear the pack.",
     "monster.egg.name": "Bug Egg", "monster.egg.counter": "Shoot it now — 1 hit pops.",
+    "monster.snatcher.name": "Sneaky Gem Thief",
+    "monster.snatcher.counter": "Don't chase straight — block its path to the edge; kill it while it's carrying gems.",
+    "monster.snatcher.steal": "MINE NOW! 😈",
+    "monster.snatcher.caught": "GOT THEM BACK! 💎",
+    "monster.snatcher.escaped": "GEMS LOST! 😭",
     "edge.crackWarn": "⚠ Edge cracked!",
     "edge.slashWarn": "⚠ Phantom slashing the edge!",
     "edge.freezeWarn": "❄ About to freeze!",
@@ -1779,6 +1907,7 @@ var Monsters = {
   crackEdge, chewAmount, canKnock, knockChew, freezeEdge, addWindowGap,
   tickEdges, tickSlow, tickShipPull, clearEdges, shrinkHook, drawEdgeFx, drawBuffed,
   onHit, edgeBulletHit, detonate, bomberOnDeath, tankOnDeath, splitOnDeath, boosterOnDeath,
+  snatcherOnDeath,
   applyShipSlow, shipSpeedMul, shipPullVec,
   debutInfo, checkDebut,
   makeMiniBoss, miniBossStats, spawnWeights,

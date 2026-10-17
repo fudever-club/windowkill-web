@@ -151,7 +151,7 @@ function resetGame() {
     banner: "", bannerT: 0, bannerSub: "",
     xp: 0, level: 1, xpNeed: 6, shake: 0, combo: 0, comboT: 0, slowmo: 1,
     lastStand: false, // "Cửa Sổ Cuối Cùng": reset khi chơi lại
-    bombWave: 0, giantWave: 0, motherWave: 0,
+    giantWave: 0,
     _desktopToastShown: false, // CTA web→desktop: toast wave 10 hiện 1 lần/run
     loveWave: 0, mirrorWave: 0, vacWave: 0, // M7/M10/M9: reset guard 1-lần/wave khi chơi lại
          globalHaste: 1, hasteT: 0, slowZones: [], // SEASON 1: reset chuông + vùng họp khi chơi lại
@@ -174,7 +174,7 @@ function resetGame() {
   G.upgTaken = {}; // D-03: đếm distinct upgrade theo run
   G.ship = newShip();
   // AUDIT 2026-10-02: resetGame() trước đây không dọn vệ tinh/boss module/Juice2 —
-  // restart từ pause hoặc sau game-over để sót bomb/mother/nest và boss ma của run cũ
+  // restart từ pause hoặc sau game-over để sót vệ tinh và boss ma của run cũ
   // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}

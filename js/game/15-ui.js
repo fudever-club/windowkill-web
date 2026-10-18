@@ -205,6 +205,9 @@ function resetGame() {
   // chạy tiếp sang run mới; cracks + windowDamagePx cũng cộng dồn qua các run.
   try { SatManager.closeAll(); } catch (e) {}
   try { if (window.Bosses) Bosses.stop(); } catch (e) {}
+  // RFC full-audit-round2 P0-1/P0-2: retry ("Chơi lại"/R) phải dựng lại state
+  // mode — V2.boot() chỉ chạy lúc tải trang. Không mode → no-op (boot thường).
+  try { if (window.Modes && typeof Modes.restartRun === "function") Modes.restartRun(); } catch (e) {}
   try { if (window.Juice2) Juice2.reset(); } catch (e) {}
   // FIX 2026-10-03 (gray-veil #2): boss spawn gọi BG.setDim(0.45), chỉ killBoss()
   // mới setDim(0). Chết giữa boss → dim kẹt 0.45 sang run mới → màn tối/xám đều.

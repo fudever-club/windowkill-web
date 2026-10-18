@@ -166,7 +166,6 @@
       "draft.cine_title": "LEVEL UP",
       "draft.pick_one": "Chọn 1 nâng cấp",
       "draft.hint": "Phím 1 / 2 / 3 để chọn nhanh",
-      "draft.hint_mobile": "Tap to pick", // MOBILE 2026-10-03
       "draft.hint_mobile": "Chạm để chọn", // MOBILE 2026-10-03
       "draft.aria": "Nâng cấp: {name}",
       "draft.fallback_name": "Nâng cấp {n}",
@@ -347,6 +346,7 @@
       "draft.cine_title": "LEVEL UP",
       "draft.pick_one": "Pick 1 upgrade",
       "draft.hint": "Press 1 / 2 / 3 for quick pick",
+      "draft.hint_mobile": "Tap to pick", // MOBILE 2026-10-03 (RFC full-audit-round2 P1-1)
       "draft.aria": "Upgrade: {name}",
       "draft.fallback_name": "Upgrade {n}",
       "draft.patch_title": "PATCH THE WINDOW",

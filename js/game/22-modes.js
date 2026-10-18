@@ -19,6 +19,12 @@ if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") 
     "mode.br.victory_title": "THẮNG BOSS RUSH! 🏆",
     "mode.br.best_line": "Kỷ lục: {t}s",
     "mode.br.progress": "SẾP {n}/5",
+    /* RFC full-audit-round2 P1-2: end screen 2 mode hết hardcode tiếng Việt */
+    "mode.ta.line_score": "Điểm: {score}",
+    "mode.ta.line_wave": "Wave {n}",
+    "mode.ta.line_kills": "Hạ: {n}",
+    "mode.br.line_time": "Thời gian: {t}s",
+    "mode.br.line_score": "Điểm: {score}",
   },
   en: {
     "mode.ta.name": "Deadline Rush",
@@ -33,6 +39,12 @@ if (typeof I18N !== "undefined" && I18N && typeof I18N.register === "function") 
     "mode.br.victory_title": "BOSS RUSH CLEARED! 🏆",
     "mode.br.best_line": "Best: {t}s",
     "mode.br.progress": "BOSS {n}/5",
+    /* RFC full-audit-round2 P1-2 */
+    "mode.ta.line_score": "Score: {score}",
+    "mode.ta.line_wave": "Wave {n}",
+    "mode.ta.line_kills": "Kills: {n}",
+    "mode.br.line_time": "Time: {t}s",
+    "mode.br.line_score": "Score: {score}",
   },
 });
 
@@ -78,6 +90,19 @@ window.Modes = {
     return false;
   },
 
+  /* ---- restartRun(): "Chơi lại" (R / btn-again / btn-restart) dựng lại state
+     mode — RFC full-audit-round2 P0-1/P0-2. V2.boot() chỉ chạy 1 lần lúc tải
+     trang nên resetGame() (15-ui.js) phải gọi hàm này; nếu không TA mất
+     countdown (ta.done còn sót) còn Boss Rush kẹt arena trống (blocksWaves
+     mà không có boss). Boot thường (V2.mode=null) → false, không đụng gì. ---- */
+  restartRun: function () {
+    var V2o = this._V2();
+    if (!V2o || !V2o.mode) return false;
+    this.init(V2o.mode);
+    if (V2o.mode === "bossrush") this.startBossRush();
+    return true;
+  },
+
   /* ---- init(mode): gọi trong V2.boot() ---- */
   init: function (mode) {
     var V2o = this._V2();
@@ -85,6 +110,13 @@ window.Modes = {
     if (mode === "timeattack") {
       V2o.mode = "timeattack";
       V2o.ta = { total: 180, left: 180, done: false };
+      /* RFC full-audit-round2 P2-1: banner mở màn (đối xứng Boss Rush) */
+      try {
+        var _taMsg = this._t("mode.ta.name", "Chạy Deadline");
+        var _taSub = this._t("mode.ta.desc", "");
+        if (typeof banner === "function") banner(_taMsg, _taSub);
+        else if (typeof addFloat === "function") addFloat(400, 300, _taMsg, "#9df3ff", true);
+      } catch (eB) {}
     } else if (mode === "bossrush") {
       V2o.mode = "bossrush";
       V2o.br = { idx: 0, order: [1, 2, 3, 4, 5], restT: 0, won: false, t0: Date.now() };
@@ -137,7 +169,11 @@ window.Modes = {
       if (typeof showEndScreen === "function") showEndScreen({
         kind: "timeup",
         title: this._t("mode.ta.timeup_title", "HẾT GIỜ! ⏱"),
-        lines: ["Điểm: " + rec.score, "Wave: " + rec.wave, "Hạ: " + rec.kills],
+        lines: [
+          this._t("mode.ta.line_score", "Điểm: {score}").replace("{score}", "" + rec.score),
+          this._t("mode.ta.line_wave", "Wave {n}").replace("{n}", "" + rec.wave),
+          this._t("mode.ta.line_kills", "Hạ: {n}").replace("{n}", "" + rec.kills),
+        ],
         recordLine: isRecord ? this._t("mode.ta.new_record", "KỶ LỤC MỚI! 🏆") : "",
       });
     } catch (e4) {}
@@ -275,7 +311,10 @@ window.Modes = {
       if (typeof showEndScreen === "function") showEndScreen({
         kind: "victory",
         title: this._t("mode.br.victory_title", "THẮNG BOSS RUSH! 🏆"),
-        lines: ["Thời gian: " + timeSec + "s", "Điểm: " + rec.score],
+        lines: [
+          this._t("mode.br.line_time", "Thời gian: {t}s").replace("{t}", "" + timeSec),
+          this._t("mode.br.line_score", "Điểm: {score}").replace("{score}", "" + rec.score),
+        ],
         recordLine: isRecord ? this._t("mode.ta.new_record", "KỶ LỤC MỚI! 🏆") : "",
       });
     } catch (e4) {}

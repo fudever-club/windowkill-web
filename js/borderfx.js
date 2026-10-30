@@ -46,30 +46,7 @@ function drawBite(x, rnd, edge, bx, by) {
   x.fill();
   x.strokeStyle = "#a855f7"; x.lineWidth = 2; x.lineJoin = "round";
   x.stroke();
-  // (2) vết nứt: 2–3 polyline jagged tỏa vào trong, dài 24–48px
-  x.strokeStyle = "rgba(255,157,243,0.85)"; // #ff9df3
-  x.lineWidth = 2; x.lineCap = "round";
-  var nCrack = 2 + Math.floor(rnd() * 2);
-  for (var c = 0; c < nCrack; c++) {
-    var sx = (rnd() - 0.5) * r, sy = r * 0.5;
-    var len = 24 + rnd() * 24;
-    var ang = Math.PI / 2 + (rnd() - 0.5) * 1.2;
-    x.beginPath(); x.moveTo(sx, sy);
-    var qx = sx, qy = sy, qs = 3;
-    for (var s = 0; s < qs; s++) {
-      var a2 = ang + (rnd() - 0.5) * 0.9;
-      qx += Math.cos(a2) * (len / qs); qy += Math.sin(a2) * (len / qs);
-      x.lineTo(qx, qy);
-    }
-    x.stroke();
-  }
-  // (3) vụn kính: 3 chấm tròn #c084fc
-  x.fillStyle = "#c084fc";
-  for (var d = 0; d < 3; d++) {
-    x.beginPath();
-    x.arc((rnd() - 0.5) * 2.4 * r, rnd() * 2 * r, 1.5 + rnd(), 0, Math.PI * 2);
-    x.fill();
-  }
+  // Đã bỏ tính năng vết nứt và vụn kính
   x.restore();
 }
 

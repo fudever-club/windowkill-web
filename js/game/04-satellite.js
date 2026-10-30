@@ -356,7 +356,8 @@ const SatManager = (() => {
 
   function drawSimContent(s) {
     const cx = s.x + s.sw / 2, cy = s.y + 26 + (s.sh - 26) / 2, t = performance.now();
-    if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá
+    if (s.role === "debris") { // M4: mảnh vỡ nứt, nhắc bấm để phá — đã bỏ vẽ
+      return;
       ctx.fillStyle = "#140a0a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const wob = Math.sin(t / 180) * 0.12;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);

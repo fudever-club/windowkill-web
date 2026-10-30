@@ -470,16 +470,8 @@ function _startCine(kind, cx, cy) {
       _cine.shards.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
         rot: rand(0, 6.28), vr: rand(-9, 9), sz: rand(6, 16), c: ["#0080FF", "#ffffff", "#8fc3ff"][i % 3] });
     }
-  } else { // window: 12 đường nứt từ tâm + mảnh kính rơi
-    for (i = 0; i < 12; i++) {
-      a = (i / 12) * Math.PI * 2 + rand(-0.12, 0.12);
-      _cine.cracks.push({ a: a, segs: _makeCrackSegs(a), len: rand(0.55, 1) });
-    }
-    for (i = 0; i < 26; i++) {
-      _cine.shards.push({ x: cx + rand(-160, 160), y: cy + rand(-120, 120),
-        vx: rand(-40, 40), vy: rand(60, 220), rot: rand(0, 6.28), vr: rand(-6, 6),
-        sz: rand(4, 12), c: "rgba(180,220,255,0.85)", glass: true });
-    }
+  } else { // window: đã bỏ đường nứt và mảnh kính rơi
+    // _cine.cracks and _cine.shards disabled
   }
 }
 function _makeCrackSegs(a) {

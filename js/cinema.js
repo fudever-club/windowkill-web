@@ -541,7 +541,7 @@ function showDraft(upgrades, onPick, opts) {
 
   var ov = _draftEl("div", "cin-draft-overlay");
   var panel = _draftEl("div", "cin-draft-panel", ov);
-  var isPatch = (opts.theme || "patch") === "patch"; // H1/B3: reframe "VÁ CỬA SỔ" (mặc định cho mọi draft level-up)
+  var isPatch = false; // Đã bỏ tính năng mảnh kính vá (trả về giao diện nâng cấp gốc)
   var title = _draftEl("div", "cin-draft-title", panel);
   title.textContent = I18N.t(isPatch ? "draft.patch_title" : "draft.cine_title");
   var sub = _draftEl("div", "cin-draft-sub", panel);

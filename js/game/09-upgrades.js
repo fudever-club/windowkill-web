@@ -70,7 +70,7 @@ function openDraft() {
           addFloat(G.ship.x, G.ship.y - 32, u.t, "#9df3ff", true);
         }
         G.phase = "play"; lastT = performance.now();
-      }, { x: G.ship.x, y: G.ship.y, theme: "patch" }); // H1/B4: reframe "VÁ CỬA SỔ"
+      }, { x: G.ship.x, y: G.ship.y, theme: "upgrade" }); // Đã bỏ theme "patch" (mảnh kính vá)
       ok = true;
     } catch (err) {}
     if (ok) return;

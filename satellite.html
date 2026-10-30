@@ -130,6 +130,7 @@ function drawShield(t) {
   ctx.fillText("◈", cx, cy + 1);
 }
 function drawDebris(t) {
+  return; // Đã bỏ hiệu ứng mảnh vỡ / mảnh kính
   const cx = canvas.width / 2, cy = canvas.height / 2;
   ctx.fillStyle = "#101018"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   // telegraph đỏ 0.7s đầu: cảnh báo trước khi bay (M4)

@@ -4024,18 +4024,12 @@ const SpatialGrid = {
     }
     if (!dead && mirrorReflect(bl)) dead = true; // M10: gương thần phản chiếu đạn
     if (!dead) {
+      let hitEnemy = null;
       if (useSpatial) {
         SpatialGrid.queryNear(bl.x, bl.y, bl.r + 35, e => {
           if (e.dead) return false;
           if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
-            damageEnemy(e, bl.dmg, bl);
-            if (window.Upgrades2 && (s.explosive || s.chain)) {
-              try {
-                if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
-                if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
-              } catch (er) {}
-            }
-            if (bl.pierce > 0) bl.pierce--; else dead = true;
+            hitEnemy = e;
             return true;
           }
           return false;
@@ -4044,18 +4038,21 @@ const SpatialGrid = {
         for (const e of G.enemies) {
           if (e.dead) continue;
           if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
-            damageEnemy(e, bl.dmg, bl);
-            /* M22: Đạn Nổ + Đạn Xích — hook tại call-site va chạm đạn (chống đệ quy, §5.3.2) */
-            if (window.Upgrades2 && (s.explosive || s.chain)) {
-              try {
-                if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
-                if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
-              } catch (er) {}
-            }
-            if (bl.pierce > 0) bl.pierce--; else dead = true;
+            hitEnemy = e;
             break;
           }
         }
+      }
+      if (hitEnemy) {
+        damageEnemy(hitEnemy, bl.dmg, bl);
+        /* M22: Đạn Nổ + Đạn Xích — hook tại call-site va chạm đạn (chống đệ quy, §5.3.2) */
+        if (window.Upgrades2 && (s.explosive || s.chain)) {
+          try {
+            if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, hitEnemy, G.enemies, u2DealDamage, s);
+            if (s.chain) Upgrades2.chainFrom(hitEnemy, G.enemies, bl.dmg, u2DealDamage, s);
+          } catch (er) {}
+        }
+        if (bl.pierce > 0) bl.pierce--; else dead = true;
       }
       // v2.0: boss module — đạn đi qua Bosses.hit (áp điểm yếu), skip boss cũ
       if (!dead && window.V2) { try { if (V2.hitBoss(bl)) { if (bl.pierce > 0) bl.pierce--; else dead = true; } } catch (er) {} }

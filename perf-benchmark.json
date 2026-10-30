@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-10-30T17:51:32.447Z",
+  "baseline": {
+    "totalFrames": 1500,
+    "avgFps": 43.8,
+    "p50Fps": 46.2,
+    "p95Fps": 28.4,
+    "p99Fps": 19.5,
+    "minFps": 17.5,
+    "jankFrames": 86
+  },
+  "optimized": {
+    "totalFrames": 1500,
+    "avgFps": 59.8,
+    "p50Fps": 60,
+    "p95Fps": 58.1,
+    "p99Fps": 57.9,
+    "minFps": 41.7,
+    "jankFrames": 0
+  },
+  "table": "| Chỉ số Hiệu năng | Baseline Ban Đầu | Đã Tối Ưu | Chênh lệch (Delta) |\n| :--- | :--- | :--- | :--- |\n| **FPS Trung bình (Avg)** | 43.8 FPS | **59.8 FPS** | `+16.0 FPS` |\n| **Median FPS (p50)** | 46.2 FPS | **60 FPS** | `13.8 FPS` |\n| **p95 Khung hình yếu** | 28.4 FPS | **58.1 FPS** | `+29.7 FPS` |\n| **p99 / FPS Tối thiểu (Min)** | 17.5 FPS | **41.7 FPS** | `+24.2 FPS` |\n| **Số frame bị khựng (Jank >33ms)** | 86 frames | **0 frames** | `-86 frames` |"
+}

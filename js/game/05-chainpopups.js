@@ -92,6 +92,7 @@ function damageShield(e) {
  * - Fallback: bay trong arena từ viền vào tâm tàu; chạm tàu = 1 dmg;
  *   chạm viền arena = nứt viền (+ thu nhỏ arena nếu đang ở chế độ ảo). */
 function spawnDebris() {
+  return; // Đã bỏ tính năng mưa mảnh vỡ / mảnh kính xuất hiện
   if (SAT_MODE === "off" || SatManager.anyRole("debris")) return;
   const n = 2 + (Math.random() < 0.5 ? 1 : 0);
   setBanner(I18N.t("sat.debris_spawn"), "");
@@ -183,6 +184,7 @@ function updateCracks(dt) {
   for (let i = G.cracks.length - 1; i >= 0; i--) { G.cracks[i].t -= dt; if (G.cracks[i].t <= 0) G.cracks.splice(i, 1); }
 }
 function drawCracks() {
+  return; // Đã bỏ vẽ vết rạn kính / mảnh kính viền
   for (const c of G.cracks) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, c.t);

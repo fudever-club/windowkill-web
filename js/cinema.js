@@ -434,6 +434,7 @@ function _draftEl(tag, cls, parent) {
  * 10 sparkle lấp lánh. Timeline 1.8s rồi dừng rAF. reduced-motion: không burst. */
 var _shatterRAF = 0;
 function shatterBurst(x, y) {
+  return; // Đã bỏ hiệu ứng mảnh kính vỡ
   var cv = document.getElementById("fx-shatter");
   if (!cv || !cv.getContext) return;
   var rm = false;

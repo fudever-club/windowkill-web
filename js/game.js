@@ -1202,6 +1202,7 @@ function damageShield(e) {
  * - Fallback: bay trong arena từ viền vào tâm tàu; chạm tàu = 1 dmg;
  *   chạm viền arena = nứt viền (+ thu nhỏ arena nếu đang ở chế độ ảo). */
 function spawnDebris() {
+  return; // Đã bỏ tính năng mưa mảnh vỡ / mảnh kính xuất hiện
   if (SAT_MODE === "off" || SatManager.anyRole("debris")) return;
   const n = 2 + (Math.random() < 0.5 ? 1 : 0);
   setBanner(I18N.t("sat.debris_spawn"), "");
@@ -1293,6 +1294,7 @@ function updateCracks(dt) {
   for (let i = G.cracks.length - 1; i >= 0; i--) { G.cracks[i].t -= dt; if (G.cracks[i].t <= 0) G.cracks.splice(i, 1); }
 }
 function drawCracks() {
+  return; // Đã bỏ vẽ vết rạn kính / mảnh kính viền
   for (const c of G.cracks) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, c.t);
@@ -3527,10 +3529,10 @@ function die(reason) {
   if (window.V2) { try { V2.onGameOver(reason); } catch (er) {} }
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
   try { AudioEngine.sfx.stinger("gameOver"); } catch (e) {} // stinger womp-womp hài — thay sfx.over() procedural buồn
-  // H1/B4: cửa sổ vỡ → shatter vui nhộn (mảnh kính bay tại vị trí tàu)
-  if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
+  // H1/B4: cửa sổ vỡ → đã bỏ hiệu ứng mảnh kính vỡ
+  /* if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
     try { Cinema.shatterBurst(G.ship ? G.ship.x : undefined, G.ship ? G.ship.y : undefined); } catch (e) {}
-  }
+  } */
   try { AudioEngine.setMusicState("GAMEOVER"); } catch (e) {} // WOW: downlifter + pad
   AudioEngine.stopMusic();
   const reasonTxt = reason === "window" ? I18N.t("gameover.title_window") : I18N.t("gameover.title_ship");
@@ -4228,8 +4230,8 @@ const SpatialGrid = {
       // điều kiện, rồi nhánh else lại shrink lần nữa → slam không-debris gây sát thương
       // cửa sổ gấp đôi thiết kế. Chỉ shrink trong nhánh else; nhánh debris thay bằng mưa mảnh vỡ.
       if (G.phase !== "play") return;
-      // M4: 50% đòn nện → mưa mảnh vỡ (chỉ khi multi-window bật)
-      const useDebris = typeof spawnDebris === "function" && typeof SAT_MODE !== "undefined" && SAT_MODE !== "off" && !SatManager.anyRole("debris") && Math.random() < 0.5;
+      // M4: đòn nện boss — đã bỏ tính năng mảnh kính / mưa mảnh vỡ
+      const useDebris = false;
       if (useDebris) spawnDebris();
       else {
         addFloat(bs.x, bs.y - 70, I18N.t("combat.slam"), "#ff5470", true);
@@ -5115,8 +5117,8 @@ function render(now) {
     if (!fDone) ctx.fillText(f.text, f.x, fy);
   });
   ctx.globalAlpha = 1;
-  // M2 rework 2026-10-04: vẽ vết rạn kính trên viền arena (mờ dần theo c.t/c.life)
-  if (G.cracks && G.cracks.length) {
+  // M2 rework 2026-10-04: vẽ vết rạn kính trên viền arena (mờ dần theo c.t/c.life) — đã bỏ vẽ mảnh kính / vết rạn
+  if (false && G.cracks && G.cracks.length) {
     const b = bounds();
     for (const c of G.cracks) {
       const a = Math.max(0, 1 - c.t / c.life);

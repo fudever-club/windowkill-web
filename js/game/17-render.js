@@ -783,8 +783,8 @@ function render(now) {
     if (!fDone) ctx.fillText(f.text, f.x, fy);
   });
   ctx.globalAlpha = 1;
-  // M2 rework 2026-10-04: vẽ vết rạn kính trên viền arena (mờ dần theo c.t/c.life)
-  if (G.cracks && G.cracks.length) {
+  // M2 rework 2026-10-04: vẽ vết rạn kính trên viền arena (mờ dần theo c.t/c.life) — đã bỏ vẽ mảnh kính / vết rạn
+  if (false && G.cracks && G.cracks.length) {
     const b = bounds();
     for (const c of G.cracks) {
       const a = Math.max(0, 1 - c.t / c.life);

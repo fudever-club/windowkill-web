@@ -129,10 +129,10 @@ function die(reason) {
   if (window.V2) { try { V2.onGameOver(reason); } catch (er) {} }
   SatManager.closeAll(); // dọn popup vệ tinh, không để tiến trình mồ côi
   try { AudioEngine.sfx.stinger("gameOver"); } catch (e) {} // stinger womp-womp hài — thay sfx.over() procedural buồn
-  // H1/B4: cửa sổ vỡ → shatter vui nhộn (mảnh kính bay tại vị trí tàu)
-  if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
+  // H1/B4: cửa sổ vỡ → đã bỏ hiệu ứng mảnh kính vỡ
+  /* if (reason === "window" && window.Cinema && typeof Cinema.shatterBurst === "function") {
     try { Cinema.shatterBurst(G.ship ? G.ship.x : undefined, G.ship ? G.ship.y : undefined); } catch (e) {}
-  }
+  } */
   try { AudioEngine.setMusicState("GAMEOVER"); } catch (e) {} // WOW: downlifter + pad
   AudioEngine.stopMusic();
   const reasonTxt = reason === "window" ? I18N.t("gameover.title_window") : I18N.t("gameover.title_ship");

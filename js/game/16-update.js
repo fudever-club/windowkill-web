@@ -548,8 +548,8 @@ const SpatialGrid = {
       // điều kiện, rồi nhánh else lại shrink lần nữa → slam không-debris gây sát thương
       // cửa sổ gấp đôi thiết kế. Chỉ shrink trong nhánh else; nhánh debris thay bằng mưa mảnh vỡ.
       if (G.phase !== "play") return;
-      // M4: 50% đòn nện → mưa mảnh vỡ (chỉ khi multi-window bật)
-      const useDebris = typeof spawnDebris === "function" && typeof SAT_MODE !== "undefined" && SAT_MODE !== "off" && !SatManager.anyRole("debris") && Math.random() < 0.5;
+      // M4: đòn nện boss — đã bỏ tính năng mảnh kính / mưa mảnh vỡ
+      const useDebris = false;
       if (useDebris) spawnDebris();
       else {
         addFloat(bs.x, bs.y - 70, I18N.t("combat.slam"), "#ff5470", true);

@@ -26,11 +26,25 @@
     return b > 0 ? b : -1; // alpha < 1/16 làm tròn về 0 → vô hình, bỏ
   }
 
+  // PERF: Tái sử dụng bảng màu và bucket pool cố định để triệt tiêu GC allocation mỗi frame
+  var _byColor = new Map();
+  var _activeBuckets = [];
+
+  function clearActive() {
+    for (var i = 0; i < _activeBuckets.length; i++) {
+      var paths = _activeBuckets[i].paths;
+      for (var a = 1; a <= ALPHA_STEPS; a++) {
+        paths[a] = undefined;
+      }
+    }
+    _activeBuckets.length = 0;
+  }
+
   // Gom hạt theo màu; mỗi màu giữ tối đa 8 Path2D (1 cho mỗi nấc alpha).
   // Trả về mảng các bucket { c, paths } — paths[1..8] là Path2D hoặc undefined.
   // (key theo màu thay vì chuỗi "màu|alpha": tránh nối chuỗi 600 lần/frame.)
   function bucketize(parts) {
-    var byColor = new Map();
+    clearActive();
     var out = [];
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i];
@@ -40,11 +54,22 @@
       if (!(p.sz > 0)) continue;
       var ab = alphaBucket(p);
       if (ab < 0) continue;
-      var b = byColor.get(p.c);
-      if (!b) { b = { c: p.c, paths: [] }; byColor.set(p.c, b); out.push(b); }
+      var b = _byColor.get(p.c);
+      if (!b) {
+        b = { c: p.c, paths: new Array(ALPHA_STEPS + 1) };
+        _byColor.set(p.c, b);
+      }
+      if (b.paths[0] === undefined) {
+        b.paths[0] = true; // đánh dấu bucket đang active trong frame
+        _activeBuckets.push(b);
+        out.push(b);
+      }
       var path = b.paths[ab];
       if (!path) { path = new Path2D(); b.paths[ab] = path; }
       path.rect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
+    }
+    for (var j = 0; j < _activeBuckets.length; j++) {
+      _activeBuckets[j].paths[0] = undefined;
     }
     return out;
   }

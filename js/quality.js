@@ -106,9 +106,12 @@
     manualTier: null,
     tier: "high",
     mobile: false,
+    allowDesktopScaling: false,
     _lowSecs: 0,
     _okSecs: 0,
     _onTier: null,
+
+    enableDesktopScaling: function (enabled) { this.allowDesktopScaling = (enabled !== false); },
 
     setOnTierChange: function (fn) { this._onTier = (typeof fn === "function") ? fn : null; },
 
@@ -131,6 +134,10 @@
       this._okSecs = 0;
       var qp = getParam("quality");
       var st = readSettings();
+      var adapt = getParam("adaptive");
+      if (adapt === "1" || st.desktopAdaptive) {
+        this.allowDesktopScaling = true;
+      }
       var manual = qp || st.quality || "auto";
       if (QUALITY_VALUES.indexOf(manual) < 0) manual = "auto";
       if (manual !== "auto") {
@@ -172,7 +179,7 @@
     // Gọi mỗi giây với fps trung bình. inCombat=true khi G.phase === "play".
     onFpsSample: function (fps, inCombat) {
       if (this.mode !== "auto") return;   // khóa tay: không tự đổi
-      if (!this.mobile) return;           // desktop: luôn giữ high
+      if (!this.mobile && !this.allowDesktopScaling) return; // desktop: giữ high trừ khi cho phép adaptive
       if (typeof fps !== "number" || !(fps >= 0)) return;
       var idx = ORDER.indexOf(this.tier);
       if (idx < 0) idx = 0;

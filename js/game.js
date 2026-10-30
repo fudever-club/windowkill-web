@@ -3943,7 +3943,60 @@ function update(dt) {
   }
   G.bannerT = Math.max(0, G.bannerT - dt);
 
+/* PERF: Spatial Hash Grid để tăng tốc va chạm đạn - quái O(N*M) -> O(M) */
+const SPATIAL_CELL = 80;
+const SpatialGrid = {
+  cells: new Map(),
+  activeKeys: [],
+  clear: function() {
+    for (let i = 0; i < this.activeKeys.length; i++) {
+      const arr = this.cells.get(this.activeKeys[i]);
+      if (arr) arr.length = 0;
+    }
+    this.activeKeys.length = 0;
+  },
+  insert: function(e) {
+    const cx = (e.x / SPATIAL_CELL) | 0;
+    const cy = (e.y / SPATIAL_CELL) | 0;
+    const key = (cx << 16) ^ cy;
+    let list = this.cells.get(key);
+    if (!list) {
+      list = [];
+      this.cells.set(key, list);
+    }
+    if (list.length === 0) this.activeKeys.push(key);
+    list.push(e);
+  },
+  build: function(enemies) {
+    this.clear();
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      if (!e.dead) this.insert(e);
+    }
+  },
+  queryNear: function(x, y, radius, callback) {
+    const minCx = ((x - radius) / SPATIAL_CELL) | 0;
+    const maxCx = ((x + radius) / SPATIAL_CELL) | 0;
+    const minCy = ((y - radius) / SPATIAL_CELL) | 0;
+    const maxCy = ((y + radius) / SPATIAL_CELL) | 0;
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const key = (cx << 16) ^ cy;
+        const list = this.cells.get(key);
+        if (list && list.length > 0) {
+          for (let i = 0; i < list.length; i++) {
+            if (callback(list[i])) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+};
+
   /* đạn ta */
+  const useSpatial = G.enemies.length >= 16;
+  if (useSpatial) SpatialGrid.build(G.enemies);
   for (let i = G.bullets.length - 1; i >= 0; i--) {
     const bl = G.bullets[i];
     bl.x += bl.vx * dt; bl.y += bl.vy * dt; bl.life -= dt;
@@ -3971,19 +4024,37 @@ function update(dt) {
     }
     if (!dead && mirrorReflect(bl)) dead = true; // M10: gương thần phản chiếu đạn
     if (!dead) {
-      for (const e of G.enemies) {
-        if (e.dead) continue;
-        if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
-          damageEnemy(e, bl.dmg, bl);
-          /* M22: Đạn Nổ + Đạn Xích — hook tại call-site va chạm đạn (chống đệ quy, §5.3.2) */
-          if (window.Upgrades2 && (s.explosive || s.chain)) {
-            try {
-              if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
-              if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
-            } catch (er) {}
+      if (useSpatial) {
+        SpatialGrid.queryNear(bl.x, bl.y, bl.r + 35, e => {
+          if (e.dead) return false;
+          if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
+            damageEnemy(e, bl.dmg, bl);
+            if (window.Upgrades2 && (s.explosive || s.chain)) {
+              try {
+                if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
+                if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
+              } catch (er) {}
+            }
+            if (bl.pierce > 0) bl.pierce--; else dead = true;
+            return true;
           }
-          if (bl.pierce > 0) bl.pierce--; else dead = true;
-          break;
+          return false;
+        });
+      } else {
+        for (const e of G.enemies) {
+          if (e.dead) continue;
+          if (dist2(bl.x, bl.y, e.x, e.y) < (bl.r + e.r) * (bl.r + e.r)) {
+            damageEnemy(e, bl.dmg, bl);
+            /* M22: Đạn Nổ + Đạn Xích — hook tại call-site va chạm đạn (chống đệ quy, §5.3.2) */
+            if (window.Upgrades2 && (s.explosive || s.chain)) {
+              try {
+                if (s.explosive) Upgrades2.explodeAt(bl.x, bl.y, e, G.enemies, u2DealDamage, s);
+                if (s.chain) Upgrades2.chainFrom(e, G.enemies, bl.dmg, u2DealDamage, s);
+              } catch (er) {}
+            }
+            if (bl.pierce > 0) bl.pierce--; else dead = true;
+            break;
+          }
         }
       }
       // v2.0: boss module — đạn đi qua Bosses.hit (áp điểm yếu), skip boss cũ

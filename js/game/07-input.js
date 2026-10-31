@@ -6,16 +6,25 @@ const touch = { active: (function(){ try { return ("ontouchstart" in window) || 
   moveOX: 0, moveOY: 0, moveX: 0, moveY: 0, aimX: 0, aimY: 0, aimDX: 0, aimDY: 0 };
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
+  const k = (e.key || "").toLowerCase();
+  if (k === "w" || k === "z") keys["KeyW"] = true;
+  if (k === "s") keys["KeyS"] = true;
+  if (k === "a" || k === "q") keys["KeyA"] = true;
+  if (k === "d") keys["KeyD"] = true;
+  if (k === " ") keys["Space"] = true;
   // AUDIT 2026-10-02: resume AudioContext ngay trong gesture — trước đây trang game
   // chỉ resume ở touchstart nên người chơi desktop (chuột/phím) mất toàn bộ SFX
   // procedural vì context kẹt "suspended" (gesture ở tab menu không chuyển sang popup).
   try { AudioEngine.resume(); } catch (er) {}
   SatManager.flush(); // phím cũng là user gesture hợp lệ để mở popup
-  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-  if ((e.code === "KeyP" || e.code === "Escape")) {
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code) ||
+      ["w", "a", "s", "d", "z", "q", " "].includes(k)) {
+    e.preventDefault();
+  }
+  if ((e.code === "KeyP" || e.code === "Escape" || k === "p")) {
     if (G.phase === "play") pauseGame(true); else if (G.phase === "paused") pauseGame(false);
   }
-  if (e.code === "KeyM") {
+  if (e.code === "KeyM" || k === "m") {
     // AUDIT 2026-10-02: trước đây M đọc qp "music" theo chuẩn "off"/"on" trong khi
     // launcher gửi "1"/"0" → vào game với nhạc tắt phải bấm M 2 lần mới bật được, và
     // trạng thái không lưu về settings nên ván sau revert. Dùng biến trạng thái nội
@@ -29,17 +38,30 @@ window.addEventListener("keydown", e => {
       st.music = musicOn; localStorage.setItem("wk_settings", JSON.stringify(st));
     } catch (e2) {}
   }
-  if (e.code === "KeyR" && G.phase === "over") resetGame();
+  if ((e.code === "KeyR" || k === "r") && G.phase === "over") resetGame();
   // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn)
-  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && G.phase === "play" && window.Upgrades2) {
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight" || e.key === "Shift") && !e.repeat && G.phase === "play" && window.Upgrades2) {
     try {
       Upgrades2.tryAnchor(G.ship);
     } catch (er) {}
   }
   // Súng Bắn Keo (2026-10-04, CEO chốt) — E vá ngay +60px cửa sổ, hồi chiêu 30s
-  if (e.code === "KeyE" && !e.repeat && G.phase === "play") fireGlueGun();
+  if ((e.code === "KeyE" || k === "e") && !e.repeat && G.phase === "play") fireGlueGun();
 });
-window.addEventListener("keyup", e => keys[e.code] = false);
+window.addEventListener("keyup", e => {
+  keys[e.code] = false;
+  const k = (e.key || "").toLowerCase();
+  if (k === "w" || k === "z") keys["KeyW"] = false;
+  if (k === "s") keys["KeyS"] = false;
+  if (k === "a" || k === "q") keys["KeyA"] = false;
+  if (k === "d") keys["KeyD"] = false;
+  if (k === " ") keys["Space"] = false;
+});
+window.addEventListener("compositionstart", e => {
+  if (typeof G !== "undefined" && G.phase === "play") {
+    try { e.preventDefault(); } catch (err) {}
+  }
+});
 canvas.addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 canvas.addEventListener("mousedown", e => {
   mouse.down = true;

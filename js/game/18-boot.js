@@ -24,7 +24,7 @@ function loop(now) {
   let cineLocked = false;
   if (window.Cinema) { try { cineLocked = !!Cinema.locked; } catch (e) {} }
   if (window.Juice && Juice.draftOpen) cineLocked = true;
-  if (G.phase === "play" && !cineLocked) update(dt);
+  if (G.phase === "play" && !cineLocked) update(dt, rawDt);
   // v2.0: Tutorial / Bosses module
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
   // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0

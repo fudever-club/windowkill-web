@@ -140,7 +140,7 @@ function shipSlowMult() {
   return m;
 }
 
-function update(dt) {
+function update(dt, rawDt) {
   const s = G.ship, b = bounds();
   G.time += dt;
   /* RFC stage-themes-modes §2.3.1/F3: Time Attack — timer chỉ trừ khi phase==="play" */
@@ -200,9 +200,12 @@ function update(dt) {
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
+  // PERF/FEEL: Khi hit-stop đóng băng gameplay (dt === 0), giữ độ mượt di chuyển của tàu (75% tốc độ)
+  // để người chơi không bị cảm giác khựng/lag phím WASD trong lúc bắn trúng quái liên tục.
+  const moveDt = dt > 0 ? dt : (rawDt ? Math.min(rawDt, 0.02) * 0.75 : 0);
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
-    s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
+    s.x += mx / (ml || 1) * sp * moveDt; s.y += my / (ml || 1) * sp * moveDt;
     s.moveSpeed = sp; // WOW: Cinema.playerFx tự vẽ trail khi speed > 180
   } else s.moveSpeed = 0;
   s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);

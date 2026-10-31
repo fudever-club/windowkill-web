@@ -246,6 +246,7 @@ function pushWindow(dx, dy) {
   const sp = hypot(wvx, wvy);
   if (sp > P.velocity) { wvx *= P.velocity / sp; wvy *= P.velocity / sp; } // clamp velocity
 }
+var _accWinMoveX = 0, _accWinMoveY = 0, _lastWinMoveT = -1e9;
 function applyWindowMotion(dt) {
   if (hypot(wvx, wvy) > 2 && winCtrl.ok) {
     var P = wjumpPreset();
@@ -253,21 +254,31 @@ function applyWindowMotion(dt) {
     if (vsp > P.velocity) { wvx *= P.velocity / vsp; wvy *= P.velocity / vsp; } // clamp velocity
     var mdx = wvx * dt;
     var mdy = wvy * dt;
-    try { window.moveBy(mdx, mdy); } catch (e) {}
-    CachedWinState.sync(false);
-    CachedWinState.screenX += mdx;
-    CachedWinState.screenY += mdy;
-    try {
-      const aw = CachedWinState.availW, ah = CachedWinState.availH;
-      const x = CachedWinState.screenX, y = CachedWinState.screenY;
-      const w = CachedWinState.outerW, h = CachedWinState.outerH;
-      const nx = clamp(x, -w + 80, aw - 80), ny = clamp(y, 0, ah - 80);
-      if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) {
-        window.moveTo(nx, ny);
-        CachedWinState.screenX = nx;
-        CachedWinState.screenY = ny;
-      }
-    } catch (e) {}
+    _accWinMoveX += mdx;
+    _accWinMoveY += mdy;
+    var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    // Throttling moveBy ở ~30Hz (33ms) hoặc khi tích lũy dịch chuyển >= 3px
+    // để tránh làm nghẽn hàng đợi thông điệp DWM IPC của Windows (nguyên nhân gây sụt giảm FPS)
+    if (now - _lastWinMoveT >= 33 || Math.abs(_accWinMoveX) >= 3 || Math.abs(_accWinMoveY) >= 3) {
+      _lastWinMoveT = now;
+      var fdx = _accWinMoveX, fdy = _accWinMoveY;
+      _accWinMoveX = 0; _accWinMoveY = 0;
+      try { window.moveBy(fdx, fdy); } catch (e) {}
+      CachedWinState.sync(false);
+      CachedWinState.screenX += fdx;
+      CachedWinState.screenY += fdy;
+      try {
+        const aw = CachedWinState.availW, ah = CachedWinState.availH;
+        const x = CachedWinState.screenX, y = CachedWinState.screenY;
+        const w = CachedWinState.outerW, h = CachedWinState.outerH;
+        const nx = clamp(x, -w + 80, aw - 80), ny = clamp(y, 0, ah - 80);
+        if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) {
+          window.moveTo(nx, ny);
+          CachedWinState.screenX = nx;
+          CachedWinState.screenY = ny;
+        }
+      } catch (e) {}
+    }
   }
   const d = Math.exp(-3.2 * dt); wvx *= d; wvy *= d;
 }

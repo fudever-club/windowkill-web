@@ -152,6 +152,11 @@ if (window.WKQuality) {
   try {
     window.WKQuality.setOnTierChange(function (t) { applyQualityTier(t); });
     window.WKQuality.init();
+    try {
+      if (typeof window.WKQuality.enableDesktopScaling === "function") {
+        window.WKQuality.enableDesktopScaling(true);
+      }
+    } catch (e2) {}
     applyQualityTier(window.WKQuality.tier);
   } catch (e) {}
 }

@@ -159,6 +159,11 @@ if (window.WKQuality) {
   try {
     window.WKQuality.setOnTierChange(function (t) { applyQualityTier(t); });
     window.WKQuality.init();
+    try {
+      if (typeof window.WKQuality.enableDesktopScaling === "function") {
+        window.WKQuality.enableDesktopScaling(true);
+      }
+    } catch (e2) {}
     applyQualityTier(window.WKQuality.tier);
   } catch (e) {}
 }
@@ -451,6 +456,7 @@ function pushWindow(dx, dy) {
   const sp = hypot(wvx, wvy);
   if (sp > P.velocity) { wvx *= P.velocity / sp; wvy *= P.velocity / sp; } // clamp velocity
 }
+var _accWinMoveX = 0, _accWinMoveY = 0, _lastWinMoveT = -1e9;
 function applyWindowMotion(dt) {
   if (hypot(wvx, wvy) > 2 && winCtrl.ok) {
     var P = wjumpPreset();
@@ -458,21 +464,31 @@ function applyWindowMotion(dt) {
     if (vsp > P.velocity) { wvx *= P.velocity / vsp; wvy *= P.velocity / vsp; } // clamp velocity
     var mdx = wvx * dt;
     var mdy = wvy * dt;
-    try { window.moveBy(mdx, mdy); } catch (e) {}
-    CachedWinState.sync(false);
-    CachedWinState.screenX += mdx;
-    CachedWinState.screenY += mdy;
-    try {
-      const aw = CachedWinState.availW, ah = CachedWinState.availH;
-      const x = CachedWinState.screenX, y = CachedWinState.screenY;
-      const w = CachedWinState.outerW, h = CachedWinState.outerH;
-      const nx = clamp(x, -w + 80, aw - 80), ny = clamp(y, 0, ah - 80);
-      if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) {
-        window.moveTo(nx, ny);
-        CachedWinState.screenX = nx;
-        CachedWinState.screenY = ny;
-      }
-    } catch (e) {}
+    _accWinMoveX += mdx;
+    _accWinMoveY += mdy;
+    var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    // Throttling moveBy ở ~30Hz (33ms) hoặc khi tích lũy dịch chuyển >= 3px
+    // để tránh làm nghẽn hàng đợi thông điệp DWM IPC của Windows (nguyên nhân gây sụt giảm FPS)
+    if (now - _lastWinMoveT >= 33 || Math.abs(_accWinMoveX) >= 3 || Math.abs(_accWinMoveY) >= 3) {
+      _lastWinMoveT = now;
+      var fdx = _accWinMoveX, fdy = _accWinMoveY;
+      _accWinMoveX = 0; _accWinMoveY = 0;
+      try { window.moveBy(fdx, fdy); } catch (e) {}
+      CachedWinState.sync(false);
+      CachedWinState.screenX += fdx;
+      CachedWinState.screenY += fdy;
+      try {
+        const aw = CachedWinState.availW, ah = CachedWinState.availH;
+        const x = CachedWinState.screenX, y = CachedWinState.screenY;
+        const w = CachedWinState.outerW, h = CachedWinState.outerH;
+        const nx = clamp(x, -w + 80, aw - 80), ny = clamp(y, 0, ah - 80);
+        if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) {
+          window.moveTo(nx, ny);
+          CachedWinState.screenX = nx;
+          CachedWinState.screenY = ny;
+        }
+      } catch (e) {}
+    }
   }
   const d = Math.exp(-3.2 * dt); wvx *= d; wvy *= d;
 }
@@ -1991,16 +2007,25 @@ const touch = { active: (function(){ try { return ("ontouchstart" in window) || 
   moveOX: 0, moveOY: 0, moveX: 0, moveY: 0, aimX: 0, aimY: 0, aimDX: 0, aimDY: 0 };
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
+  const k = (e.key || "").toLowerCase();
+  if (k === "w" || k === "z") keys["KeyW"] = true;
+  if (k === "s") keys["KeyS"] = true;
+  if (k === "a" || k === "q") keys["KeyA"] = true;
+  if (k === "d") keys["KeyD"] = true;
+  if (k === " ") keys["Space"] = true;
   // AUDIT 2026-10-02: resume AudioContext ngay trong gesture — trước đây trang game
   // chỉ resume ở touchstart nên người chơi desktop (chuột/phím) mất toàn bộ SFX
   // procedural vì context kẹt "suspended" (gesture ở tab menu không chuyển sang popup).
   try { AudioEngine.resume(); } catch (er) {}
   SatManager.flush(); // phím cũng là user gesture hợp lệ để mở popup
-  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-  if ((e.code === "KeyP" || e.code === "Escape")) {
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code) ||
+      ["w", "a", "s", "d", "z", "q", " "].includes(k)) {
+    e.preventDefault();
+  }
+  if ((e.code === "KeyP" || e.code === "Escape" || k === "p")) {
     if (G.phase === "play") pauseGame(true); else if (G.phase === "paused") pauseGame(false);
   }
-  if (e.code === "KeyM") {
+  if (e.code === "KeyM" || k === "m") {
     // AUDIT 2026-10-02: trước đây M đọc qp "music" theo chuẩn "off"/"on" trong khi
     // launcher gửi "1"/"0" → vào game với nhạc tắt phải bấm M 2 lần mới bật được, và
     // trạng thái không lưu về settings nên ván sau revert. Dùng biến trạng thái nội
@@ -2014,17 +2039,30 @@ window.addEventListener("keydown", e => {
       st.music = musicOn; localStorage.setItem("wk_settings", JSON.stringify(st));
     } catch (e2) {}
   }
-  if (e.code === "KeyR" && G.phase === "over") resetGame();
+  if ((e.code === "KeyR" || k === "r") && G.phase === "over") resetGame();
   // M22: Neo Quán Tính — Shift kích hoạt neo (xóa hất văng + impulse trơn)
-  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat && G.phase === "play" && window.Upgrades2) {
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight" || e.key === "Shift") && !e.repeat && G.phase === "play" && window.Upgrades2) {
     try {
       Upgrades2.tryAnchor(G.ship);
     } catch (er) {}
   }
   // Súng Bắn Keo (2026-10-04, CEO chốt) — E vá ngay +60px cửa sổ, hồi chiêu 30s
-  if (e.code === "KeyE" && !e.repeat && G.phase === "play") fireGlueGun();
+  if ((e.code === "KeyE" || k === "e") && !e.repeat && G.phase === "play") fireGlueGun();
 });
-window.addEventListener("keyup", e => keys[e.code] = false);
+window.addEventListener("keyup", e => {
+  keys[e.code] = false;
+  const k = (e.key || "").toLowerCase();
+  if (k === "w" || k === "z") keys["KeyW"] = false;
+  if (k === "s") keys["KeyS"] = false;
+  if (k === "a" || k === "q") keys["KeyA"] = false;
+  if (k === "d") keys["KeyD"] = false;
+  if (k === " ") keys["Space"] = false;
+});
+window.addEventListener("compositionstart", e => {
+  if (typeof G !== "undefined" && G.phase === "play") {
+    try { e.preventDefault(); } catch (err) {}
+  }
+});
 canvas.addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 canvas.addEventListener("mousedown", e => {
   mouse.down = true;
@@ -3823,7 +3861,7 @@ function shipSlowMult() {
   return m;
 }
 
-function update(dt) {
+function update(dt, rawDt) {
   const s = G.ship, b = bounds();
   G.time += dt;
   /* RFC stage-themes-modes §2.3.1/F3: Time Attack — timer chỉ trừ khi phase==="play" */
@@ -3883,9 +3921,12 @@ function update(dt) {
   const tm = touchMoveVec();
   if (tm) { mx = tm.x; my = tm.y; }
   const ml = hypot(mx, my);
+  // PERF/FEEL: Khi hit-stop đóng băng gameplay (dt === 0), giữ độ mượt di chuyển của tàu (75% tốc độ)
+  // để người chơi không bị cảm giác khựng/lag phím WASD trong lúc bắn trúng quái liên tục.
+  const moveDt = dt > 0 ? dt : (rawDt ? Math.min(rawDt, 0.02) * 0.75 : 0);
   if (ml > 0.05) {
     const sp = s.speed * Math.min(1, ml) * shipSlowMult() * (G.vp1_shipSpdMul || 1); // SEASON 1: vùng họp slow 35% · VP1 tailwind
-    s.x += mx / (ml || 1) * sp * dt; s.y += my / (ml || 1) * sp * dt;
+    s.x += mx / (ml || 1) * sp * moveDt; s.y += my / (ml || 1) * sp * moveDt;
     s.moveSpeed = sp; // WOW: Cinema.playerFx tự vẽ trail khi speed > 180
   } else s.moveSpeed = 0;
   s.x = clamp(s.x, b.x + s.r, b.x + b.w - s.r);
@@ -6511,7 +6552,7 @@ function loop(now) {
   let cineLocked = false;
   if (window.Cinema) { try { cineLocked = !!Cinema.locked; } catch (e) {} }
   if (window.Juice && Juice.draftOpen) cineLocked = true;
-  if (G.phase === "play" && !cineLocked) update(dt);
+  if (G.phase === "play" && !cineLocked) update(dt, rawDt);
   // v2.0: Tutorial / Bosses module
   if (window.V2) { try { V2.frame(dt); } catch (e) {} }
   // WAVE 0 onboarding (19-onboard.js): scripted ~56s cho người mới, giữ wave 0

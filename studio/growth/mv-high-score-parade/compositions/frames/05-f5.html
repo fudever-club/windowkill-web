@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="UTF-8" /><title>05-f5 · title + how-to + CTA + closing</title></head>
+<body>
+<template>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  #root {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0A0A0F; color: #FFFDF5;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+  #g1, #g2, #g3, #g4 { position: absolute; inset: 0; }
+
+  /* ---------- g1: title tile mosaic ---------- */
+  .tt_center { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  #tt_label { background: #FFDC8B; color: #0A0A0F; border: 3px solid #000; border-radius: 9999px;
+    box-shadow: 4px 4px 0 #000; padding: 14px 40px; font-size: 30px; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase; opacity: 0; }
+  #tt_big { display: flex; align-items: baseline; gap: 0.3em; margin-top: 50px; opacity: 1; }
+  .tt_word { position: relative; font-size: 230px; font-weight: 900; letter-spacing: -0.03em; line-height: 0.9;
+    text-transform: uppercase; will-change: transform, opacity; }
+  .tt_word.w1 { color: #F7CB46; }
+  .tt_word.w2 { color: #FFFDF5; }
+  .tt_word.w3 { color: #FE90E8; }
+  #tt_sub { margin-top: 40px; font-size: 40px; font-weight: 700; letter-spacing: 0.3em;
+    text-transform: uppercase; color: #C0F7FE; opacity: 0; }
+
+  /* ---------- g2: how-to chain steps ---------- */
+  .ht_center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .ht_step { width: 1200px; background: #FFFDF5; border: 4px solid #000; box-shadow: 8px 8px 0 #000;
+    padding: 70px 90px; display: flex; align-items: center; gap: 60px; }
+  .ht_num { font-size: 160px; font-weight: 900; color: #FE90E8; line-height: 1;
+    background: #0A0A0F; padding: 20px 34px; border: 4px solid #000; }
+  .ht_txt { font-size: 110px; font-weight: 900; letter-spacing: -0.02em; text-transform: uppercase;
+    color: #0A0A0F; line-height: 1.02; }
+  .ht_step[data-c="1"] .ht_num { color: #C0F7FE; }
+  .ht_step[data-c="2"] .ht_num { color: #99E885; }
+  .ht_step[data-c="3"] .ht_num { color: #F7CB46; }
+
+  /* ---------- g3: URL catapult ---------- */
+  .uc_center { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  #uc_score { font-size: 240px; font-weight: 900; letter-spacing: -0.03em; color: #F7CB46;
+    line-height: 1; text-shadow: 10px 10px 0 #000; min-height: 1em; }
+  #uc_cta { margin-top: 30px; display: inline-block; background: #F7CB46; color: #0A0A0F;
+    border: 4px solid #000; box-shadow: 8px 8px 0 #000; padding: 26px 72px; font-size: 72px;
+    font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; opacity: 0; }
+  #uc_url { margin-top: 60px; font-family: "Courier New", Courier, monospace; font-size: 64px;
+    font-weight: 700; color: #99E885; letter-spacing: 0.04em; opacity: 0; }
+
+  /* ---------- g4: closing plate ---------- */
+  .cl_center { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  #cl_card { background: #0A0A0F; border: 4px solid #FFFDF5; box-shadow: 12px 12px 0 #F7CB46;
+    padding: 80px 130px; text-align: center; opacity: 0; }
+  #cl_logo { font-size: 120px; font-weight: 900; letter-spacing: -0.02em; color: #FFFDF5;
+    text-transform: uppercase; line-height: 0.95; }
+  #cl_logo em { font-style: normal; color: #FE90E8; }
+  #cl_tag { margin-top: 26px; font-size: 34px; font-weight: 700; letter-spacing: 0.44em;
+    text-transform: uppercase; color: #F7CB46; }
+  #cl_star { position: absolute; right: 260px; bottom: 260px; width: 190px; height: 190px;
+    background: #FE90E8; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%,
+    79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); opacity: 0; }
+  #gp_bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    filter: brightness(0.4) saturate(1.05); z-index: 0; }
+</style>
+
+<div id="root" data-composition-id="05-f5" data-width="1920" data-height="1080" data-duration="28.993" data-root="true">
+  <video id="gp_bg" class="clip" muted playsinline preload="auto"
+    src="assets/gameplay/gp-combat-16s.mp4"
+    data-start="0" data-duration="15.966" data-media-start="0" data-track-index="12"></video>
+  <div id="g1"><div class="tt_center">
+    <div id="tt_label">WINDOWKILL</div>
+    <div id="tt_big">
+      <span class="tt_word w1" data-layout-allow-overlap data-layout-ignore>WINDOW</span><span class="tt_word w2" data-layout-allow-overlap data-layout-ignore>KILL</span>
+    </div>
+    <div id="tt_sub">WEB EDITION</div>
+  </div></div>
+
+  <div id="g2"><div class="ht_center"><div class="ht_step" data-c="1" id="ht_s1">
+    <div class="ht_num">1</div><div class="ht_txt">MỞ TRÌNH<br>DUYỆT</div>
+  </div>
+  <div class="ht_step" data-c="2" id="ht_s2">
+    <div class="ht_num">2</div><div class="ht_txt">BẮN<br>QUÁI</div>
+  </div>
+  <div class="ht_step" data-c="3" id="ht_s3">
+    <div class="ht_num">3</div><div class="ht_txt">VÀO BẢNG<br>KỶ LỤC</div>
+  </div></div></div>
+
+  <div id="g3"><div class="uc_center">
+    <div id="uc_score" data-layout-allow-overlap>0</div>
+    <div id="uc_cta" data-layout-allow-overlap>CHƠI NGAY</div>
+    <div id="uc_url">windowkill-web.vercel.app</div>
+  </div></div>
+
+  <div id="g4"><div class="cl_center">
+    <div id="cl_card">
+      <div id="cl_logo">FU-<em>DEVER</em></div>
+      <div id="cl_tag">WORK HARD · PLAY HARD</div>
+    </div>
+    <div id="cl_star"></div>
+  </div></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var T0 = 107.0, SPAN = 28.993;
+  var tx = function (t) { return Math.round((t - T0) * 1000) / 1000; };
+  var tl = gsap.timeline({ paused: true });
+  var PASTEL = ["#FE90E8", "#C0F7FE", "#99E885", "#F7CB46", "#FFDC8B"];
+
+  /* ============ g1: title (107–112) ============ */
+  var label = document.getElementById("tt_label");
+  var sub = document.getElementById("tt_sub");
+  var w1 = document.querySelector(".tt_word.w1");
+  var w2 = document.querySelector(".tt_word.w2");
+  gsap.set(label, { opacity: 0, y: 20, scale: 0.9 });
+  gsap.set(sub, { opacity: 0 });
+  gsap.set(w2, { opacity: 0, x: 60 });
+  tl.set(label, { opacity: 1, y: 0, scale: 1,
+    duration: 0.3, ease: "back.out(2.4)", immediateRender: false }, tx(107.4));
+  tl.fromTo(w1, { opacity: 0, y: 60, scale: 0.9 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: "back.out(2.2)", immediateRender: false }, tx(108.4));
+  tl.fromTo(w2, { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.28, ease: "power3.out", immediateRender: false }, tx(109.3));
+  tl.set(sub, { opacity: 1, duration: 0.01, immediateRender: false }, tx(110.4));
+  // per-beat pop of the title row (110.5 / 111.5)
+  [110.5, 111.5].forEach(function (t, k) {
+    var dir = k % 2 ? 1 : -1;
+    tl.fromTo("#tt_big", { y: 0, rotation: 0 },
+      { y: 18 * dir, rotation: 1.6 * dir, duration: 0.14, ease: "power2.out", overwrite: "auto", immediateRender: false }, tx(t));
+    tl.to("#tt_big", { y: 0, rotation: 0, duration: 0.22, ease: "power2.inOut", overwrite: "auto" }, tx(t + 0.14));
+  });
+  tl.set("#g1", { autoAlpha: 0 }, tx(112.0));
+  tl.set("#g1", { autoAlpha: 1 }, 0);
+
+  /* ============ g2: how-to chain (112–123) ============ */
+  var steps = [1, 2, 3].map(function (i) { return document.getElementById("ht_s" + i); });
+  gsap.set(steps, { opacity: 0, y: 120, scaleX: 1.05 });
+  gsap.set("#g2", { autoAlpha: 0 }); // initial CSS state
+  var HT_IN = [112.0, 118.0, 123.0];
+  HT_IN.forEach(function (t, i) {
+    tl.fromTo(steps[i], { opacity: 0, y: 120, scaleX: 1.05 },
+      { opacity: 1, y: 0, scaleX: 1, duration: 0.3, ease: "expo.out", overwrite: "auto", immediateRender: false }, tx(t));
+  });
+  steps.forEach(function (el, i) {
+    if (i < 2) {
+      tl.to(el, { opacity: 0, y: -90, scaleX: 0.96, duration: 0.25, ease: "power3.in", overwrite: "auto" }, tx(HT_IN[i + 1] - 0.27));
+    }
+  });
+  // step 3 holds → out at 123 (next group takes over)
+  tl.set("#g2", { autoAlpha: 0 }, tx(123.0));
+  tl.set("#g2", { autoAlpha: 1 }, tx(112.0));
+
+  /* ============ g3: URL catapult (123–133): count-up 0→10,000 punches, URL explodes at 133 = local 26 ============ */
+  var score = document.getElementById("uc_score");
+  var cta = document.getElementById("uc_cta");
+  var url = document.getElementById("uc_url");
+  gsap.set(score, { opacity: 0, scale: 0.6 });
+  gsap.set(cta, { opacity: 0 });
+  gsap.set(url, { opacity: 0 });
+
+  // count-up 124 → 131: one pre-built ABSOLUTE-CENTERED span per state, 0ms opacity set.
+  // score gets a fixed size box (absolute center) so every value overlays at center.
+  score.innerHTML = "";
+  score.style.cssText = "position:absolute;left:calc(50% - 700px);top:calc(50% - 130px);width:1400px;height:260px;display:flex;align-items:center;justify-content:center";
+  var STATES = ["—", "1,000", "5,000", "10,000", "99,999", "999,999", "999,999+"];
+  var stateEls = STATES.map(function (v) {
+    var sp = document.createElement("span");
+    sp.textContent = v;
+    sp.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;white-space:nowrap";
+    score.appendChild(sp);
+    return sp;
+  });
+  // count-up 124 → 129 in chunks locked per beat, "braam" punches in 130–131 then crash-zoom 131–133
+  var COUNT_LOCKS = [
+    { at: 124.0, val: "—" },
+    { at: 124.9, val: "1,000" },
+    { at: 126.0, val: "5,000" },
+    { at: 127.5, val: "10,000" },
+    { at: 129.0, val: "99,999" },
+    { at: 130.0, val: "999,999" },
+    { at: 131.0, val: "999,999+" },
+  ];
+  COUNT_LOCKS.forEach(function (c, ci) {
+    tl.set(stateEls[ci], { opacity: 1 }, tx(c.at));
+    if (ci > 0) tl.set(stateEls[ci - 1], { opacity: 0 }, tx(c.at)); // 0ms swap
+    tl.fromTo(score, { scale: 1.06 }, { scale: 1, duration: 0.2, ease: "back.out(3)", overwrite: "auto", immediateRender: false }, tx(c.at + 0.02));
+  });
+  tl.set(stateEls[6], { opacity: 0 }, tx(131.2));
+  tl.set(stateEls[5], { opacity: 1 }, tx(131.2));
+  tl.fromTo(score, { scale: 1 }, { scale: 1.5, duration: 1.2, ease: "power2.in", overwrite: "auto", immediateRender: false }, tx(131.2));
+  // CTA swaps in at the final wall
+  tl.set("#uc_cta", { opacity: 1, duration: 0.01, immediateRender: false }, tx(131.0));
+  tl.fromTo(cta, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.6)", immediateRender: false }, tx(131.05));
+  // the score stack collapses into the URL right at the 133 DROP: shake + zoom-extinguish
+  tl.fromTo("#g3", { x: 0, y: 0 }, { x: -34, y: 22, duration: 0.06, ease: "power2.in", immediateRender: false }, tx(132.9));
+  tl.to("#g3", { x: 30, y: -18, duration: 0.06, ease: "power2.out", overwrite: "auto" }, tx(132.96));
+  tl.to("#g3", { x: -12, y: 8, duration: 0.06, ease: "power2.inOut", overwrite: "auto" }, tx(133.02));
+  tl.to("#g3", { x: 0, y: 0, duration: 0.14, ease: "power2.out", overwrite: "auto" }, tx(133.08));
+  tl.set(score, { opacity: 0, duration: 0.01 }, tx(133.0));
+  tl.set(cta, { opacity: 0, duration: 0.01 }, tx(133.0));
+  tl.fromTo(url, { opacity: 0, scale: 2.6, filter: "blur(18px)" },
+    { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.6, ease: "power3.out", overwrite: "auto", immediateRender: false }, tx(133.05));
+  tl.set("#g3", { autoAlpha: 0 }, tx(133.4));
+  tl.set("#g3", { autoAlpha: 0 }, 0);
+  tl.set("#g3", { autoAlpha: 1 }, tx(123.0));
+  gsap.set("#g3", { autoAlpha: 0 }); // initial CSS state: hidden until the timeline shows it
+
+  /* ============ g4: closing plate (133.4 → 135.993) ============ */
+  var clCard = document.getElementById("cl_card");
+  var clStar = document.getElementById("cl_star");
+  gsap.set(clCard, { opacity: 0, y: 70 });
+  gsap.set(clStar, { opacity: 0, scale: 0.4, rotation: -60 });
+  tl.set("#g4", { autoAlpha: 1 }, tx(133.4));
+  tl.fromTo(clCard, { opacity: 0, y: 70 },
+    { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", immediateRender: false }, tx(133.5));
+  tl.fromTo(clStar, { opacity: 0, scale: 0.4, rotation: -60 },
+    { opacity: 1, scale: 1, rotation: 0, duration: 0.45, ease: "back.out(2.2)", immediateRender: false }, tx(133.9));
+  // subtle settle: micro-pulse on 135.9 (beat) but stays readable through the end
+  tl.fromTo("#cl_card", { scale: 1 }, { scale: 1.015, duration: 0.2, ease: "sine.out", yoyo: true, repeat: 1, overwrite: "auto", immediateRender: false }, tx(135.6));
+  tl.set("#g4", { autoAlpha: 0 }, tx(133.4 - 0.001));
+  tl.set("#g4", { autoAlpha: 1 }, tx(133.4));
+
+  tl.to({}, { duration: 0.001 }, SPAN - 0.001);
+  tl.seek(0);
+  window.__timelines["05-f5"] = tl;
+})();
+</script>
+</template>
+</body>
+</html>

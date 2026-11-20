@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="UTF-8" /><title>02-f2 · mosaic + strobe + typewriter</title></head>
+<body>
+<template>
+<style>
+@font-face { font-family: 'Segoe UI Black'; src: local('Segoe UI Black'), local('Segoe UI'); font-weight: 900; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  #root {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0A0A0F; color: #FFFDF5;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+  #g1, #g2, #g3 { position: absolute; inset: 0; }
+
+  /* ---------- g1: poster-tile mosaic ---------- */
+  .gf-tile { position: absolute; display: flex; align-items: flex-end; overflow: hidden;
+    border: 4px solid #000000; box-sizing: border-box;
+    will-change: transform, opacity; backface-visibility: hidden; }
+  .gf-label { font-weight: 800; line-height: 0.95; letter-spacing: -0.01em;
+    padding: 0.5em 0.55em; text-transform: uppercase; word-break: break-word; }
+
+  /* ---------- g2: held strobe ---------- */
+  .sb_base { position: absolute; inset: 0; background: var(--idlebg); }
+  .sb_look { position: absolute; inset: 0; overflow: hidden; opacity: 0; }
+  .sb_word { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: "Segoe UI Black", "Segoe UI", Arial, sans-serif; font-size: 620px; font-weight: 900;
+    line-height: 1.05; text-transform: uppercase; transform: scaleX(0.8);
+    color: transparent; -webkit-text-stroke: 3px #E38FD6; }
+
+  /* ---------- g3: typewriter ---------- */
+  .tw_overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .tw_line { display: inline-flex; align-items: baseline; gap: 0.28em; white-space: nowrap;
+    color: #000000; font-size: 112px; font-weight: 900; letter-spacing: -0.02em;
+    text-transform: uppercase; }
+  .tw_word { display: inline-block; }
+  .tw_key { display: inline-flex; align-items: baseline; }
+  .tw_period { display: inline-block; color: #FE90E8; font-weight: 900;
+    margin-left: 24px; margin-right: 24px; }
+</style>
+
+<div id="root" data-composition-id="02-f2" data-width="1920" data-height="1080" data-duration="19" data-root="true">
+  <div id="g1"></div>
+  <div id="g2"></div>
+  <div id="g3"><div class="tw_overlay"><div class="tw_line" id="tw_line"></div></div></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var T0 = 19.0, SPAN = 19.0;
+  var tx = function (t) { return Math.round((t - T0) * 1000) / 1000; };
+  var tl = gsap.timeline({ paused: true });
+  var PALETTE = ["#FE90E8", "#C0F7FE", "#99E885", "#F7CB46", "#FFDC8B"];
+  var THEMES = [
+    ["#FE90E8", "#0A0A0F", "#FFFDF5", "#FFDC8B"],
+    ["#C0F7FE", "#0A0A0F", "#FFFDF5", "#F7CB46"],
+    ["#99E885", "#0A0A0F", "#FFFDF5", "#FE90E8"],
+    ["#FFDC8B", "#0A0A0F", "#FFFDF5", "#C0F7FE"],
+    ["#F7CB46", "#0A0A0F", "#FFFDF5", "#99E885"],
+  ];
+  var LABELS = ["CHASER", "CHEWER", "TANK", "DASHER", "SPLITTER", "MINI", "6 LOẠI QUÁI", "BOSS MỖI 5 WAVE", "ĐẠN ĐÁ CỬA SỔ BAY", "BẮN NHÀNH KIẾM XP", "NHỎ MÀ ĐÁNG NHỚ", "HẠ GỤC NHẬN GEM"];
+
+  /* ---------- g1: mosaic (track 19–30, local 0–11) ---------- */
+  var g1 = document.getElementById("g1");
+  var wall = document.createElement("div");
+  wall.style.cssText = "position:absolute;inset:0";
+  g1.appendChild(wall);
+
+  function packMosaic(n, W, H) {
+    var rects = [{ x: 0, y: 0, w: W, h: H }];
+    while (rects.length < n) {
+      var bi = 0;
+      for (var i = 1; i < rects.length; i++) if (rects[i].w * rects[i].h > rects[bi].w * rects[bi].h) bi = i;
+      var r = rects.splice(bi, 1)[0];
+      var ratio = 0.4 + ((rects.length * 37) % 21) / 100;
+      if (r.w >= r.h) { var w1 = Math.round(r.w * ratio);
+        rects.push({ x: r.x, y: r.y, w: w1, h: r.h });
+        rects.push({ x: r.x + w1, y: r.y, w: r.w - w1, h: r.h });
+      } else { var h1 = Math.round(r.h * ratio);
+        rects.push({ x: r.x, y: r.y, w: r.w, h: h1 });
+        rects.push({ x: r.x, y: r.y + h1, w: r.w, h: r.h - h1 });
+      }
+    }
+    return rects;
+  }
+  var N = 12, MARGIN = 56, GAP = 10;
+  var innerW = 1920 - MARGIN * 2, innerH = 1080 - MARGIN * 2;
+  var rects = packMosaic(N, innerW, innerH);
+  var tiles = [];
+  for (var idx = 0; idx < N; idx++) {
+    var R = rects[idx];
+    var el = document.createElement("div");
+    el.className = "gf-tile";
+    el.style.left = (MARGIN + R.x + GAP / 2) + "px";
+    el.style.top = (MARGIN + R.y + GAP / 2) + "px";
+    el.style.width = Math.max(1, R.w - GAP) + "px";
+    el.style.height = Math.max(1, R.h - GAP) + "px";
+    el.style.backgroundColor = THEMES[0][idx % THEMES[0].length];
+    var lab = document.createElement("span");
+    lab.className = "gf-label";
+    lab.textContent = LABELS[idx % LABELS.length];
+    var bgC = THEMES[0][idx % THEMES[0].length];
+    var h = bgC.replace("#", "");
+    var lum = 0.299 * parseInt(h.substr(0, 2), 16) + 0.587 * parseInt(h.substr(2, 2), 16) + 0.114 * parseInt(h.substr(4, 2), 16);
+    lab.style.color = lum > 150 ? "#0A0A0F" : "#FFFDF5";
+    lab.style.fontSize = Math.round(Math.min(R.w, R.h) * 0.16) + "px";
+    el.appendChild(lab);
+    wall.appendChild(el);
+    tiles.push(el);
+  }
+  gsap.set(tiles, { autoAlpha: 0 });
+  var ENTER = [0.0, 1.0, 2.0, 2.55, 3.5, 4.5, 6.0, 7.0, 8.0, 9.0, 9.5, 10.0];
+  ENTER.forEach(function (t, i) {
+    var jx = (((i * 37) % 7) - 3) * 16, jy = (((i * 53) % 7) - 3) * 16;
+    tl.fromTo(tiles[i], { autoAlpha: 0, scale: 0.78, x: jx, y: jy },
+      { autoAlpha: 1, scale: 1, x: 0, y: 0, duration: 0.14, ease: "back.out(1.7)", immediateRender: false }, tx(19.0 + t));
+  });
+  // per-beat recolors (whole wall as one unit, beats from apmap phases 22–29)
+  var RECOLOR = [22.0, 23.0, 25.0, 26.0, 28.0, 29.0];
+  RECOLOR.forEach(function (t, ri) {
+    tiles.forEach(function (el, i) {
+      var col = THEMES[(ri + 1) % THEMES.length][i % THEMES[0].length];
+      tl.set(el, { backgroundColor: col }, tx(t));
+    });
+  });
+  tl.set(wall, { autoAlpha: 0 }, tx(30.0));
+  tl.set("#g1", { autoAlpha: 0 }, tx(30.0));
+  tl.set("#g1", { autoAlpha: 1 }, 0);
+
+  /* ---------- g2: 1UP strobe (track 30–33) ---------- */
+  var g2 = document.getElementById("g2");
+  var base = document.createElement("div");
+  base.className = "sb_base";
+  base.style.setProperty("--idlebg", "#0A0A0F");
+  var bw = document.createElement("div");
+  bw.className = "sb_word";
+  bw.style.color = "#F7CB46";
+  bw.style.webkitTextFillColor = "#F7CB46";
+  bw.textContent = "1UP";
+  base.appendChild(bw);
+  g2.appendChild(base);
+
+  var LOOKS = [
+    { bg: "#FE90E8", fill: "#0A0A0F" },
+    { bg: "#F7CB46", fill: "#FFFDF5" },
+    { bg: "#C0F7FE", fill: "#FE90E8" },
+    { bg: "#99E885", fill: "#0A0A0F" },
+  ];
+  var looks = LOOKS.map(function (f) {
+    var look = document.createElement("div");
+    look.className = "sb_look";
+    look.style.background = f.bg;
+    var w2 = document.createElement("div");
+    w2.className = "sb_word";
+    w2.style.webkitTextFillColor = f.fill;
+    w2.textContent = "1UP";
+    look.appendChild(w2);
+    g2.appendChild(look);
+    return look;
+  });
+  gsap.set(looks, { opacity: 0 });
+  // strobe bursts: dark 30.0–30.5 (DROP), then rapid pastel flips into 31 SURGE, idle 31.5–33
+  var PLAN = [
+    { start: 30.0, end: 30.5, step: 0.125 },
+    { start: 31.0, end: 31.5, step: 0.125 },
+  ];
+  var step = 0, prev = null;
+  PLAN.forEach(function (burst) {
+    var n = Math.max(0, Math.floor((burst.end - burst.start) / burst.step + 1e-6));
+    for (var i = 0; i <= n; i++) {
+    var t = burst.start + i * burst.step;
+    var cur = looks[step % looks.length];
+    if (prev && prev !== cur) tl.set(prev, { opacity: 0 }, tx(t));
+    tl.set(cur, { opacity: 1 }, tx(t));
+    prev = cur; step++;
+  }
+  // stroke the 1UP resting word to hit 3:1 against #0A0A0F (also set in CSS)
+  });
+  if (prev) tl.set(prev, { opacity: 0 }, tx(32.0));
+  tl.set("#g2", { autoAlpha: 0 }, tx(33.0));
+  tl.set("#g2", { autoAlpha: 0 }, 0);
+  tl.set("#g2", { autoAlpha: 1 }, tx(30.0));
+
+  /* ---------- g3: typewriter (track 33–38) ---------- */
+  var g3 = document.getElementById("g3");
+  var line = document.getElementById("tw_line");
+  var leads = [
+    { text: "BẮN QUÁI", t: 33.5 },
+    { text: "NHẶT GEM", t: 34.3 },
+    { text: "GIỮ", t: 35.1 },
+  ];
+  var leadEls = leads.map(function (w) {
+    var s = document.createElement("span");
+    s.className = "tw_word";
+    s.textContent = w.text;
+    line.appendChild(s);
+    return s;
+  });
+  var keywrap = document.createElement("span");
+  keywrap.className = "tw_key";
+  var keyEl = document.createElement("span");
+  keyEl.className = "tw_word";
+  keyEl.textContent = "MÁU";
+  keywrap.appendChild(keyEl);
+  var periodEl = document.createElement("span");
+  periodEl.className = "tw_period";
+  periodEl.textContent = "▮";
+  keywrap.appendChild(periodEl);
+  line.appendChild(keywrap);
+
+  var FONTS = [
+    { family: '"Segoe UI Black", "Segoe UI", Arial, sans-serif', weight: 900, style: "normal" },
+    { family: '"Segoe UI", Arial, sans-serif', weight: 300, style: "italic" },
+    { family: '"Consolas", "Courier New", monospace', weight: 700, style: "normal" },
+    { family: '"Segoe UI", Arial, sans-serif', weight: 600, style: "italic" },
+  ];
+  function fontProps(i) { var f = FONTS[((i % FONTS.length) + FONTS.length) % FONTS.length];
+    return { fontFamily: f.family, fontWeight: f.weight, fontStyle: f.style }; }
+  gsap.set(line, {});
+  gsap.set("#g3", { autoAlpha: 0 }); // initial CSS state: hidden until timeline shows it
+  var all = leadEls.concat([keyEl, periodEl]);
+  gsap.set(all, { autoAlpha: 0 });
+  gsap.set(keyEl, fontProps(0));
+  leadEls.forEach(function (el, i) {
+    tl.fromTo(el, { autoAlpha: 0, scale: 0.92, y: 5 },
+      { autoAlpha: 1, scale: 1, y: 0, duration: 0.16, ease: "back.out(2)", immediateRender: false }, tx(leads[i].t));
+  });
+  tl.fromTo(keyEl, { autoAlpha: 0, scale: 0.92, y: 5 },
+    { autoAlpha: 1, scale: 1, y: 0, duration: 0.16, ease: "back.out(2)", immediateRender: false }, tx(35.9));
+  tl.fromTo(periodEl, { autoAlpha: 0, scale: 0.3 },
+    { autoAlpha: 1, scale: 1, duration: 0.1, ease: "back.out(3)", immediateRender: false }, tx(36.4));
+  var SHUFFLE = [36.5, 36.9, 37.3, 37.7];
+  SHUFFLE.forEach(function (t, fi) { tl.set(keyEl, fontProps(fi + 1), tx(t)); });
+  // final accent pop on 38 handoff (assembler cuts there)
+  tl.set("#g3", { autoAlpha: 0 }, tx(38.0));
+  tl.set("#g3", { autoAlpha: 0 }, 0);
+  tl.set("#g3", { autoAlpha: 1 }, tx(33.0));
+  // bg for typewriter scene = offwhite plate
+  tl.to(document.getElementById("root"), { backgroundColor: "#FFFDF5", duration: 0.4, ease: "none" }, tx(32.9));
+
+  tl.to({}, { duration: 0.001 }, SPAN - 0.001);
+  tl.seek(0);
+  window.__timelines["02-f2"] = tl;
+})();
+</script>
+</template>
+</body>
+</html>

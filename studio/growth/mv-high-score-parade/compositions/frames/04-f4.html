@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="UTF-8" /><title>04-f4 · taunt + flipbook + OT + leaderboard + curtain</title></head>
+<body>
+<template>
+<style>
+@font-face { font-family: 'Segoe UI Black'; src: local('Segoe UI Black'), local('Segoe UI'); font-weight: 900; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  #root {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0A0A0F; color: #FFFDF5;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+  #g1, #g2, #g3, #g4, #g5 { position: absolute; inset: 0; }
+
+  /* ---------- g1: ghost billboard ---------- */
+  .tq_center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #tq_line { font-size: 130px; font-weight: 900; letter-spacing: -0.03em;
+    color: #FFFDF5; text-align: center; line-height: 0.95; }
+  #tq_line em { font-style: normal; color: #F7CB46; }
+  #tq_caret { display: inline-block; width: 0.5em; height: 1em; background: #99E885;
+    margin-left: 0.08em; opacity: 0; }
+
+  /* ---------- g2: roll flipbook ---------- */
+  .fb_center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .fb_stack { display: grid; place-items: center; }
+  .fb_stack > * { grid-area: 1 / 1; white-space: nowrap; }
+  .fb_flip { font-family: "Segoe UI Black", "Segoe UI", Arial, sans-serif; font-size: 150px; font-weight: 900;
+    color: #FFFDF5; opacity: 0; }
+  .fb_resolve { font-size: 130px; font-weight: 900; font-style: italic;
+    color: #99E885; opacity: 0; }
+
+  /* ---------- g3: OT strobe ---------- */
+  .ot_center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .ot_word { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: "Segoe UI Black", "Segoe UI", Arial, sans-serif; font-size: 720px; font-weight: 900;
+    line-height: 1.05; transform: scaleX(0.8); }
+
+  /* ---------- g4: fake leaderboard ---------- */
+  .lb_wrap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 1500px; }
+  .lb_title { font-family: "Courier New", Courier, monospace; font-size: 44px; letter-spacing: 0.28em;
+    color: #F7CB46; margin-bottom: 34px; opacity: 0; }
+  .lb_row { display: flex; align-items: baseline; justify-content: space-between;
+    font-family: "Consolas", "Courier New", monospace; padding: 14px 34px; margin-bottom: 10px;
+    border: 3px solid #000; background: #FFFDF5; opacity: 0; transform: rotate(-1deg); }
+  .lb_row .who { font-size: 46px; font-weight: 900; color: #0A0A0F; }
+  .lb_row .pts { font-size: 52px; font-weight: 900; color: #0A0A0F; }
+  .lb_row.pastel { box-shadow: 8px 8px 0 #000; }
+  .lb_row.hero { background: #0A0A0F; border-color: #F7CB46; box-shadow: 8px 8px 0 #F7CB46; }
+  .lb_row.hero .who, .lb_row.hero .pts { color: #F7CB46; }
+
+  /* ---------- g5: pixel curtain + drift ---------- */
+  #px_curtain { position: absolute; inset: 0; }
+  .px_cell { width: 64px; height: 64px; position: absolute; }
+  #px_drift { position: absolute; inset: -100px; opacity: 0; }
+  .px_blob { position: absolute; border-radius: 50%; filter: blur(90px); }
+  #px_tag { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 92px; font-weight: 700; letter-spacing: 0.02em; color: #FFFDF588; opacity: 0; }
+  #gp_bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    filter: brightness(0.42) saturate(1.05); z-index: 0; }
+</style>
+
+<div id="root" data-composition-id="04-f4" data-width="1920" data-height="1080" data-duration="30" data-root="true">
+  <video id="gp_bg" class="clip" muted playsinline preload="auto"
+    src="assets/gameplay/gp-combat-6s.mp4"
+    data-start="0" data-duration="6" data-media-start="0" data-track-index="12"></video>
+  <div id="g1"><div class="tq_center"><div id="tq_line"></div></div></div>
+  <div id="g2"><div class="fb_center"><div class="fb_stack" id="fb_stack"></div></div></div>
+  <div id="g3"><div class="ot_center" id="ot_center"></div></div>
+  <div id="g4"><div class="lb_wrap" id="lb_wrap">
+    <div class="lb_title" id="lb_title">★ USER HIGH SCORES</div>
+    <div id="lb_rows"></div>
+  </div></div>
+  <div id="g5">
+    <div id="px_curtain"></div>
+    <div id="px_drift">
+      <div class="px_blob" style="left:6%;top:18%;width:560px;height:480px;background:#FE90E8"></div>
+      <div class="px_blob" style="left:60%;top:8%;width:640px;height:540px;background:#C0F7FE"></div>
+      <div class="px_blob" style="left:30%;top:52%;width:680px;height:560px;background:#99E885"></div>
+      <div class="px_blob" style="left:70%;top:60%;width:520px;height:460px;background:#F7CB46"></div>
+    </div>
+    <div id="px_tag">hẹn gặp ở wave sau.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var T0 = 77.0, SPAN = 30.0;
+  var tx = function (t) { return Math.round((t - T0) * 1000) / 1000; };
+  var tl = gsap.timeline({ paused: true });
+  var PASTEL = ["#FE90E8", "#C0F7FE", "#99E885", "#F7CB46", "#FFDC8B"];
+
+  /* ============ g1: taunt (77–83, text builds across the void) ============ */
+  var TEXT = "Đừng để bị đóng cửa sổ.";
+  var lineEl = document.getElementById("tq_line");
+  var chars = [];
+  for (var i = 0; i < TEXT.length; i++) {
+    var sp = document.createElement("span");
+    sp.innerHTML = TEXT[i] === " " ? "&nbsp;" : TEXT[i];
+    sp.style.opacity = "0";
+    sp.style.animation = "none";
+    if (TEXT[i] === "k") sp.innerHTML = "<em>k?</em>";
+    lineEl.appendChild(sp);
+    chars.push(sp);
+  }
+  var caret = document.createElement("span");
+  caret.id = "tq_caret";
+  lineEl.appendChild(caret);
+  gsap.set(caret, { opacity: 0 });
+  var TYMS = [79.0, 80.0, 80.6, 81.2, 81.8, 82.4];
+  chars.forEach(function (sp, k) {
+    var chunkStart = TYMS[Math.min(TYMS.length - 1, Math.floor((k * TYMS.length) / chars.length))];
+    tl.set(sp, { opacity: 1 }, tx(chunkStart));
+  });
+  // caret blink 79–82.9
+  for (var b2 = 0; b2 < 10; b2++) tl.set(caret, { opacity: b2 % 2 }, tx(79.0 + b2 * 0.4));
+  tl.set(caret, { opacity: 1 }, tx(82.4));
+  tl.set("#g1", { autoAlpha: 0 }, tx(83.0));
+  tl.set("#g1", { autoAlpha: 1 }, 0);
+
+  /* ============ g2: monster flipbook (83–86) ============ */
+  var FLIP = ["CHASER", "CHEWER", "TANK", "DASHER", "SPLITTER", "MINI", "BOSS", "OT"];
+  var stackEl = document.getElementById("fb_stack");
+  var flipEls = {};
+  gsap.set("#g2", { autoAlpha: 0 }); // initial CSS state until timeline shows it
+  FLIP.forEach(function (w) {
+    var el = document.createElement("span");
+    el.className = "fb_flip";
+    el.textContent = w;
+    el.style.opacity = "0";
+    stackEl.appendChild(el);
+    flipEls[w] = el;
+  });
+  var RESOLVE = "6 LOẠI + BOSS";
+  var resEl = document.createElement("span");
+  resEl.className = "fb_resolve";
+  resEl.textContent = RESOLVE;
+  stackEl.appendChild(resEl);
+  // flip every 0.125s from 83.2 to 84.4, then insect of the resolve
+  var FLIP_START = 0.2, FLIP_END = 1.4, STEP = 0.125;
+  var prevFlip = null, swapIdx = 0;
+  var total = Math.max(0, Math.floor((FLIP_END - FLIP_START) / STEP + 1e-6));
+  for (var f = 0; f <= total; f++) {
+    var t = FLIP_START + f * STEP;
+    var w = FLIP[swapIdx % FLIP.length];
+    var cur = flipEls[w];
+    if (prevFlip && prevFlip !== cur) tl.set(prevFlip, { opacity: 0 }, tx(83.0 + t));
+    tl.set(cur, { opacity: 1 }, tx(83.0 + t));
+    prevFlip = cur; swapIdx++;
+  }
+  if (prevFlip) tl.set(prevFlip, { opacity: 0 }, tx(84.4));
+  tl.fromTo(resEl, { opacity: 0, scale: 0.85, filter: "blur(12px)" },
+    { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.3, ease: "power2.out", immediateRender: false }, tx(84.55));
+  tl.set("#g2", { autoAlpha: 0 }, tx(86.0));
+  tl.set("#g2", { autoAlpha: 0 }, 0);
+  tl.set("#g2", { autoAlpha: 1 }, tx(83.0));
+
+  /* ============ g3: OT strobe (86–88) ============ */
+  var otCenter = document.getElementById("ot_center");
+  var OT_LOOKS = [
+    { bg: "#0A0A0F", color: "#FE90E8" },
+    { bg: "#FE90E8", color: "#0A0A0F" },
+    { bg: "#F7CB46", color: "#0A0A0F" },
+    { bg: "#0A0A0F", color: "#FFFDF5" },
+  ];
+  OT_LOOKS.forEach(function (f) {
+    var look = document.createElement("div");
+    look.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI Black','Segoe UI',Arial,sans-serif;font-size:600px;font-weight:900;line-height:1.05;transform:scaleX(0.85);opacity:0;background:" + f.bg + ";color:" + f.color;
+    look.textContent = "OT";
+    otCenter.appendChild(look);
+    f._el = look;
+  });
+  gsap.set(OT_LOOKS[0]._el, { opacity: 1 });
+  var OT_JUMPS = [86.0, 86.125, 86.25, 86.375, 87.0, 87.125, 87.25, 87.375, 87.5];
+  var otPrev = OT_LOOKS[0]._el;
+  OT_JUMPS.forEach(function (t, i) {
+    var cur = OT_LOOKS[(i + 1) % OT_LOOKS.length]._el;
+    if (otPrev && otPrev !== cur) tl.set(otPrev, { opacity: 0 }, tx(t));
+    tl.set(cur, { opacity: 1 }, tx(t));
+    otPrev = cur;
+  });
+  tl.set(otPrev, { opacity: 0 }, tx(88.0));
+  tl.set("#g3", { autoAlpha: 0 }, tx(88.0));
+  tl.set("#g3", { autoAlpha: 0 }, 0);
+  tl.set("#g3", { autoAlpha: 1 }, tx(86.0));
+
+  /* ============ g4: fake leaderboard (88–97) ============ */
+  var ROWS = [
+    { who: "WK_BOT", pts: "999,999", star: true, in: 89.0, pastel: "#FFDC8B" },
+    { who: "TANK_TP", pts: "88,888", in: 90.0, pastel: "#FE90E8" },
+    { who: "DEVER", pts: "77,777", in: 92.0, pastel: "#C0F7FE" },
+    { who: "BJỚN", pts: "66,666", in: 94.0, pastel: "#99E885" },
+    { who: "ANON", pts: "1", in: 95.0, pastel: "#F7CB46" },
+    { who: "BẠN", pts: "???", hero: true, in: 95.8 },
+  ];
+  var rowsBox = document.getElementById("lb_rows");
+  var titleEl = document.getElementById("lb_title");
+  var rowEls = ROWS.map(function (r) {
+    var el = document.createElement("div");
+    el.className = "lb_row" + (r.hero ? " hero" : " pastel");
+    if (!r.hero) el.style.background = r.pastel;
+    var who = document.createElement("span"); who.className = "who";
+    who.textContent = "★ " + r.who;
+    var pts = document.createElement("span"); pts.className = "pts"; pts.textContent = r.pts;
+    el.appendChild(who); el.appendChild(pts);
+    var lean = r.hero ? 0 : ((ROWS.indexOf(r) % 3) - 1) * 1;
+    el.style.transform = "rotate(" + lean + "deg)";
+    rowsBox.appendChild(el);
+    return el;
+  });
+  gsap.set(rowEls, { opacity: 0, y: 40, scale: 0.95 });
+  gsap.set(titleEl, { opacity: 0 });
+  tl.to(titleEl, { opacity: 1, duration: 0.01, immediateRender: false }, tx(88.2));
+  // wrap-level slide for reposition when rows accumulate: rows are stacked — the newest
+  // lands BELOW the rest so the board grows downward; a subtle per-beat jitter rides 92.5/94.5
+  [88.5, 89.5, 90.5, 92.5, 94.5, 95.5].forEach(function (t, k) {
+    var jx = (((k * 37) % 11) - 5) * 10, jy = (((k * 53) % 9) - 4) * 8;
+    tl.fromTo("#lb_rows", { x: jx, y: jy },
+      { x: 0, y: 0, duration: 0.3, ease: "back.out(3)", overwrite: "auto", immediateRender: false }, tx(t));
+  });
+  ROWS.forEach(function (r, i) {
+    tl.fromTo(rowEls[i], { opacity: 0, y: 40, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.22, ease: "back.out(2.2)", immediateRender: false }, tx(r.in));
+  });
+  // freeze-hold the leader row at 92.5 (scale-up pulse)
+  tl.fromTo(rowEls[0], { scale: 1 }, { scale: 1.06, duration: 0.2, ease: "back.out(3)", yoyo: true, repeat: 1, overwrite: "auto", immediateRender: false }, tx(92.5));
+  tl.set("#g4", { autoAlpha: 0 }, tx(97.0));
+  tl.set("#g4", { autoAlpha: 0 }, 0);
+  tl.set("#g4", { autoAlpha: 1 }, tx(88.0));
+
+  /* ============ g5: pixel curtain + drift (97–107) ============ */
+  var curtain = document.getElementById("px_curtain");
+  var COLS = Math.ceil(1920 / 64), ROWSN = Math.ceil(1080 / 64);
+  var cells = [];
+  for (var r5 = 0; r5 < ROWSN; r5++) {
+    for (var c5 = 0; c5 < COLS; c5++) {
+      var cell = document.createElement("div");
+      cell.className = "px_cell";
+      cell.style.left = (c5 * 64) + "px"; cell.style.top = (r5 * 64) + "px";
+      cell.style.background = PASTEL[(r5 * 7 + c5 * 13) % PASTEL.length];
+      cell.style.opacity = "0";
+      curtain.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+  // curtain cascade-in from 97 (hard stop) covering the leaderboard slice-out
+  cells.forEach(function (cell, i) {
+    var col = i % COLS, row = Math.floor(i / COLS);
+    var delay = 0.25 + col * 0.035 + row * 0.02;
+    tl.set(cell, { opacity: 1 }, tx(97.0 + delay));
+  });
+  // then curtain cascades out 99.5–102 (pixel dissolve downward)
+  cells.forEach(function (cell, i) {
+    var col = i % COLS, row = Math.floor(i / COLS);
+    var delay = 0.8 + col * 0.025 + row * 0.04;
+    tl.set(cell, { opacity: 0 }, tx(99.5 + delay));
+  });
+  // drift bed 102–107
+  tl.fromTo("#px_drift", { opacity: 0 }, { opacity: 0.5, duration: 1.4, ease: "none", immediateRender: false }, tx(101.6));
+  tl.fromTo("#px_drift", { scale: 1 }, { scale: 1.12, duration: 5, ease: "sine.inOut", overwrite: false, immediateRender: false }, tx(101.6));
+  tl.to("#px_tag", { opacity: 1, duration: 0.6, ease: "none", immediateRender: false }, tx(104.0));
+  tl.to("#px_tag", { opacity: 0, duration: 1.2, ease: "none", overwrite: "auto" }, tx(106.4));
+  tl.set("#g5", { autoAlpha: 0 }, tx(107.0));
+  tl.set("#g5", { autoAlpha: 0 }, 0);
+  tl.set("#g5", { autoAlpha: 1 }, tx(97.0));
+
+  tl.to({}, { duration: 0.001 }, SPAN - 0.001);
+  tl.seek(0);
+  window.__timelines["04-f4"] = tl;
+})();
+</script>
+</template>
+</body>
+</html>

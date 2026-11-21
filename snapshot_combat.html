@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; connect-src 'self' https://windowkill-web.fly.dev; object-src 'none'; base-uri 'self'">
+<title>WINDOWKILL: Web Edition — Snapshot Combat</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="js/portal.js" defer></script>
+<script src="js/pwa.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/analytics.js" defer></script>
+<script src="js/i18n.js" defer></script>
+<style>
+  html, body { height: 100%; overflow: hidden; background: #04080f; }
+  #arena-wrap { position: fixed; inset: 0; background: #04080f; touch-action: none; }
+  #game-canvas { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; }
+  .menu-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .menu-btns .btn-ghost.sel, .opt-btns .btn-ghost.sel { background: #0080FF33; border-color: #0080FF; color: #fff; font-weight: 700; }
+  .stat-line { color: #9db8d9; font-size: 15px; line-height: 2; }
+  .stat-line b { color: #fde68a; }
+  #onboard-bar { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+    z-index: 56; display: flex; align-items: center; gap: 10px; background: #0d1626ee;
+    border: 1px solid #0080FF88; border-radius: 12px; padding: 8px 12px; font-size: 14px;
+    color: #eaf4ff; max-width: min(92vw, 560px); box-shadow: 0 8px 28px #000a; }
+  #onboard-bar[hidden] { display: none; }
+  #onboard-msg { line-height: 1.4; }
+  #onboard-skip { white-space: nowrap; min-height: 44px; }
+  #onboard-edge { display: none; position: fixed; z-index: 55; pointer-events: none; border-radius: 6px;
+    background: #ff3b5c; box-shadow: 0 0 18px 5px #ff3b5c99; animation: obEdgePulse 0.9s ease-in-out infinite; }
+  @keyframes obEdgePulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+</symbol>
+<symbol id="i-heart-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+<path d="M12 5v6M9 8h6"/>
+</symbol>
+<symbol id="i-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+<circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+<polyline points="9 22 9 12 15 12 15 22"/>
+</symbol>
+</svg>
+
+<div id="arena-wrap">
+  <canvas id="game-canvas"></canvas>
+  <div id="onboard-edge" aria-hidden="true"></div>
+  <div id="onboard-bar" role="region" aria-label="Hướng dẫn chơi">
+    <span id="onboard-msg">Đừng để quái gặm hết cửa sổ. Bắn!</span>
+    <button class="btn-ghost" id="onboard-skip">Bỏ qua ▸</button>
+  </div>
+</div>
+
+<div id="sat-perm" class="sat-perm-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90">
+  <div style="background:#0a1220f2;border:1px solid #38bdf888;border-radius:12px;display:flex;align-items:center;gap:12px;padding:10px 14px;font-size:13.5px;color:#dbeafe;box-shadow:0 8px 28px #000a">
+    <span>Màn này có cửa sổ vệ tinh — cho mở nhé?</span>
+    <button class="btn-ghost" id="btn-sat-allow" style="padding:10px 18px;min-height:44px">Cho phép</button>
+    <button class="btn-ghost" id="btn-sat-single" style="padding:10px 18px;min-height:44px">Chơi 1 cửa sổ</button>
+  </div>
+</div>
+
+<button id="btn-hud-pause" class="hud-btn" aria-label="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+<button id="btn-hud-glue" class="hud-btn" style="display:none" aria-label="Bắn keo vá cửa sổ"><svg class="ic" aria-hidden="true"><use href="#i-heart-plus"/></svg></button>
+<button id="btn-hud-full" class="hud-btn" aria-label="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
+<button id="btn-hud-menu" class="hud-btn hud-btn-round" aria-label="Menu game" aria-haspopup="true" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-dots"/></svg></button>
+<div id="hud-menu-backdrop" class="hud-menu-backdrop" hidden></div>
+<div id="hud-radial" class="hud-radial">
+  <button class="hud-radial-btn" data-act="pause" aria-label="Tạm dừng" title="Tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+  <button class="hud-radial-btn" data-act="full" aria-label="Toàn màn hình" title="Toàn màn hình"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg></button>
+  <button class="hud-radial-btn" data-act="quit" aria-label="Về menu" title="Về menu"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg></button>
+</div>
+
+<script src="js/audio.js" defer></script>
+<script src="js/bgm.js" defer></script>
+<script src="js/bg.js" defer></script>
+<script src="js/juice.js" defer></script>
+<script src="js/cinema.js" defer></script>
+<script src="js/tuning.js" defer></script>
+<script src="js/monsters.js" defer></script>
+<script src="js/bosses.js" defer></script>
+<script src="js/tutorial.js" defer></script>
+<script src="js/meta.js" defer></script>
+<script src="js/juice2.js" defer></script>
+<script src="js/sfx2.js" defer></script>
+<script src="js/upgrades2.js" defer></script>
+<script src="js/v2glue.js" defer></script>
+<script src="js/hud-icons.js" defer></script>
+<script src="js/borderfx.js" defer></script>
+<script src="js/quality.js" defer></script>
+<script src="js/particles.js" defer></script>
+<script src="js/game.js" defer></script>
+<script src="js/mobile.js" defer></script>
+
+<script>
+window.addEventListener("load", function() {
+  setTimeout(function() {
+    try {
+      if (window.Onboard && typeof Onboard.skip === "function") {
+        Onboard.skip();
+      }
+      var obBar = document.getElementById("onboard-bar");
+      if (obBar) obBar.style.display = "none";
+      if (typeof startWave === "function") {
+        startWave(1);
+        G.score = 1500;
+        G.kills = 14;
+        G.combo = 3;
+        var b = bounds();
+        if (typeof spawnEnemyAt === "function") {
+          spawnEnemyAt("chaser", b.x + b.w * 0.55, b.y + b.h * 0.28);
+          spawnEnemyAt("tank", b.x + b.w * 0.25, b.y + b.h * 0.75);
+          spawnEnemyAt("dasher", b.x + b.w * 0.78, b.y + b.h * 0.70);
+          spawnEnemyAt("splitter", b.x + b.w * 0.30, b.y + b.h * 0.35);
+          var ch = spawnEnemyAt("chewer", b.x + b.w - 14, b.y + b.h * 0.45);
+          if (ch) {
+            ch.latched = "right";
+            ch.x = b.x + b.w;
+            ch.y = b.y + b.h * 0.45;
+          }
+        }
+        if (G.gems) {
+          for (var i = 0; i < 10; i++) {
+            G.gems.push({ x: b.x + b.w * 0.35 + (i % 5) * 40, y: b.y + b.h * 0.5 + Math.floor(i / 5) * 40, vx: 0, vy: 0, v: 1, t: i });
+          }
+        }
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }, 250);
+});
+</script>
+</body>
+</html>

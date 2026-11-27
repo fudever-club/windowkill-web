@@ -1,5 +1,6 @@
 /* ---------------- điều khiển cửa sổ thật ---------------- */
-const winCtrl = { tested: false, ok: true, expect: 0 };
+const FORCE_VIRTUAL_ARENA = (typeof qp !== "undefined" && qp.get && qp.get("virtual") === "1");
+const winCtrl = { tested: FORCE_VIRTUAL_ARENA, ok: !FORCE_VIRTUAL_ARENA, expect: 0 };
 let arena = null; // fallback đấu trường ảo khi trình duyệt chặn resize
 const bounds = () => arena || { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
 let wvx = 0, wvy = 0;

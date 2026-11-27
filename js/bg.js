@@ -153,6 +153,77 @@ const BG = (() => {
         tintHue: -12,
       },
     },
+    6: { // LÕI KERNEL PANIC — đỏ hồng cảnh báo
+      base0: "#0B0409", base1: "#1B0714",
+      nebulas: [
+        { c: "#FF2E63", a: 0.10, r: 0.52, x: 0.50, y: 0.35 },
+        { c: "#991B1B", a: 0.10, r: 0.45, x: 0.50, y: 0.80 },
+      ],
+      dangerNeb: { c: "#7F1D1D", aMax: 0.14, r: 0.60, x: 0.50, y: 0.50 },
+      grid: { type: "flicker", c: "#FB7185", aMin: 0.03, aMax: 0.08, sp: 54 },
+      parts: { n: 34, c: "#FDA4AF", aMin: 0.22, aMax: 0.42, mode: "fall", spMin: 35, spMax: 85, lifeMin: 1.2, lifeMax: 2.2 },
+      vignette: 0.55,
+      theme: {
+        decor: {
+          statics: [
+            { kind: "text", x: 0.16, y: 0.18, text: "PANIC", size: 42, rot: -0.15, c: "#FB7185", a: 0.08 },
+            { kind: "text", x: 0.84, y: 0.82, text: "0x00F", size: 48, rot: 0.12, c: "#FB7185", a: 0.08 },
+          ],
+          animated: [
+            { kind: "scanline", count: 4, speed: 18, c: "#FF2E63", a: 0.09, h: 2 },
+          ],
+        },
+        border: { kind: "danger", colors: ["#FB7185", "#FF2E63"], width: 4, sync: "danger" },
+        tintHue: -6,
+      },
+    },
+    7: { // CỤM ĐÁM MÂY — xanh cyan hạ tầng
+      base0: "#030A14", base1: "#081C2E",
+      nebulas: [
+        { c: "#00B4D8", a: 0.10, r: 0.54, x: 0.50, y: 0.30 },
+        { c: "#0369A1", a: 0.10, r: 0.44, x: 0.50, y: 0.82 },
+      ],
+      grid: { type: "hex", c: "#38BDF8", a: 0.06, sp: 40 },
+      parts: { n: 38, c: "#7DD3FC", aMin: 0.22, aMax: 0.40, mode: "drift", spMin: 10, spMax: 22, square: true },
+      vignette: 0.48,
+      theme: {
+        decor: {
+          statics: [
+            { kind: "rect", x: 0.08, y: 0.22, w: 96, h: 58, r: 10, c: "#38BDF8", a: 0.10, tb: "#0EA5E9" },
+            { kind: "rect", x: 0.78, y: 0.64, w: 104, h: 62, r: 10, c: "#38BDF8", a: 0.10, tb: "#0EA5E9" },
+            { kind: "line", x1: 0.16, y1: 0.28, x2: 0.78, y2: 0.68, c: "#38BDF8", a: 0.07, w: 1.5 },
+          ],
+          animated: [
+            { kind: "orbit", count: 6, cx: 0.50, cy: 0.50, r: 140, c: "#7DD3FC", a: 0.45, speed: 0.35 },
+          ],
+        },
+        border: { kind: "rounded", colors: ["#0EA5E9"], width: 3, sync: "none" },
+        tintHue: 4,
+      },
+    },
+    8: { // DESKTOP CỔ ĐIỂN — retro phosphor teal/vàng hổ phách
+      base0: "#040B0D", base1: "#0A1B1E",
+      nebulas: [
+        { c: "#14B8A6", a: 0.09, r: 0.50, x: 0.45, y: 0.35 },
+        { c: "#D97706", a: 0.07, r: 0.40, x: 0.65, y: 0.75 },
+      ],
+      grid: { type: "square", c: "#2DD4BF", a: 0.055, sp: 48 },
+      parts: { n: 32, c: "#5EEAD4", aMin: 0.20, aMax: 0.36, mode: "rise", spMin: 12, spMax: 28 },
+      vignette: 0.52,
+      theme: {
+        decor: {
+          statics: [
+            { kind: "rect", x: 0.06, y: 0.14, w: 86, h: 60, r: 4, c: "#2DD4BF", a: 0.10, tb: "#14B8A6" },
+            { kind: "rect", x: 0.80, y: 0.22, w: 86, h: 60, r: 4, c: "#F59E0B", a: 0.09, tb: "#D97706" },
+          ],
+          animated: [
+            { kind: "scanline", count: 4, speed: 10, c: "#2DD4BF", a: 0.07, h: 2 },
+          ],
+        },
+        border: { kind: "neon", colors: ["#2DD4BF"], width: 3, sync: "none" },
+        tintHue: 10,
+      },
+    },
   };
 
   /* ---------- state ---------- */
@@ -182,11 +253,33 @@ const BG = (() => {
   }
   const R = (a, b) => a + Math.random() * (b - a);
 
+  let bgRebuildPending = false;
+  try {
+    if (typeof window !== "undefined" && window.WKSprites && typeof WKSprites.onLoad === "function") {
+      WKSprites.onLoad((k) => {
+        if (k === `bg_${stageId}_base`) bgRebuildPending = true;
+      });
+    }
+  } catch (e) {}
+
   /* ---------- prerender helpers ---------- */
   function paintBase(ctx, pal, gridAlpha) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, pal.base0); g.addColorStop(1, pal.base1);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    try {
+      if (typeof window !== "undefined" && window.WKSprites && WKSprites.enabled && WKSprites.enabled()) {
+        const bgImg = WKSprites.get(`bg_${stageId}_base`);
+        if (bgImg && bgImg.naturalWidth > 0 && bgImg.naturalHeight > 0) {
+          const sc = Math.max(W / bgImg.naturalWidth, H / bgImg.naturalHeight);
+          const dw = bgImg.naturalWidth * sc, dh = bgImg.naturalHeight * sc;
+          ctx.save();
+          ctx.globalAlpha = 0.34;
+          ctx.drawImage(bgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+          ctx.restore();
+        }
+      }
+    } catch (e) {}
     paintGrid(ctx, pal, gridAlpha);
     paintDecorStatic(ctx, pal); // RFC stage-themes-modes: decor static bake vào offscreen
     if (pal.watermark) {
@@ -519,6 +612,11 @@ const BG = (() => {
   }
 
   function draw(ctx, t) {
+    if (bgRebuildPending && W > 0 && H > 0) {
+      bgRebuildPending = false;
+      base = null;
+      build(stageId, W, H);
+    }
     const pal = PALETTES[stageId];
     if (!base || !ctx) return;
     const dt = lastT ? clamp((t - lastT) / 1000, 0, 0.05) : 0.016;
@@ -528,6 +626,23 @@ const BG = (() => {
     // L0+L2+L5 prerender
     if (Array.isArray(base)) ctx.drawImage(base[rd ? 0 : ((t / 200) | 0) % 3], 0, 0);
     else ctx.drawImage(base, 0, 0);
+
+    // L0.5 PNG ambient parallax (when Cartoon Neon PNG mode enabled)
+    try {
+      if (typeof window !== "undefined" && window.WKSprites && WKSprites.enabled && WKSprites.enabled()) {
+        const pImg = WKSprites.get(`bg_${stageId}_parallax`);
+        if (pImg && pImg.naturalWidth > 0 && pImg.naturalHeight > 0) {
+          const sc = Math.max(W / pImg.naturalWidth, H / pImg.naturalHeight) * 1.04;
+          const dw = pImg.naturalWidth * sc, dh = pImg.naturalHeight * sc;
+          const ox = rd ? 0 : Math.sin(t * 0.00018) * 18;
+          const oy = rd ? 0 : Math.cos(t * 0.00014) * 14;
+          ctx.save();
+          ctx.globalAlpha = rd ? 0.25 : 0.42;
+          ctx.drawImage(pImg, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
+          ctx.restore();
+        }
+      }
+    } catch (e) {}
 
     // L1 nebula drift ±12px (đứng yên khi reduced)
     if (rd) ctx.drawImage(neb, 0, 0);

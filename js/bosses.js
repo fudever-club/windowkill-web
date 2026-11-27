@@ -301,8 +301,24 @@
       draw: function (ctx, b) {
         var x = b.x, y = b.y, s = b.r / 54;
         var flash = b.flash > 0;
+        var SP = W.WKSprites || (typeof window !== "undefined" ? window.WKSprites : null);
         ctx.save();
         ctx.translate(x, y + Math.sin(b.bob || 0) * 4);
+        if (SP && SP.enabled() && SP.get("rush_gnawer_upper")) {
+          var ma = b.mouthAng || 0;
+          var mx = Math.cos(ma) * 44 * s, my = Math.sin(ma) * 34 * s;
+          if (b.mouthOpen && SP.get("rush_gnawer_mouthglow")) {
+            SP.draw(ctx, "rush_gnawer_mouthglow", mx, my, 70 * s, 70 * s, { rot: ma, alpha: 0.85 });
+          }
+          SP.draw(ctx, "rush_gnawer_upper", 0, -4 * s, 142 * s, 142 * s, { flash: flash });
+          SP.draw(ctx, "rush_gnawer_lowerjaw", mx * 0.55, my * 0.55 + (b.mouthOpen ? 10 * s : 2 * s), 76 * s, 54 * s, { rot: ma * 0.35, flash: flash });
+          if (b.mouthOpen) {
+            ctx.strokeStyle = "#ffd479"; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(mx, my, 30 * s, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.restore();
+          return;
+        }
         // 6 chân bám
         ctx.strokeStyle = flash ? "#fff" : "#6d28d9"; ctx.lineWidth = 5 * s;
         for (var i = 0; i < 6; i++) {
@@ -446,10 +462,28 @@
         segs.forEach(function (sg) {
           var q = wallPoint(b, b.wall.pos);
           if (b.sweep && sg.dist !== undefined) q = pointOnPerimeter(b, sg);
+          var se = sg.edge || b.wall.edge;
+          var sh = se === "top" || se === "bottom";
           ctx.save();
           ctx.translate(q.x, q.y);
-          if (!horiz) ctx.rotate(Math.PI / 2);
+          if (!sh) ctx.rotate(Math.PI / 2);
           var glow = b.rainGlow > 0 || (b.sweep && !exposed);
+          var SP = W.WKSprites || (typeof window !== "undefined" ? window.WKSprites : null);
+          if (SP && SP.enabled() && SP.get("rush_firewall_segment")) {
+            SP.draw(ctx, "rush_firewall_segment", 0, 0, len, th + 12, {
+              alpha: exposed ? 0.42 : 1,
+              glowColor: glow ? "#ff3d00" : "#ff9a3c",
+              glowBlur: glow ? 14 : 8
+            });
+            var sOffY = (se === "top" || se === "right") ? (th * 0.62) : -(th * 0.62);
+            var sRot = (se === "top" || se === "right") ? Math.PI : 0;
+            for (var spk = 0; spk < 8; spk++) {
+              var gx2 = -len / 2 + spk * (len / 8) + len / 16;
+              SP.draw(ctx, "rush_firewall_spike", gx2, sOffY, 24, 24, { rot: sRot, alpha: exposed ? 0.45 : 0.95 });
+            }
+            ctx.restore();
+            return;
+          }
           // thân tường gạch cam
           ctx.fillStyle = exposed ? "#4a4a4a" : (glow ? "#ff3d00" : "#cc5500");
           ctx.fillRect(-len / 2, -th / 2, len, th);
@@ -561,7 +595,30 @@
       draw: function (ctx, b) {
         var x = b.x, y = b.y;
         var overloaded = b.overload > 0, flash = b.flash > 0;
+        var SP = W.WKSprites || (typeof window !== "undefined" ? window.WKSprites : null);
         ctx.save(); ctx.translate(x, y);
+        if (SP && SP.enabled() && SP.get("rush_chaos_core")) {
+          if (SP.get("rush_chaos_ring")) {
+            SP.draw(ctx, "rush_chaos_ring", 0, 0, 176, 176, { rot: b.ringAng || 0, alpha: overloaded ? 0.35 : 0.85 });
+          }
+          SP.draw(ctx, "rush_chaos_core", 0, 0, 96, 96, {
+            flash: flash, alpha: overloaded ? 0.45 : 1,
+            glowColor: "#9D4EDD", glowBlur: 18
+          });
+          if (b.pullT > 0 || hasTele(b, "pullRing")) {
+            ctx.strokeStyle = "#e9d5ff"; ctx.lineWidth = 3;
+            var pr2 = 46 + (1 - (b.pullT > 0 ? b.pullT / 2 : 0)) * 40;
+            ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(0, 0, pr2, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+          if (b.mines) b.mines.forEach(function (mn) {
+            if (!SP.draw(ctx, "rush_chaos_mine", mn.x - x, mn.y - y, 24, 24, { rot: b.t || 0 })) {
+              ctx.fillStyle = "#f43f5e"; ctx.beginPath(); ctx.arc(mn.x - x, mn.y - y, 9, 0, Math.PI * 2); ctx.fill();
+            }
+          });
+          ctx.restore();
+          return;
+        }
         // 3 vành quỹ đạo xoay
         for (var i = 0; i < 3; i++) {
           ctx.save(); ctx.rotate((b.ringAng || 0) + i * Math.PI / 3);
@@ -708,9 +765,24 @@
         // Outline tím lóe khi tấn công / khi đèn sáng
         var attacking = b.laser || b.laserX || b.eyeFlare > 0;
         // Đôi mắt đỏ khổng lồ
+        var SP = W.WKSprites || (typeof window !== "undefined" ? window.WKSprites : null);
+        var useEyeSpr = !!(SP && SP.enabled() && SP.get("rush_night_eye"));
         (b.eyePos || []).forEach(function (e, i) {
           var flare = b.eyeFlare > 0;
           var er = (b.phase >= 3 ? 24 : 30) * (flare ? 1.25 : 1);
+          if (useEyeSpr) {
+            if (SP.get("rush_night_abyss")) {
+              SP.draw(ctx, "rush_night_abyss", e.x, e.y, er * 3.4, er * 2.6, { alpha: attacking ? 0.85 : 0.4 });
+            }
+            SP.draw(ctx, "rush_night_eye", e.x, e.y, er * 2.6, er * 2.6, {
+              flash: b.flash > 0, glowColor: flare ? "#ffdd44" : "#ff2222", glowBlur: flare ? 22 : 12
+            });
+            if (b.phase >= 3 && i % 2 === 1) {
+              ctx.strokeStyle = "#ff9a3c"; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(e.x, e.y, er + 14, 0, Math.PI * 2); ctx.stroke();
+            }
+            return;
+          }
           // tròng trắng lóe outline tím
           if (!b.isDark || attacking) {
             ctx.strokeStyle = "rgba(168,85,247," + (attacking ? 0.9 : 0.35) + ")";
@@ -915,6 +987,38 @@
         var jx = (b.invisible > 0) ? 0 : Math.sin(b.glitch) * 4; // glitch rung khi hiện hình
         ctx.translate(x + jx, y);
         if (!(b.invisible > 0)) {
+          var SP = W.WKSprites || (typeof window !== "undefined" ? window.WKSprites : null);
+          if (SP && SP.enabled() && SP.get("rush_null_cursor")) {
+            SP.draw(ctx, "rush_null_cursor", 6, -6, 108, 108, {
+              flash: b.flash > 0, glowColor: "#f43f5e", glowBlur: 18
+            });
+            if (SP.get("rush_null_glitchbar")) {
+              for (var gb = 0; gb < 3; gb++) {
+                var gbx = ((gb - 1) * 26) + Math.sin((b.glitch || 0) * 3 + gb) * 8;
+                var gby = 40 + ((b.glitch * 22 + gb * 19) % 34);
+                SP.draw(ctx, "rush_null_glitchbar", gbx, gby, 38, 14, { alpha: 0.72 });
+              }
+            }
+            var glow2 = b.phase >= 3 ? (Math.sin(b.glitch * 2) > 0 ? 1 : 0.4) : 0.75;
+            ctx.globalAlpha = glow2;
+            ctx.fillStyle = "#ff2222"; ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
+            ctx.fillText("resizeTo(0,0)", 0, -64);
+            ctx.globalAlpha = 1;
+            ctx.restore();
+            if (b.phase >= 3 && b.countdown > 0) {
+              var w3 = W.innerWidth || 900;
+              ctx.save(); ctx.textAlign = "center";
+              var urg = b.countdown < 10;
+              ctx.globalAlpha = urg ? (Math.sin(b.glitch * 3) > 0 ? 1 : 0.45) : 1;
+              ctx.fillStyle = "#ff2222"; ctx.font = "bold 64px monospace";
+              var m3 = Math.floor(b.countdown / 60), s3 = Math.floor(b.countdown % 60);
+              ctx.fillText(m3 + ":" + (s3 < 10 ? "0" : "") + s3, w3 / 2, 120);
+              ctx.font = "bold 16px sans-serif";
+              ctx.fillText("CỬA SỔ SẼ BỊ XÓA", w3 / 2, 146);
+              ctx.restore();
+            }
+            return;
+          }
           // Con trỏ chuột khổng lồ bị lỗi (mũi tên vỡ)
           ctx.fillStyle = b.flash > 0 ? "#ffffff" : "#f8fafc";
           ctx.strokeStyle = "#f43f5e"; ctx.lineWidth = 3;

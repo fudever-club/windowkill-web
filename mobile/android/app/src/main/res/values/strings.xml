@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WINDOWKILL</string>
+    <string name="title_activity_main">WINDOWKILL</string>
+    <string name="package_name">com.fudever.windowkill</string>
+    <string name="custom_url_scheme">com.fudever.windowkill</string>
+</resources>

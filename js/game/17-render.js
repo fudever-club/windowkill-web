@@ -46,7 +46,7 @@ function themeTint(e) {
   try {
     if (window.G && G.themeTint === false) return e.color; // override tắt tường minh
     const st = (window.G && G.themeSid) || 0;
-    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: theme invalid → TẮT
+    if (!(st >= 1 && st <= 5)) return e.color; // T2.5: theme tint áp dụng 1-5; 6-8 giữ màu gốc
     const th = (typeof BG !== "undefined" && BG.getTheme(st).tintHue) || 0;
     if (!th) return e.color;
     const k = st + "|" + e.color;
@@ -74,7 +74,7 @@ function drawThemeBorder(ctx, W, H, now) {
   let bd = null;
   try {
     const st = (window.G && G.themeSid) || 0;
-    if (!(st >= 1 && st <= 5)) return; // theme invalid: không motif viền
+    if (!(st >= 1 && st <= 8)) return; // theme invalid: không motif viền
     if (typeof BG === "undefined") return;
     bd = BG.getTheme(st).border;
   } catch (e) { return; }
@@ -155,14 +155,27 @@ function render(now) {
   if (typeof drawSatFields === "function") drawSatFields(); // M10/M9: vùng hiệu lực popup thật
   if (typeof drawCracks === "function") drawCracks(); // M4: vết nứt viền arena
 
-  // gems: icon i-gem (SVG cache) — không emoji
+  // gems: PNG Cartoon Neon (fallback icon SVG cache)
   G.gems.forEach(gm => {
-    if (window.HUDIcons) HUDIcons.draw(ctx, "i-gem", 17, "#7df9ff", gm.x, gm.y + Math.sin(gm.t * 5) * 3);
+    const gy = gm.y + Math.sin(gm.t * 5) * 3;
+    if (window.WKSprites && WKSprites.draw(ctx, (gm.v || 1) >= 4 ? "gem_large" : "gem_small", gm.x, gy, 20, 20)) return;
+    if (window.HUDIcons) HUDIcons.draw(ctx, "i-gem", 17, "#7df9ff", gm.x, gy);
   });
-  // pickups: icon SVG cache (heart/shield/nuke); magnet/overdrive vẽ tay — không emoji
+  // pickups: PNG Cartoon Neon (fallback SVG/vector)
   G.pickups.forEach(p => {
     const bob = Math.sin(p.t * 4) * 4, blink = p.t > 9 ? (Math.sin(p.t * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
+    const pKey = p.kind === "heart" ? "pickup_heart"
+      : p.kind === "shield" ? "pickup_shield"
+      : p.kind === "shieldwin" ? "pickup_shieldwin"
+      : p.kind === "nuke" ? "pickup_nuke"
+      : p.kind === "magnet" ? "pickup_magnet"
+      : p.kind === "overdrive" ? "pickup_overdrive"
+      : p.kind === "patch" ? "pickup_patch" : null;
+    if (pKey && window.WKSprites && WKSprites.draw(ctx, pKey, p.x, p.y + bob, 30, 30)) {
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (p.kind === "magnet") {
       ctx.fillStyle = "#ff5470";
       ctx.fillRect(p.x - 9, p.y - 11 + bob, 7, 20); ctx.fillRect(p.x + 2, p.y - 11 + bob, 7, 20);
@@ -190,7 +203,10 @@ function render(now) {
   });
   // đạn ta
   G.bullets.forEach(bl => {
-    ctx.save(); ctx.translate(bl.x, bl.y); ctx.rotate(Math.atan2(bl.vy, bl.vx));
+    const ang = Math.atan2(bl.vy, bl.vx);
+    const bKey = bl.star ? "proj_star" : (G.vp1_discoBullets ? "proj_disco" : (G.ship && G.ship.slow > 0 ? "proj_ice" : "proj_cyan"));
+    if (window.WKSprites && WKSprites.draw(ctx, bKey, bl.x, bl.y, 24, 24, { rot: ang })) return;
+    ctx.save(); ctx.translate(bl.x, bl.y); ctx.rotate(ang);
     if (bl.star) { // VP1 starbullets: vẽ hình sao 5 cánh
       ctx.fillStyle = "#ffd166";
       ctx.beginPath();
@@ -211,6 +227,10 @@ function render(now) {
   });
   // đạn địch
   G.ebullets.forEach(eb => {
+    const eKey = eb.paper ? "eb_paper" : (eb.cursor ? "eb_cursor" : (eb.ice ? "eb_ice" : (eb.spit ? "eb_spit" : "eb_orb")));
+    const eRot = eb.paper ? (eb.x * 0.02) : Math.atan2(eb.vy || 0, eb.vx || 1);
+    const eSz = Math.max(16, (eb.r || 6) * 3);
+    if (window.WKSprites && WKSprites.draw(ctx, eKey, eb.x, eb.y, eSz, eSz, { rot: eRot })) return;
     if (eb.paper) { // BOSS PERSONALITY: đạn giấy của Sếp Dí Deadline — cùng r/tốc độ/sát thương
       ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(eb.x * 0.02);
       ctx.fillStyle = "#ffffff"; ctx.fillRect(-eb.r, -eb.r * 0.7, eb.r * 2, eb.r * 1.4);
@@ -227,6 +247,132 @@ function render(now) {
   // quái
   // WOW: vẽ thêm entity đang chạy death-anim (~150ms sau khi chết)
   // OPT: tách hàm vẽ 1 quái — 2 vòng lặp riêng, không concat alloc mỗi frame
+  const ENEMY_SPRITE_KEYS = {
+    chaser: "mon_chaser", mini: "mon_mini", chewer: "mon_chewer_head",
+    tank: "mon_tank_body", dasher: "mon_dasher", splitter: "mon_splitter",
+    weaver: "mon_weaver", spitter: "mon_spitter", healer: "mon_healer",
+    kamikaze: "mon_kamikaze", bomber: "mon_kamikaze", glimmer: "mon_glimmer",
+    deadline: "mon_deadline", otworker: "mon_otworker", meeting: "mon_meeting",
+    snatcher: "mon_snatcher", warden: "mon_warden_body", booster: "mon_booster",
+    freezer: "mon_freezer", phantom: "mon_phantom", broodmother: "mon_broodmother",
+    egg: "mon_egg", shipper: "mon_shipper", director: "mon_director"
+  };
+
+  function drawEnemySprite(e, slow, now) {
+    const key = ENEMY_SPRITE_KEYS[e.type];
+    if (!key || !window.WKSprites || !WKSprites.enabled() || !WKSprites.get(key)) return false;
+    const r = e.r || 12;
+    const flash = e.flash > 0;
+    const sz = Math.max(24, r * 2.5);
+    const sx = (typeof s !== "undefined" && s) ? s.x : e.x;
+    const sy = (typeof s !== "undefined" && s) ? s.y : e.y;
+    const aimAng = Math.atan2(sy - e.y, sx - e.x);
+
+    // Pre-sprite gameplay telegraphs & beams (always drawn crisply underneath sprite)
+    if (e.type === "dasher" && e.state === "aim") {
+      const _remain = e.stateT == null ? 0.7 : e.stateT;
+      const _last02 = _remain <= 0.2;
+      ctx.strokeStyle = _last02
+        ? `rgba(255,59,48,${0.75 + 0.25 * Math.sin(now / 60)})`
+        : `rgba(255,225,77,${0.45 + 0.4 * Math.sin(now / 80)})`;
+      ctx.lineWidth = _last02 ? 4 : 3;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo((e.dx || 0) * 320, (e.dy || 0) * 320); ctx.stroke();
+    } else if (e.type === "healer" && e.healTarget && !e.healTarget.dead) {
+      ctx.strokeStyle = "rgba(125,255,154,0.55)"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(e.healTarget.x - e.x, e.healTarget.y - e.y); ctx.stroke();
+    } else if (e.type === "meeting") {
+      ctx.strokeStyle = e.warnT > 0 ? "#ff3b30" : "rgba(125,255,154,0.55)";
+      ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+      ctx.beginPath(); ctx.arc(0, 0, 160, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (e.type === "glimmer") {
+      const _near = Math.hypot(sx - e.x, sy - e.y) < 200;
+      const _haloA = Math.min(0.85, (0.25 + 0.2 * Math.sin((e.t || 0) * 5)) * (_near ? 2 : 1));
+      ctx.save(); ctx.globalAlpha *= _haloA;
+      ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      if (!e._glimSpark || now - e._glimSpark > 200) {
+        e._glimSpark = now;
+        try { burst(e.x + (Math.random() - 0.5) * 20, e.y + (Math.random() - 0.5) * 20, 1, ["#fbbf24", "#fff7ae"], 40); } catch (err) {}
+      }
+    } else if (e.type === "booster") {
+      ctx.save(); ctx.globalAlpha *= 0.22 + 0.08 * Math.sin((e.t || 0) * 5);
+      ctx.strokeStyle = "#22c55e"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else if (e.type === "chewer") {
+      const _segAng = aimAng + Math.PI;
+      WKSprites.draw(ctx, "mon_chewer_seg", Math.cos(_segAng) * r * 0.9, Math.sin(_segAng) * r * 0.9, sz * 0.68, sz * 0.68, { slow, flash });
+    }
+
+    let rot = 0, scaleMul = 1, alpha = 1;
+    if (e.type === "chaser" || e.type === "spitter" || e.type === "otworker" || e.type === "shipper") rot = aimAng;
+    else if (e.type === "dasher") rot = Math.atan2((e.state === "aim" || e.state === "dash") ? (e.dy || 0) : (sy - e.y), (e.state === "aim" || e.state === "dash") ? (e.dx || 1) : (sx - e.x));
+    else if (e.type === "tank") rot = (e.t || 0) * 0.8;
+    else if (e.type === "weaver") rot = (e.t || 0) * 2;
+    else if (e.type === "warden") rot = e.faceAng != null ? e.faceAng : aimAng;
+    else if (e.type === "mini") rot = Math.sin((e.t || 0) * 8) * 0.16;
+    else if (e.type === "chewer") rot = Math.sin((e.t || 0) * 10) * 0.12;
+    else if (e.type === "freezer") rot = (e.t || 0) * 0.5;
+    if (e.type === "splitter") {
+      const _frac = e.maxHp ? e.hp / e.maxHp : 1;
+      scaleMul = (_frac < 0.5 ? 0.95 : 1) * (1 + Math.sin((e.t || 0) * 6) * 0.05);
+    } else if (e.type === "phantom") {
+      alpha = e.revealT > 0 ? 0.95 : 0.34;
+    }
+
+    WKSprites.draw(ctx, key, 0, 0, sz * scaleMul, sz * scaleMul, { rot, slow, flash, alpha });
+
+    // Multi-part / status overlays on top of sprites
+    if (e.type === "chaser" && e.elite) {
+      WKSprites.draw(ctx, "mon_chaser_crown", 0, -r - 7, 18, 18, { rot: Math.sin((e.t || 0) * 4) * 0.12 });
+    } else if (e.type === "tank") {
+      const _p = 0.72 + 0.28 * Math.sin(now / 150);
+      WKSprites.draw(ctx, "mon_tank_core", 0, 0, r * (0.95 + 0.15 * _p), r * (0.95 + 0.15 * _p), { alpha: _p });
+    } else if (e.type === "warden") {
+      WKSprites.draw(ctx, "mon_warden_shield", 0, 0, sz * 1.28, sz * 1.28, { rot, alpha: 0.92 });
+    } else if (e.type === "splitter" && e.maxHp && e.hp / e.maxHp < 0.5) {
+      WKSprites.draw(ctx, "mon_splitter_crack", 0, 0, sz * scaleMul, sz * scaleMul);
+    } else if (e.type === "kamikaze" || e.type === "bomber") {
+      if (e.fuse >= 0) {
+        WKSprites.draw(ctx, "mon_kamikaze_spark", r * 0.55, -r * 0.85, 18, 18, { rot: now / 90 });
+        ctx.fillStyle = "#ff7a1a"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("!", 0, -r - 8);
+      }
+    } else if (e.type === "deadline") {
+      const urgent = e.countdown <= 3;
+      const blink = Math.floor(now / (urgent ? 120 : 300)) % 2 === 0;
+      WKSprites.draw(ctx, "mon_deadline_bell", 0, -r - 2, 16, 16, { rot: urgent ? Math.sin(now / 45) * 0.3 : 0 });
+      ctx.fillStyle = urgent ? (blink ? "#ff3b30" : "#7a1f1f") : "#ffe14d";
+      ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(String(Math.max(0, Math.ceil(e.countdown))), 0, -r - 12);
+    } else if (e.type === "otworker") {
+      for (let pi = 0; pi < 5; pi++) {
+        ctx.fillStyle = pi < (e.rage || 0) ? "#ff3b30" : "#ffffff28";
+        ctx.fillRect(-15 + pi * 7, -r - 12, 5, 5);
+      }
+    } else if (e.type === "meeting") {
+      ctx.textAlign = "center";
+      if (e.warnT > 0) {
+        ctx.fillStyle = "#ff3b30"; ctx.font = "bold 13px sans-serif"; ctx.fillText("!", 0, -r - 8);
+      } else {
+        ctx.fillStyle = "rgba(125,255,154,0.85)"; ctx.font = "12px sans-serif"; ctx.fillText("HỌP", 0, -r - 8);
+      }
+    } else if (e.type === "chewer" && e.attachedEdge && e.biteWarn > 0 && window.HUDIcons) {
+      HUDIcons.draw(ctx, "i-alert", 14, "#ffd23f", 0, -r - 11);
+    } else if (e.type === "snatcher") {
+      const bag = e.carried || [];
+      for (let gi = 0; gi < bag.length; gi++) {
+        WKSprites.draw(ctx, "gem_small", -r * 0.75 + (gi - 1) * 7, -r - 8, 12, 12);
+      }
+      if (e.phase === "flee" && (!e._snPuff || now - e._snPuff > 150)) {
+        e._snPuff = now;
+        try { burst(e.x - r, e.y + r * 0.8, 2, ["#d1d5db", "#9ca3af"], 60); } catch (err) {}
+      }
+    }
+    return true;
+  }
+
   function drawOneEnemy(e) {
     if (e.dead && !e.jfDeath) return;
     ctx.save(); ctx.translate(e.x, e.y);
@@ -245,7 +391,8 @@ function render(now) {
       } catch (err) {}
     }
     const slow = e.slowT > 0;
-    if (e.type === "chaser") {
+    if (typeof drawEnemySprite === "function" && drawEnemySprite(e, slow, now)) {
+    } else if (e.type === "chaser") {
       // RFC §2.2.1 "Tên Lửa Đồ Chơi": thân tên lửa mũi tròn, cánh đuôi bo tròn,
       // cửa sổ buồng lái, đuôi lửa 3 lưỡi flicker; elite giữ vệt đỏ + sọc đỏ.
       const _ca = Math.atan2(s.y - e.y, s.x - e.x);
@@ -705,19 +852,42 @@ function render(now) {
 
   // boss
   const bs = G.boss;
+  const BOSS_SPRITE_MAP = {
+    gnome: ["boss_gnome", "boss_gnome_jaw"],
+    deadline: ["boss_deadline", "boss_deadline_papers"],
+    dj: ["boss_dj", "boss_dj_turntable"],
+    sniffly: ["boss_sniffly", "boss_sniffly_nose"],
+    corechill: ["boss_corechill", "boss_corechill_mug"],
+    teaser: ["boss_teaser", "boss_teaser_glasses"]
+  };
   // WOW: intro cinematic tự vẽ boss qua drawBoss callback → game không vẽ đè
   if (bs && !bs.dead && !G.bossCine) {
     ctx.save(); ctx.translate(bs.x, bs.y);
     if (bs.flash > 0) ctx.globalAlpha = 0.5;
-    ctx.rotate(bs.t * 0.5);
     const r = bs.r + Math.sin(bs.t * 6) * 2;
-    ctx.fillStyle = bs.color || "#8b2fc9";
-    ctx.fillRect(-r, -r, r * 2, r * 2);
-    ctx.fillStyle = "#3d0f5c";
-    ctx.fillRect(-r * 0.55, -r * 0.55, r * 1.1, r * 1.1);
-    ctx.fillStyle = "#ff5470";
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.28 + Math.sin(bs.t * 10) * 3, 0, Math.PI * 2); ctx.fill();
-    if (bs.persona) drawBossFlair(ctx, bs, r); // BOSS PERSONALITY: phụ kiện hài
+    const pair = BOSS_SPRITE_MAP[bs.persona || "gnome"] || BOSS_SPRITE_MAP.gnome;
+    if (window.WKSprites && WKSprites.enabled() && WKSprites.get(pair[0])) {
+      const wob = Math.sin(bs.t * 1.8) * 0.08;
+      WKSprites.draw(ctx, pair[0], 0, 0, r * 2.6, r * 2.6, {
+        rot: wob, flash: bs.flash > 0, glowColor: bs.color || "#c084fc", glowBlur: 18
+      });
+      if (pair[1] && WKSprites.get(pair[1])) {
+        const oy = bs.persona === "deadline" ? -r * 0.85 : (bs.persona === "gnome" ? r * 0.72 : r * 0.45);
+        const ox = bs.persona === "dj" ? -r * 0.95 : (bs.persona === "corechill" ? r * 0.9 : 0);
+        WKSprites.draw(ctx, pair[1], ox, oy, r * 1.4, r * 1.4, {
+          rot: bs.persona === "dj" ? bs.t * 3 : Math.sin(bs.t * 4) * 0.12
+        });
+      }
+    } else {
+      ctx.rotate(bs.t * 0.5);
+      ctx.fillStyle = bs.color || "#8b2fc9";
+      ctx.fillRect(-r, -r, r * 2, r * 2);
+      ctx.fillStyle = "#3d0f5c";
+      ctx.fillRect(-r * 0.55, -r * 0.55, r * 1.1, r * 1.1);
+      ctx.fillStyle = "#ff5470";
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.28 + Math.sin(bs.t * 10) * 3, 0, Math.PI * 2); ctx.fill();
+      if (bs.persona) drawBossFlair(ctx, bs, r); // BOSS PERSONALITY: phụ kiện hài
+    }
     ctx.restore(); ctx.globalAlpha = 1;
   }
 
@@ -725,8 +895,10 @@ function render(now) {
   if (G.phase !== "over" && s) {
     if (s.iframes > 0 && Math.floor(now / 90) % 2 === 0) ctx.globalAlpha = 0.35;
     if (s.shieldT > 0) {
-      ctx.strokeStyle = `rgba(157,243,255,${0.5 + 0.4 * Math.sin(now / 120)})`;
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(s.x, s.y, s.r + 9, 0, Math.PI * 2); ctx.stroke();
+      if (!(window.WKSprites && WKSprites.draw(ctx, "ship_shield", s.x, s.y, (s.r + 14) * 2.2, (s.r + 14) * 2.2, { rot: now / 900, alpha: 0.72 + 0.25 * Math.sin(now / 120) }))) {
+        ctx.strokeStyle = `rgba(157,243,255,${0.5 + 0.4 * Math.sin(now / 120)})`;
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(s.x, s.y, s.r + 9, 0, Math.PI * 2); ctx.stroke();
+      }
     }
     ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.ang);
     // Endless Delight boingyship: squash-and-stretch nảy tưng (trang trí, không đổi hitbox)
@@ -734,14 +906,21 @@ function render(now) {
       const bs = 1 + 0.12 * Math.sin(performance.now() / 130) * Math.min(1, (s.moveSpeed || 0) / 240 + 0.25);
       ctx.scale(bs, 2 - bs);
     }
-    // GC-2026-10: gradient thân tàu hằng số trong hệ tọa độ local → cache, không tạo mỗi frame
-    const tg = _gradGet("ship-body", _mkShipGrad);
-    ctx.fillStyle = tg;
-    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-11, -11); ctx.lineTo(-6, 0); ctx.lineTo(-11, 11); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#0b2536"; ctx.beginPath(); ctx.arc(2, 0, 4.5, 0, Math.PI * 2); ctx.fill();
-    const fl = 10 + Math.random() * 9;
-    ctx.fillStyle = "#ffb020";
-    ctx.beginPath(); ctx.moveTo(-11, -5); ctx.lineTo(-11 - fl, 0); ctx.lineTo(-11, 5); ctx.closePath(); ctx.fill();
+    const _skinKey = "ship_" + (s.skinId || (window.Meta && Meta.getActiveSkin ? Meta.getActiveSkin() : "default") || "default");
+    if (window.WKSprites && WKSprites.enabled() && WKSprites.get(_skinKey)) {
+      const fW = 20 + Math.random() * 8;
+      WKSprites.draw(ctx, "ship_thruster", -16 - fW * 0.28, 0, fW, 15, { alpha: 0.92 });
+      WKSprites.draw(ctx, _skinKey, 2, 0, 38, 38, { glowColor: "#54f0ff", glowBlur: 10 });
+    } else {
+      // GC-2026-10: gradient thân tàu hằng số trong hệ tọa độ local → cache, không tạo mỗi frame
+      const tg = _gradGet("ship-body", _mkShipGrad);
+      ctx.fillStyle = tg;
+      ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-11, -11); ctx.lineTo(-6, 0); ctx.lineTo(-11, 11); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#0b2536"; ctx.beginPath(); ctx.arc(2, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+      const fl = 10 + Math.random() * 9;
+      ctx.fillStyle = "#ffb020";
+      ctx.beginPath(); ctx.moveTo(-11, -5); ctx.lineTo(-11 - fl, 0); ctx.lineTo(-11, 5); ctx.closePath(); ctx.fill();
+    }
     ctx.restore(); ctx.globalAlpha = 1;
   }
 
@@ -959,7 +1138,8 @@ function render(now) {
   ctx.restore();
 
   /* ---- cụm PHẢI: % nguyên vẹn cửa sổ (H1: bar cũ đã thay bằng decal viền diegetic) ---- */
-  const rPad = coarseHUD ? 64 : 116;
+  const _hasCoarseMenu = typeof document !== "undefined" && document.body && document.body.classList && document.body.classList.contains("wk-coarse");
+  const rPad = _hasCoarseMenu ? 74 : 120;
   ctx.font = "600 13px " + HUDFONT; ctx.fillStyle = "#c9b8e0"; ctx.textAlign = "right";
   const wpctTxt = I18N.t("hud.window_pct", { pct: Math.round(winPct * 100) });
   ctx.fillText(wpctTxt, W - rPad, 40);

@@ -20,8 +20,14 @@ function newShip() {
   var mods = null;
   if (window.V2) { try { mods = V2.runMods; } catch (er) {} }
   mods = mods || {};
+  let _skinId = "default";
+  try {
+    const _sq = (typeof qp !== "undefined" && qp.get) ? qp.get("skin") : null;
+    if (_sq) _skinId = _sq;
+    else if (typeof window !== "undefined" && window.Meta && Meta.getActiveSkin) _skinId = Meta.getActiveSkin() || "default";
+  } catch (e) {}
   return {
-    x: window.innerWidth / 2, y: window.innerHeight / 2, r: 13,
+    x: window.innerWidth / 2, y: window.innerHeight / 2, r: 13, skinId: _skinId,
     hp: DIFF.shipHp + (mods.maxHpBonus | 0), maxHp: DIFF.shipHp + (mods.maxHpBonus | 0),
     speed: 275 * (mods.speedMul || 1), fireInt: 0.21 / (mods.fireRateMul || 1), fireT: 0, streams: 1,
     dmg: 1 + (mods.dmgBonus || 0), pierce: 0,

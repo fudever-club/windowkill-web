@@ -304,14 +304,16 @@ const SatManager = (() => {
     ctx.globalAlpha = s.dead ? Math.max(0, s.shatterT / 0.3) : 1;
     ctx.strokeStyle = "rgba(56,189,248,.35)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, 70, 0, Math.PI * 2); ctx.stroke(); // quỹ đạo
-    ctx.fillStyle = "#0d1b2e"; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#38bdf8";
-    ctx.beginPath(); ctx.arc(x, y, 6 + Math.sin(t / 200) * 1.5, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 4; i++) { // 4 cánh quạt
-      const a = i * Math.PI / 2 + t / 400;
-      ctx.strokeStyle = "#7dd3fc"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x + Math.cos(a) * 24, y + Math.sin(a) * 24, 5, 0, Math.PI * 2); ctx.stroke();
+    if (!(window.WKSprites && WKSprites.draw(ctx, "sat_shield_drone", x, y, 42, 42, { rot: Math.sin(t / 450) * 0.12 }))) {
+      ctx.fillStyle = "#0d1b2e"; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath(); ctx.arc(x, y, 6 + Math.sin(t / 200) * 1.5, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 4; i++) { // 4 cánh quạt
+        const a = i * Math.PI / 2 + t / 400;
+        ctx.strokeStyle = "#7dd3fc"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * 24, y + Math.sin(a) * 24, 5, 0, Math.PI * 2); ctx.stroke();
+      }
     }
     if (window.HUDIcons) {
       const nh = Math.max(0, s.hearts ?? 5);
@@ -389,12 +391,14 @@ const SatManager = (() => {
       ctx.fillStyle = hb ? "#2a0a12" : "#2a0a1a"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const beat = 1 + 0.22 * Math.abs(Math.sin(t / 260));
       const r = Math.min(s.sw, s.sh - 26) * 0.26 * beat;
-      ctx.fillStyle = hb ? "#ff2020" : "#ff5f8a";
-      ctx.beginPath(); // trái tim
-      ctx.moveTo(cx, cy + r * 0.75);
-      ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
-      ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
-      ctx.fill();
+      if (!(window.WKSprites && WKSprites.draw(ctx, "sat_lover_heart", cx, cy, r * 2.2, r * 2.2))) {
+        ctx.fillStyle = hb ? "#ff2020" : "#ff5f8a";
+        ctx.beginPath(); // trái tim
+        ctx.moveTo(cx, cy + r * 0.75);
+        ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
+        ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
+        ctx.fill();
+      }
       if (hb) { // mắt giận
         ctx.fillStyle = "#fff";
         ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.12, 0, Math.PI * 2);
@@ -409,12 +413,14 @@ const SatManager = (() => {
       ctx.fillStyle = "#1c0510"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const beat = 1 + 0.14 * Math.abs(Math.sin(t / 220));
       const r = Math.min(s.sw, s.sh - 26) * 0.3 * beat;
-      ctx.fillStyle = "#ff5f8a";
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + r * 0.75);
-      ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
-      ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
-      ctx.fill();
+      if (!(window.WKSprites && WKSprites.draw(ctx, "sat_lover_heart", cx, cy, r * 2.5, r * 2.5, { glowColor: "#ff5f8a", glowBlur: 14 }))) {
+        ctx.fillStyle = "#ff5f8a";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * 0.75);
+        ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.8, cy - r * 1.1, cx, cy - r * 0.35);
+        ctx.bezierCurveTo(cx + r * 0.8, cy - r * 1.1, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.75);
+        ctx.fill();
+      }
       const fl = Math.floor(t / 150) % 2 === 0; // tia sét nhấp nháy
       ctx.fillStyle = fl ? "#ffe93c" : "#fff7ae";
       ctx.beginPath();
@@ -427,34 +433,38 @@ const SatManager = (() => {
     } else if (s.role === "mirror") { // M10: gương thần — mặt kính lấp lánh
       ctx.fillStyle = "#08131c"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const mw = s.sw * 0.62, mh = (s.sh - 26) * 0.62;
-      const gg = ctx.createLinearGradient(cx - mw / 2, cy - mh / 2, cx + mw / 2, cy + mh / 2);
-      gg.addColorStop(0, "#164e63"); gg.addColorStop(0.5, "#a5f3fc"); gg.addColorStop(1, "#164e63");
-      ctx.fillStyle = gg;
-      ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 3; ctx.stroke();
-      const sx = ((t / 14) % (mw * 1.6)) - mw * 0.8; // vệt sáng chạy qua gương
-      ctx.save();
-      ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.clip();
-      ctx.fillStyle = "rgba(255,255,255,.35)";
-      ctx.fillRect(cx + sx - 14, cy - mh / 2, 28, mh);
-      ctx.restore();
+      if (!(window.WKSprites && WKSprites.draw(ctx, "sat_mirror_disc", cx, cy, Math.max(mw, mh) * 1.15, Math.max(mw, mh) * 1.15))) {
+        const gg = ctx.createLinearGradient(cx - mw / 2, cy - mh / 2, cx + mw / 2, cy + mh / 2);
+        gg.addColorStop(0, "#164e63"); gg.addColorStop(0.5, "#a5f3fc"); gg.addColorStop(1, "#164e63");
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 3; ctx.stroke();
+        const sx = ((t / 14) % (mw * 1.6)) - mw * 0.8; // vệt sáng chạy qua gương
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(cx, cy, mw / 2, mh / 2, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = "rgba(255,255,255,.35)";
+        ctx.fillRect(cx + sx - 14, cy - mh / 2, 28, mh);
+        ctx.restore();
+      }
       ctx.fillStyle = "#a5f3fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.mirror_warn"), cx, s.y + s.sh - 22);
     } else if (s.role === "blackhole") { // M9: hố đen + đĩa bồi tụ xoay
       ctx.fillStyle = "#05030c"; ctx.fillRect(s.x, s.y + 26, s.sw, s.sh - 26);
       const r = Math.min(s.sw, s.sh - 26) * 0.24;
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(t / 900);
-      for (let i = 0; i < 3; i++) {
-        ctx.strokeStyle = ["#7c3aed", "#c084fc", "#ff9d5c"][i];
-        ctx.lineWidth = 5 - i;
-        ctx.globalAlpha = 0.85 - i * 0.2;
-        ctx.beginPath(); ctx.ellipse(0, 0, r * (1.5 + i * 0.45), r * (0.62 + i * 0.18), 0, 0, Math.PI * 2); ctx.stroke();
+      if (!(window.WKSprites && WKSprites.draw(ctx, "sat_blackhole_vortex", cx, cy, r * 4.2, r * 4.2, { rot: t / 900 }))) {
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(t / 900);
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = ["#7c3aed", "#c084fc", "#ff9d5c"][i];
+          ctx.lineWidth = 5 - i;
+          ctx.globalAlpha = 0.85 - i * 0.2;
+          ctx.beginPath(); ctx.ellipse(0, 0, r * (1.5 + i * 0.45), r * (0.62 + i * 0.18), 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#ff9d5c"; ctx.lineWidth = 2; ctx.stroke();
       }
-      ctx.restore();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#000";
-      ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#ff9d5c"; ctx.lineWidth = 2; ctx.stroke();
       const n = (s.swallowed || []).length;
       ctx.fillStyle = "#c084fc"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
       ctx.fillText(I18N.t("sat.vacuum_count", { n }), cx, s.y + s.sh - 22);

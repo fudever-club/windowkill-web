@@ -1,0 +1,80 @@
+name: Build Standalone Editions (Windows .exe & Android .apk)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows-exe:
+    name: Windows Electron x64 (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build game bundle
+        run: node scripts/build-game.js
+
+      - name: Install Electron & package Windows x64
+        working-directory: electron
+        run: |
+          npm ci || npm install
+          npm run pack
+
+      - name: Archive Windows Standalone build
+        uses: actions/upload-artifact@v4
+        with:
+          name: windowkill-windows-x64
+          path: electron/dist/windowkill-web-win32-x64/
+
+  build-android-apk:
+    name: Mobile Capacitor Android (.apk)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build game & stage web bundle
+        run: |
+          node scripts/build-game.js
+          node scripts/build-mobile.js
+
+      - name: Sync Capacitor Android project
+        working-directory: mobile
+        run: |
+          npm ci || npm install
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+
+      - name: Build Debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windowkill-android-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk

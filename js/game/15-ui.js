@@ -216,8 +216,9 @@ function resetGame() {
   G.cracks = []; G.windowDamagePx = 0;
   // Khôi phục kích thước: arena ảo về null (tự tính lại full-size), cửa sổ thật
   // grow về cỡ ban đầu (growWindow tự cap ở START_W × 720).
-  arena = null;
-  try { growWindow(START_W, 720); } catch (e) {}
+  arena = (typeof FORCE_VIRTUAL_ARENA !== "undefined" && FORCE_VIRTUAL_ARENA)
+    ? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight } : null;
+  try { if (!FORCE_VIRTUAL_ARENA) growWindow(START_W, 720); } catch (e) {}
   // FIX P0 2026-10-05: chụp kích thước arena THỰC lúc bắt đầu run để hiệu chuẩn
   // windowIntegrity(). Desktop không dùng (giữ START_* như cũ). Mobile/sim:
   // arena = null → bounds() = viewport → boot ở 100%, Last Stand chỉ bật khi
@@ -239,10 +240,19 @@ function resetGame() {
   if (window.Juice) { try { Juice.reset(); } catch (e) {} }
   if (window.Cinema) { try { Cinema.reset(); } catch (e) {} }
   playActMusic(); // Act 1
-  // RFC ui-audit-boss-cleanup §3.6: campaign đã xóa → theme art (5 palette PR #79)
-  // random mỗi run; tránh lặp theme run trước nếu có thể.
-  G.themeSid = 1 + Math.floor(Math.random() * 5);
-  if (G._lastThemeSid === G.themeSid) G.themeSid = (G.themeSid % 5) + 1;
+  // RFC ui-audit-boss-cleanup §3.6: campaign đã xóa → theme art random mỗi run (1-5 mặc định để tương thích QA,
+  // hoặc 1-8 / cố định theo ?theme= từ launcher cài đặt).
+  let _themePref = null;
+  try { _themePref = (typeof qp !== "undefined" && qp.get) ? qp.get("theme") : null; } catch (e) {}
+  if (_themePref && /^[1-8]$/.test(_themePref)) {
+    G.themeSid = parseInt(_themePref, 10);
+  } else if (_themePref === "all") {
+    G.themeSid = 1 + Math.floor(Math.random() * 8);
+    if (G._lastThemeSid === G.themeSid) G.themeSid = (G.themeSid % 8) + 1;
+  } else {
+    G.themeSid = 1 + Math.floor(Math.random() * 5);
+    if (G._lastThemeSid === G.themeSid) G.themeSid = (G.themeSid % 5) + 1;
+  }
   G._lastThemeSid = G.themeSid;
   refreshBG(); // build background theo theme run này
   lastT = performance.now();

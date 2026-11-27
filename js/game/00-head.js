@@ -70,6 +70,7 @@ DIFFS.hard = DIFFS.hardcore; // launcher gửi diff=hard — alias để độ k
 const DIFF = DIFFS[qp.get("diff")] || DIFFS.normal;
 const DIFF_KEY = qp.get("diff") in DIFFS ? qp.get("diff") : "normal";
 const PROFILE_ID = qp.get("profile") || null;
+try { if (window.WKSprites && typeof WKSprites.preload === "function") WKSprites.preload(); } catch (e) {}
 AudioEngine.setSettings({ music: qp.get("music") === "1", sfx: qp.get("sfx") === "1" });
 let musicOn = qp.get("music") === "1"; // AUDIT 2026-10-02: trạng thái nhạc cho phím M (xem handler KeyM)
 // AUDIT 2026-10-02: nối toggle SFX cho lớp sfx2 — trước đây Sfx2.setEnabled không có

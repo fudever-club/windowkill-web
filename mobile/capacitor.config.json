@@ -1,0 +1,16 @@
+{
+  "appId": "com.fudever.windowkill",
+  "appName": "WINDOWKILL",
+  "webDir": "www",
+  "backgroundColor": "#050308",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#050308",
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true
+    }
+  }
+}

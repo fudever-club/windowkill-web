@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261121T032940Z-5cd7d72"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261127T142929Z-cdcbae9"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -40,6 +40,7 @@ const CORE_ASSETS = [
   "js/install-prompt.js", // feat/pwa-trailer: PWA install prompt (launcher) — precache để offline vẫn có card
   "js/analytics.js",
   "js/bgm.js",
+  "js/sprites.js",
   "js/bg.js",
   "js/juice.js",
   "js/cinema.js",

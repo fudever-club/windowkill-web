@@ -474,7 +474,7 @@ function bossPersonaOf(w) {
 function bgStageSid() {
   try {
     const st = window.G ? G.themeSid : 0;
-    if (Number.isInteger(st) && st >= 1 && st <= 5) return st;
+    if (Number.isInteger(st) && st >= 1 && st <= 8) return st;
   } catch (e) {}
   return (ACTS[(G.act || 1) - 1] || {}).bgStage || 1;
 }

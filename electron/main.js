@@ -9,17 +9,75 @@
 "use strict";
 
 const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
+const fs = require("fs");
 const path = require("path");
 const winOps = require("./win-ops");
 
 const PRELOAD = path.join(__dirname, "preload.js");
+const ICON_PATH = path.join(__dirname, "assets", "icon.ico");
+const APP_ICON = fs.existsSync(ICON_PATH) ? ICON_PATH : undefined;
 
 // frameName (target của window.open) -> BrowserWindow popup.
 // Dùng để route window-op từ cửa sổ opener tới popup thật
 // (vd "wk_sat_<id>" cho satellite, "windowkill_arena" cho game).
 const popupWins = new Map();
 
+const APP_ROOT = path.join(__dirname, "app");
+
+function isAllowedAppUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "file:") return false;
+    let raw = decodeURIComponent(u.pathname);
+    if (process.platform === "win32") {
+      const m = /^\/([a-zA-Z]:)(\/.*)?$/.exec(raw);
+      if (m) raw = m[1] + (m[2] || "/");
+    }
+    const p = path.normalize(raw);
+    const root = path.normalize(APP_ROOT);
+    if (process.platform === "win32") {
+      const pl = p.toLowerCase(), rl = root.toLowerCase();
+      return pl === rl || pl.startsWith(rl + path.sep);
+    }
+    return p === root || p.startsWith(root + path.sep);
+  } catch {
+    return false;
+  }
+}
+
+function attachWindowSecurity(contents) {
+  contents.setWindowOpenHandler(({ url, frameName }) => {
+    if (!isAllowedAppUrl(url)) return { action: "deny" };
+    const isSat = typeof frameName === "string" && frameName.startsWith("wk_sat_");
+    return {
+      action: "allow",
+      overrideBrowserWindowOptions: {
+        width: isSat ? 260 : 980,
+        height: isSat ? 220 : 700,
+        minWidth: isSat ? 140 : 420,
+        minHeight: isSat ? 120 : 340,
+        title: isSat ? "WINDOWKILL — Satellite" : "WINDOWKILL: Web Edition — Arena",
+        backgroundColor: "#050308",
+        icon: APP_ICON,
+        autoHideMenuBar: true,
+        webPreferences: {
+          nativeWindowOpen: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+          preload: PRELOAD,
+        },
+      },
+    };
+  });
+
+  contents.on("will-navigate", (e, url) => {
+    if (!isAllowedAppUrl(url)) e.preventDefault();
+  });
+}
+
 function trackPopupWindows(contents) {
+  attachWindowSecurity(contents);
   contents.on("did-create-window", (childWin, details) => {
     const name = details && details.frameName;
     if (typeof name === "string" && name) {
@@ -27,7 +85,6 @@ function trackPopupWindows(contents) {
       childWin.on("closed", () => {
         if (popupWins.get(name) === childWin) popupWins.delete(name);
       });
-      // Đệ quy: popup cũng có thể mở popup (hiện tại satellite không mở thêm).
       trackPopupWindows(childWin.webContents);
     }
   });
@@ -64,6 +121,7 @@ function createMainWindow() {
     minHeight: 700,
     title: "WINDOWKILL: Web Edition",
     backgroundColor: "#070409",
+    icon: APP_ICON,
     webPreferences: {
       // Cho phép window.open('game.html?...') mở thành cửa sổ Electron thật
       // (game dùng popup làm "máu": quái tím gặm viền cửa sổ).
@@ -78,67 +136,8 @@ function createMainWindow() {
 
   trackPopupWindows(win.webContents);
 
-  const appRoot = path.join(__dirname, "app");
-
-  // Chỉ cho phép mở popup game từ file game đã đóng gói (chặn URL ngoài/độc hại).
-  function isAllowedAppUrl(url) {
-    try {
-      const u = new URL(url);
-      if (u.protocol !== "file:") return false;
-      let raw = decodeURIComponent(u.pathname);
-      if (process.platform === "win32") {
-        // Trên Windows, pathname của file URL có dạng "/C:/path" — nếu không
-        // bỏ dấu "/" đầu, path.normalize cho ra "\C:\path" và so sánh luôn sai.
-        const m = /^\/([a-zA-Z]:)(\/.*)?$/.exec(raw);
-        if (m) raw = m[1] + (m[2] || "/");
-      }
-      const p = path.normalize(raw);
-      const root = path.normalize(appRoot);
-      if (process.platform === "win32") {
-        // Windows không phân biệt hoa/thường trong đường dẫn
-        const pl = p.toLowerCase(), rl = root.toLowerCase();
-        return pl === rl || pl.startsWith(rl + path.sep);
-      }
-      return p === root || p.startsWith(root + path.sep);
-    } catch {
-      return false;
-    }
-  }
-
-  // Cho popup game: giữ kích thước hợp lý, bỏ menu.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (!isAllowedAppUrl(url)) return { action: "deny" };
-    return {
-      action: "allow",
-      overrideBrowserWindowOptions: {
-        width: 980,
-        height: 700,
-        minWidth: 420,
-        minHeight: 340,
-        title: "WINDOWKILL: Web Edition — Chiến trường",
-        backgroundColor: "#050308",
-        autoHideMenuBar: true,
-        webPreferences: {
-          nativeWindowOpen: true,
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-          // Popup (game arena, satellite) cũng cần cầu cửa sổ thật:
-          // satellite tự rung qua window.moveBy (juice.js), opener di chuyển
-          // popup qua sat.win.moveTo (game.js updateShield).
-          preload: PRELOAD,
-        },
-      },
-    };
-  });
-
-  // Chặn điều hướng cửa sổ chính ra khỏi file game đã đóng gói.
-  win.webContents.on("will-navigate", (e, url) => {
-    if (!isAllowedAppUrl(url)) e.preventDefault();
-  });
-
   // Game files (index.html, game.html, css/, js/) are bundled under app/.
-  win.loadFile(path.join(appRoot, "index.html"));
+  win.loadFile(path.join(APP_ROOT, "index.html"));
 }
 
 app.whenReady().then(() => {

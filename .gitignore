@@ -5,5 +5,17 @@ server/*.db*
 .DS_Store
 electron/dist/
 electron/app/
+electron/node_modules/
+mobile/node_modules/
+mobile/www/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.idea/
 *.part-*
 dist/
+*.apk
+*.aab
+.vs/
+.idea/
+sysinfo.txt

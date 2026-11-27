@@ -292,7 +292,10 @@ function startWave(n) {
   // Item 6: spotlight wave — sub banner mô tả điểm nhấn thay vì tip random (kể cả khi đổi act)
   const waveTitle = changed ? `ACT ${act} — ${cfg.name}` : `WAVE ${n}`;
   // RFC ui-audit-boss-cleanup §3.6: wave 1 hiện theme run (flavor text, KHÔNG unlock/select)
-  const THEME_NAMES = { 1: "MÀN HÌNH XANH", 2: "TƯỜNG LỬA", 3: "TRỌNG LỰC 404", 4: "CÚP ĐIỆN", 5: "TRÀN BỘ NHỚ" };
+  const THEME_NAMES = {
+    1: "MÀN HÌNH XANH", 2: "TƯỜNG LỬA", 3: "TRỌNG LỰC 404", 4: "CÚP ĐIỆN", 5: "TRÀN BỘ NHỚ",
+    6: "KERNEL PANIC", 7: "CỤM ĐÁM MÂY", 8: "DESKTOP CỔ ĐIỂN"
+  };
   const themeName = THEME_NAMES[G.themeSid] || "";
   const waveSubBase = changed
     ? (G.vp1_spotlightSub ? `ACT ${act} — ${cfg.name}: ${G.vp1_spotlightSub}` : `ACT ${act} — ${cfg.name}: ${cfg.sub}`)

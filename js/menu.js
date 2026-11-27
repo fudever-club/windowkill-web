@@ -132,10 +132,13 @@
   $("new-profile-name").addEventListener("keydown", e => { if (e.key === "Enter") createProfile(); });
 
   /* ---------- settings ---------- */
-  const settings = Object.assign({ music: true, sfx: true, musicVol: 0.5, sfxVol: 0.3, shake: true, haptic: true, mobileAssist: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", analytics: true }, store.get("wk_settings", {}));
+  const settings = Object.assign({ music: true, sfx: true, musicVol: 0.5, sfxVol: 0.3, shake: true, haptic: true, mobileAssist: true, diff: "normal", fx: "full", sat: "sim", wjump: "normal", quality: "auto", theme: "auto", gfxStyle: "png", virtual: false, analytics: true }, store.get("wk_settings", {}));
   if (!["chill", "normal", "hard"].includes(settings.diff)) settings.diff = "normal"; // repair corrupted diff
   if (!["calm", "normal", "wild"].includes(settings.wjump)) settings.wjump = "normal"; // Item 4: repair corrupted wjump
   if (!["auto", "high", "balanced", "lite"].includes(settings.quality)) settings.quality = "auto"; // feat/mobile-quality: repair corrupted quality
+  if (!["auto", "1", "2", "3", "4", "5", "6", "7", "8"].includes(String(settings.theme))) settings.theme = "auto";
+  if (!["png", "vector"].includes(settings.gfxStyle)) settings.gfxStyle = "png";
+  if (window.WKSprites && typeof WKSprites.setEnabled === "function") WKSprites.setEnabled(settings.gfxStyle !== "vector");
   const saveSettings = () => store.set("wk_settings", settings);
   // FIX 2026-10-03 (2-track): web không popup thật nữa — migrate setting "auto" cũ → "sim".
   // Desktop Electron giữ nguyên (popup thật do app quản lý).
@@ -246,6 +249,80 @@
     anchor.parentElement.insertAdjacentElement("afterend", row);
   }
   injectMobileAssistToggle();
+  function injectVisualSettings() {
+    if ($("wk-gfx-row")) return;
+    const settingsDlg = document.querySelector('#hub-overlay [data-hub-panel="settings"]');
+    if (!settingsDlg) return;
+    const wjEl = settingsDlg.querySelector("[data-wjump]");
+    const anchorRow = (wjEl && wjEl.closest && wjEl.closest(".setrow")) || settingsDlg.lastElementChild;
+    const pressAttr = (el, on) => { if (el) { el.classList.toggle("sel", !!on); el.setAttribute("aria-pressed", on ? "true" : "false"); } };
+
+    // 1. Đồ họa: Neon PNG / Vector
+    const gfxRow = document.createElement("div");
+    gfxRow.className = "setrow"; gfxRow.id = "wk-gfx-row";
+    gfxRow.innerHTML = `<span>${svgIcon("i-palette")} <span data-i18n="settings.gfx">Đồ họa</span></span>` +
+      `<div class="row opt-btns" style="gap:8px">` +
+      `<button class="btn-ghost" type="button" data-gfx="png" data-i18n="settings.gfx_png">Neon PNG</button>` +
+      `<button class="btn-ghost" type="button" data-gfx="vector" data-i18n="settings.gfx_vec">Vector</button>` +
+      `</div>`;
+    anchorRow.insertAdjacentElement("afterend", gfxRow);
+    const paintGfx = () => gfxRow.querySelectorAll("[data-gfx]").forEach(b => pressAttr(b, b.dataset.gfx === settings.gfxStyle));
+    paintGfx();
+    gfxRow.querySelectorAll("[data-gfx]").forEach(b => {
+      b.onclick = () => {
+        settings.gfxStyle = b.dataset.gfx === "vector" ? "vector" : "png";
+        saveSettings();
+        if (window.WKSprites && typeof WKSprites.setEnabled === "function") WKSprites.setEnabled(settings.gfxStyle !== "vector");
+        paintGfx();
+        Analytics.track("settings_changed", { key: "gfxStyle", value: settings.gfxStyle });
+      };
+    });
+
+    // 2. Chọn Theme Map (Auto 1-8 hoặc từng bản đồ)
+    const THEME_LIST = [
+      { id: "auto", key: "settings.theme_auto", fb: "Tự động (1–8)", color: "#7df9ff" },
+      { id: "1", key: "settings.theme_1", fb: "1. BSOD", color: "#38bdf8" },
+      { id: "2", key: "settings.theme_2", fb: "2. Tường Lửa", color: "#fb923c" },
+      { id: "3", key: "settings.theme_3", fb: "3. Trọng Lực 404", color: "#c084fc" },
+      { id: "4", key: "settings.theme_4", fb: "4. Tắt Đèn", color: "#4ade80" },
+      { id: "5", key: "settings.theme_5", fb: "5. Rò Bộ Nhớ", color: "#f43f5e" },
+      { id: "6", key: "settings.theme_6", fb: "6. Kernel Panic", color: "#ff4438" },
+      { id: "7", key: "settings.theme_7", fb: "7. Cụm Mây", color: "#67e8f9" },
+      { id: "8", key: "settings.theme_8", fb: "8. Desktop Cổ", color: "#808080" },
+    ];
+    const themeRow = document.createElement("div");
+    themeRow.className = "setrow"; themeRow.id = "wk-theme-row";
+    const tBtns = THEME_LIST.map(t => `<button class="btn-ghost theme-pill" type="button" data-theme="${t.id}"><span class="theme-swatch" style="color:${t.color};background:${t.color}"></span><span data-i18n="${t.key}">${escapeHtml(t.fb)}</span></button>`).join("");
+    themeRow.innerHTML = `<span>${svgIcon("i-globe")} <span data-i18n="settings.theme">Bản đồ</span></span><div class="opt-wrap">${tBtns}</div>`;
+    gfxRow.insertAdjacentElement("afterend", themeRow);
+    const paintTheme = () => themeRow.querySelectorAll("[data-theme]").forEach(b => pressAttr(b, b.dataset.theme === String(settings.theme)));
+    paintTheme();
+    themeRow.querySelectorAll("[data-theme]").forEach(b => {
+      b.onclick = () => {
+        settings.theme = b.dataset.theme || "auto";
+        saveSettings();
+        paintTheme();
+        Analytics.track("settings_changed", { key: "theme", value: settings.theme });
+      };
+    });
+
+    // 3. Đấu Trường Ảo (cho desktop / Electron nếu muốn khóa khung cửa sổ bên trong canvas)
+    if (!window.WK_PORTAL_MODE) {
+      const virtRow = document.createElement("div");
+      virtRow.className = "setrow"; virtRow.id = "wk-virtual-row";
+      virtRow.innerHTML = `<span data-i18n-title="settings.virtual_desc" title="Giữ khung cửa sổ bên trong màn chơi, không di chuyển cửa sổ thật">${svgIcon("i-window")} <span data-i18n="settings.virtual">Đấu trường ảo</span></span>` +
+        `<button class="tgl${settings.virtual ? " on" : ""}" id="tgl-virtual" type="button" aria-pressed="${settings.virtual ? "true" : "false"}"></button>`;
+      themeRow.insertAdjacentElement("afterend", virtRow);
+      const vb = $("tgl-virtual");
+      if (vb) vb.onclick = () => {
+        settings.virtual = !settings.virtual; saveSettings();
+        vb.classList.toggle("on", settings.virtual);
+        vb.setAttribute("aria-pressed", settings.virtual ? "true" : "false");
+        Analytics.track("settings_changed", { key: "virtual", value: settings.virtual });
+      };
+    }
+  }
+  injectVisualSettings();
   const clampVol = (v, fb) => { v = +v; if (!(v >= 0)) return fb; if (v > 1) return 1; return v; };
   /* FEAT 2026-10-17: đẩy âm lượng đã lưu xuống mọi engine (nhạc nền file BGM + synth AudioEngine + Sfx2). */
   function applyVolumes() {
@@ -474,10 +551,17 @@
           quality: ["auto", "high", "balanced", "lite"].includes(settings.quality) ? settings.quality : "auto",
         });
         if (v2sel.kind === "mode") q.set("mode", v2sel.mode); // RFC stage-themes-modes DEV-07
+        if (settings.theme === "auto") q.set("theme", "all");
+        else if (/^[1-8]$/.test(String(settings.theme))) q.set("theme", String(settings.theme));
+        if (settings.virtual) q.set("virtual", "1");
+        try { if (window.Meta && Meta.getActiveSkin) q.set("skin", Meta.getActiveSkin()); } catch (e) {}
         if (v2skipTut === true) q.set("tut", "0");
         else if (v2skipTut === false) q.set("tut", "1");
-        if (window.WK_PORTAL_MODE) {
-          q.set("portal", "1"); q.set("sat", "sim");
+        const isNativeMobile = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform());
+        if (window.WK_PORTAL_MODE || isNativeMobile) {
+          if (window.WK_PORTAL_MODE) q.set("portal", "1");
+          q.set("sat", "sim");
+          if (isNativeMobile) q.set("virtual", "1");
           window.location.href = "game.html?" + q.toString();
           return;
         }
@@ -495,6 +579,28 @@
           "menu.mode.ta_desc": "180 giây farm điểm tốc độ cao — spawn dồn dập!",
           "menu.mode.br": "Xếp Hình Sếp",
           "menu.mode.br_desc": "5 sếp liên tiếp — nghỉ giữa boss, sửa cửa sổ!",
+          "settings.gfx": "Đồ họa",
+          "settings.gfx_png": "Neon PNG",
+          "settings.gfx_vec": "Vector",
+          "settings.theme": "Bản đồ",
+          "settings.theme_auto": "Tự động (1–8)",
+          "settings.theme_1": "1. BSOD",
+          "settings.theme_2": "2. Tường Lửa",
+          "settings.theme_3": "3. Trọng Lực 404",
+          "settings.theme_4": "4. Tắt Đèn",
+          "settings.theme_5": "5. Rò Bộ Nhớ",
+          "settings.theme_6": "6. Kernel Panic",
+          "settings.theme_7": "7. Cụm Mây",
+          "settings.theme_8": "8. Desktop Cổ",
+          "settings.virtual": "Đấu trường ảo",
+          "settings.virtual_desc": "Giữ khung cửa sổ bên trong màn chơi, không di chuyển cửa sổ thật",
+          "meta.skins": "Kho Skin Tàu",
+          "meta.skins_sub": "Mở khóa qua thành tích & Workshop — không đổi sức mạnh",
+          "meta.skin_equip": "Trang bị",
+          "meta.skin_equipped": "Đang dùng",
+          "meta.skin_unlock": "Mở khóa ngay",
+          "howto.codex_title": "Từ Điển Quái & Sếp",
+          "howto.codex_sub": "Nhận diện & khắc chế nhanh"
         },
         en: {
           "menu.mode.title": "Game Modes",
@@ -502,6 +608,28 @@
           "menu.mode.ta_desc": "180 seconds of high-speed farming — dense spawns!",
           "menu.mode.br": "Boss Parade",
           "menu.mode.br_desc": "5 bosses in a row — rest between, repair window!",
+          "settings.gfx": "Graphics",
+          "settings.gfx_png": "Neon PNG",
+          "settings.gfx_vec": "Vector",
+          "settings.theme": "Arena Map",
+          "settings.theme_auto": "Auto (1–8)",
+          "settings.theme_1": "1. BSOD",
+          "settings.theme_2": "2. Firewall",
+          "settings.theme_3": "3. 404 Gravity",
+          "settings.theme_4": "4. Blackout",
+          "settings.theme_5": "5. Memory Leak",
+          "settings.theme_6": "6. Kernel Panic",
+          "settings.theme_7": "7. Cloud Cluster",
+          "settings.theme_8": "8. Retro OS",
+          "settings.virtual": "Virtual Arena",
+          "settings.virtual_desc": "Keep arena resizing simulated inside one window on desktop",
+          "meta.skins": "Ship Skin Hangar",
+          "meta.skins_sub": "Purely cosmetic unlocks — balanced gameplay",
+          "meta.skin_equip": "Equip",
+          "meta.skin_equipped": "Equipped",
+          "meta.skin_unlock": "Unlock Now",
+          "howto.codex_title": "Enemy & Boss Codex",
+          "howto.codex_sub": "Quick identification & counter tips"
         },
       });
       // FIX 2026-10-17 (user báo panel mode hiện key thô): register() chạy sau applyDOM()
@@ -549,10 +677,41 @@
         if (window.Tutorial && v2skipTut === null && !Tutorial.isDone(activeId)) { showTutModal(); return; }
         launchGame();
       };
-      try { // nút "chơi lại hướng dẫn" — nằm trong dialog Cách chơi (hub)
-        // DESIGN 2026-10-02: selector cũ [data-i18n='menu.howto.1'] không bao
-        // giờ khớp (markup dùng data-i18n-html) nên nút rơi ra document.body.
+      try { // Từ Điển Quái (PNG thumbnails) + nút "chơi lại hướng dẫn" trong Cách chơi
         const host = document.querySelector("#v2-howto-body") || document.body;
+        if (host && !host.querySelector("#wk-codex") && window.WKSprites) {
+          const isEn = (window.I18N && I18N.getLang && I18N.getLang() === "en");
+          const reg = (window.Monsters && Monsters.MONSTER_REGISTRY) || {};
+          const CODEX_LIST = [
+            { k: "mon_chaser", id: "chaser", vi: "Truy Đuổi", en: "Chaser", tipVi: "Lao thẳng theo tàu; né ngang khi lại gần.", tipEn: "Direct pursuer; strafe when close." },
+            { k: "mon_chewer_head", id: "chewer", vi: "Gặm Viền", en: "Border Chewer", tipVi: "Bám viền gặm cửa sổ; bắn viền gần để hất văng.", tipEn: "Chews window edges; shoot nearby border to knock back." },
+            { k: "mon_dasher", id: "dasher", vi: "Ninja Lao Tới", en: "Dasher", tipVi: "Đứng ngắm 0.7s — né vuông góc khi tia aim hóa đỏ.", tipEn: "Telegraphs 0.7s — dodge sideways when laser turns red." },
+            { k: "mon_tank_body", id: "tank", vi: "Xe Tăng", en: "Tank", tipVi: "Giáp trâu; bắn vào lõi phát sáng để gây ×1.5 dmg.", tipEn: "Heavy armor; aim at glowing core for bonus damage." },
+            { k: "mon_splitter", id: "splitter", vi: "Phân Thân", en: "Splitter", tipVi: "Sắp vỡ ở <50% máu, chết tách 2 Mini.", tipEn: "Cracks below 50% HP and splits into 2 Minis." },
+            { k: "mon_spitter", id: "spitter", vi: "Phun Mã Độc", en: "Spitter", tipVi: "Đứng yên 0.6s trước khi bắn đạn độc tầm xa.", tipEn: "Pauses before firing slow toxic bolts." },
+            { k: "mon_kamikaze", id: "bomber", vi: "Bom Cảm Tử", en: "Kamikaze", tipVi: "Hạ từ xa >150px trước khi dây nổ cháy hết.", tipEn: "Destroy from >150px before the fuse finishes." },
+            { k: "mon_warden_body", id: "warden", vi: "Giáp Gương", en: "Mirror Warden", tipVi: "Chắn đạn phía trước — vòng sau lưng hoặc dùng xuyên.", tipEn: "Blocks frontal shots — flank behind or pierce." },
+            { k: "mon_deadline", id: "deadline", vi: "Deadline Dí", en: "Deadline", tipVi: "Hạ trước khi đồng hồ đếm về 0 gây hưng phấn bầy.", tipEn: "Defeat before bell rings to prevent enemy frenzy." },
+            { k: "mon_snatcher", id: "snatcher", vi: "Trộm Gem", en: "Gem Snatcher", tipVi: "Chặn đường trốn về viền để đòi lại toàn bộ gem.", tipEn: "Intercept before edge escape to reclaim stolen gems." },
+            { k: "rush_gnawer_upper", id: "gnawer", vi: "Boss Hàm Nghiến", en: "Gnawer Boss", tipVi: "Bắn thẳng vào hàm mở sáng vàng để kích hoạt dmg.", tipEn: "Shoot inside its glowing open jaw." },
+            { k: "rush_null_cursor", id: "null", vi: "Boss Null Pointer", en: "Null Pointer", tipVi: "Né laser chữ X & chạy đua với đồng hồ xóa cửa sổ.", tipEn: "Dodge sweeping glitches and beat the shutdown timer." }
+          ];
+          const sec = document.createElement("div");
+          sec.id = "wk-codex";
+          const cards = CODEX_LIST.map(c => {
+            const r = reg[c.id];
+            const src = WKSprites.urlOf(c.k) || "";
+            const name = r ? (isEn ? (r.nameEn || c.en) : (r.nameVi || c.vi)) : (isEn ? c.en : c.vi);
+            const tip = r ? (isEn ? (r.counterEn || c.tipEn) : (r.counterVi || c.tipVi)) : (isEn ? c.tipEn : c.tipVi);
+            return `<div class="bestiary-card">` +
+              `<img class="bestiary-thumb" src="${escapeHtml(src)}" alt="${escapeHtml(name)}" loading="lazy">` +
+              `<div class="bestiary-info"><div class="bestiary-name">${escapeHtml(name)}</div>` +
+              `<div class="bestiary-tip">${escapeHtml(tip)}</div></div></div>`;
+          }).join("");
+          sec.innerHTML = `<div class="hub-section-title">${svgIcon("i-skull")} <span>${escapeHtml(vt("howto.codex_title", "Từ Điển Quái & Sếp"))}</span><span class="hub-section-sub">${escapeHtml(vt("howto.codex_sub", "Nhận diện & khắc chế nhanh"))}</span></div><div class="bestiary-grid">${cards}</div>`;
+          host.appendChild(sec);
+          sec.querySelectorAll("img").forEach(im => { im.addEventListener("error", () => { im.style.display = "none"; }); });
+        }
         const btn = document.createElement("button");
         btn.className = "btn-ghost"; btn.style.marginTop = "10px";
         btn.innerHTML = svgIcon("i-grad") + ` ${escapeHtml(vt("tutorial.replay", "Chơi lại hướng dẫn"))}`;
@@ -594,6 +753,35 @@
                   ${maxed ? "MAX" : (svgIcon("i-gem") + " " + cost)}</button></div>`;
             }).join("");
             shopEl.innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap">${nodes}</div>`;
+            try {
+              const skins = (typeof Meta.getSkins === "function") ? Meta.getSkins() : [];
+              if (skins.length) {
+                const skinCards = skins.map(sk => {
+                  const sName = en ? (sk.nameEn || sk.nameVi || sk.id) : (sk.nameVi || sk.id);
+                  const sCond = sk.unlocked ? (sk.active ? vt("meta.skin_equipped", "Đang dùng") : vt("meta.skin_equip", "Trang bị")) : (en ? (sk.unlockEn || sk.unlockVi || "") : (sk.unlockVi || ""));
+                  const sprUrl = (window.WKSprites && WKSprites.urlOf("ship_" + sk.id)) || ("assets/sprites/Ship/ship_skin_" + sk.id + ".png");
+                  const actLabel = sk.active ? vt("meta.skin_equipped", "Đang dùng") : (sk.unlocked ? vt("meta.skin_equip", "Trang bị") : (sk.canUnlock ? vt("meta.skin_unlock", "Mở khóa ngay") : svgIcon("i-lock")));
+                  return `<div class="skin-card${sk.active ? " active" : ""}">` +
+                    `<img class="skin-thumb" src="${escapeHtml(sprUrl)}" alt="${escapeHtml(sName)}" loading="lazy">` +
+                    `<div class="skin-name">${escapeHtml(sName)}</div>` +
+                    `<div class="skin-unlock">${escapeHtml(sk.unlocked ? "" : sCond)}</div>` +
+                    `<button type="button" class="btn-ghost skin-btn${sk.active ? " sel" : ""}" data-skin="${escapeHtml(sk.id)}" data-skin-act="${sk.canUnlock ? "unlock" : (sk.unlocked ? "equip" : "locked")}" ${(sk.active || (!sk.unlocked && !sk.canUnlock)) ? "disabled" : ""}>${actLabel}</button>` +
+                    `</div>`;
+                }).join("");
+                shopEl.innerHTML += `<div class="hub-section-title">${svgIcon("i-palette")} <span>${escapeHtml(vt("meta.skins", "Kho Skin Tàu"))}</span><span class="hub-section-sub">${escapeHtml(vt("meta.skins_sub", "Trang trí — công bằng tuyệt đối"))}</span></div>` +
+                  `<div class="skin-grid">${skinCards}</div>`;
+                shopEl.querySelectorAll(".skin-thumb").forEach(im => { im.addEventListener("error", () => { im.style.opacity = "0.25"; }); });
+                shopEl.querySelectorAll("[data-skin]").forEach(btn => {
+                  btn.onclick = () => {
+                    const id = btn.dataset.skin;
+                    const act = btn.dataset.skinAct;
+                    if (act === "unlock" && typeof Meta.unlockSkin === "function") Meta.unlockSkin(id);
+                    if (typeof Meta.setActiveSkin === "function") Meta.setActiveSkin(id);
+                    renderWorkshop();
+                  };
+                });
+              }
+            } catch (e) {}
             const badge = $("v2-shard-badge");
             if (badge) badge.innerHTML = svgIcon("i-gem") + ` <span class="v2-shard-num" data-v="${shards}">${I18N.fmtNum(shards)}</span> ${escapeHtml(vt("meta.shards", "Mảnh Kính"))}`;
             shopEl.querySelectorAll(".v2-buy").forEach(b => { b.onclick = () => {

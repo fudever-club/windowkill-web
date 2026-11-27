@@ -192,12 +192,16 @@
     if (!entry) return img;
     if (entry[kind]) return entry[kind];
     try {
+      var nw = img.naturalWidth || 128;
+      var nh = img.naturalHeight || 128;
+      var maxSide = Math.max(nw, nh);
+      var capScale = maxSide > 128 ? (128 / maxSide) : 1;
       var c = document.createElement("canvas");
-      c.width = img.naturalWidth || 128;
-      c.height = img.naturalHeight || 128;
+      c.width = Math.max(1, Math.round(nw * capScale));
+      c.height = Math.max(1, Math.round(nh * capScale));
       var cx = c.getContext("2d");
       if (!cx) return img;
-      cx.drawImage(img, 0, 0);
+      cx.drawImage(img, 0, 0, c.width, c.height);
       cx.globalCompositeOperation = "source-atop";
       cx.fillStyle = color;
       cx.globalAlpha = kind === "flash" ? 0.65 : 0.45;
@@ -223,21 +227,17 @@
     var dw = (w || img.naturalWidth) * sx;
     var dh = (h || w || img.naturalHeight) * sy;
 
+    // Fast path: skip save/restore when no rotation or alpha override is needed
+    // Note: neon glow halos are baked into PNGs cleanly; skip costly Canvas shadowBlur.
+    if (!opts.rot && opts.alpha == null) {
+      ctx.drawImage(src, x - dw / 2, y - dh / 2, dw, dh);
+      return true;
+    }
+
     ctx.save();
     if (x || y) ctx.translate(x, y);
     if (opts.rot) ctx.rotate(opts.rot);
     if (opts.alpha != null) ctx.globalAlpha *= opts.alpha;
-    if (opts.glowColor && opts.glowBlur) {
-      var sc = 1;
-      try {
-        if (typeof window !== "undefined" && window.WKQuality && window.WKQuality.tier === "lite") sc = 0;
-        else if (typeof window !== "undefined" && window.WKQuality && window.WKQuality.tier === "balanced") sc = 0.5;
-      } catch (e) {}
-      if (sc > 0) {
-        ctx.shadowColor = opts.glowColor;
-        ctx.shadowBlur = opts.glowBlur * sc;
-      }
-    }
     ctx.drawImage(src, -dw / 2, -dh / 2, dw, dh);
     ctx.restore();
     return true;

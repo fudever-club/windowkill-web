@@ -22,17 +22,17 @@ jobs:
       - name: Build game bundle
         run: node scripts/build-game.js
 
-      - name: Install Electron & package Windows x64
+      - name: Install Electron & package Windows portable .exe
         working-directory: electron
         run: |
           npm ci || npm install
-          npm run pack
+          npm run release
 
-      - name: Archive Windows Standalone build
+      - name: Archive Windows Standalone .exe
         uses: actions/upload-artifact@v4
         with:
-          name: windowkill-windows-x64
-          path: electron/dist/windowkill-web-win32-x64/
+          name: windowkill-windows-x64-exe
+          path: electron/dist/WINDOWKILL-Web-Edition-Portable-x64.exe
 
   build-android-apk:
     name: Mobile Capacitor Android (.apk)

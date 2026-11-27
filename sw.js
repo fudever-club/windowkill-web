@@ -15,7 +15,7 @@
  */
 "use strict";
 
-const VERSION = "windowkill-20261127T142929Z-cdcbae9"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
+const VERSION = "windowkill-20261127T145758Z-5d54af4"; // AUTO-STAMP: không sửa tay — xem scripts/bump-sw.js
 const CORE_CACHE = VERSION + "-core";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "offline.html";
@@ -133,17 +133,24 @@ function networkFirstCore(req) {
   return caches.open(CORE_CACHE).then((cache) =>
     fetch(req)
       .then((res) => putIfOk(cache, req, res))
-      .catch(() => cache.match(req))
+      .catch(() => cache.match(req, { ignoreSearch: true }))
   );
 }
 
-// Navigation: network-first, fallback cache, cuối cùng offline.html.
+// Navigation: network-first, fallback cache ("/" → index.html), cuối cùng offline.html.
 function networkFirstPage(req) {
   return caches.open(CORE_CACHE).then((cache) =>
     fetch(req)
       .then((res) => putIfOk(cache, req, res))
       .catch(() =>
-        cache.match(req).then((hit) => hit || caches.match(OFFLINE_URL))
+        cache.match(req, { ignoreSearch: true }).then((hit) => {
+          if (hit) return hit;
+          try {
+            const p = new URL(req.url).pathname;
+            if (p === "/" || p.endsWith("/")) return cache.match("index.html");
+          } catch (e) {}
+          return null;
+        }).then((hit) => hit || caches.match(OFFLINE_URL))
       )
   );
 }

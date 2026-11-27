@@ -21,6 +21,7 @@ const ROOT_FILES = [
 
 const COPY_DIRS = ["css", "assets"];
 const SKIP_JS_SUBDIRS = new Set(["game"]);
+const SKIP_ASSET_FILES = new Set(["High_Score_Parade_full.mp3"]);
 
 function copyRecursive(src, dst, filterFn) {
   const st = fs.statSync(src);
@@ -56,7 +57,7 @@ function stageWebBundle(targetDir) {
   for (const dir of COPY_DIRS) {
     const src = path.join(ROOT, dir);
     if (fs.existsSync(src)) {
-      copyRecursive(src, path.join(targetDir, dir));
+      copyRecursive(src, path.join(targetDir, dir), (_full, name) => !SKIP_ASSET_FILES.has(name));
     }
   }
 

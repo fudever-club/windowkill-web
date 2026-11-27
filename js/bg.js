@@ -554,6 +554,13 @@ const BG = (() => {
       paintBase(c.getContext("2d"), pal);
       base = c;
     }
+    // Lazy-fetch only active stage background + parallax pair (never preload all 8 stages)
+    try {
+      if (typeof window !== "undefined" && window.WKSprites && WKSprites.enabled && WKSprites.enabled() && typeof WKSprites.get === "function") {
+        WKSprites.get(`bg_${sid}_base`);
+        WKSprites.get(`bg_${sid}_parallax`);
+      }
+    } catch (e) {}
     neb = mkCanvas(W, H);
     paintNebula(neb.getContext("2d"), pal);
     initParts(pal);
@@ -627,17 +634,17 @@ const BG = (() => {
     if (Array.isArray(base)) ctx.drawImage(base[rd ? 0 : ((t / 200) | 0) % 3], 0, 0);
     else ctx.drawImage(base, 0, 0);
 
-    // L0.5 PNG ambient parallax (when Cartoon Neon PNG mode enabled)
+    // L0.5 PNG ambient parallax (when Cartoon Neon PNG mode enabled and not reduced)
     try {
-      if (typeof window !== "undefined" && window.WKSprites && WKSprites.enabled && WKSprites.enabled()) {
+      if (!rd && typeof window !== "undefined" && window.WKSprites && WKSprites.enabled && WKSprites.enabled()) {
         const pImg = WKSprites.get(`bg_${stageId}_parallax`);
         if (pImg && pImg.naturalWidth > 0 && pImg.naturalHeight > 0) {
           const sc = Math.max(W / pImg.naturalWidth, H / pImg.naturalHeight) * 1.04;
           const dw = pImg.naturalWidth * sc, dh = pImg.naturalHeight * sc;
-          const ox = rd ? 0 : Math.sin(t * 0.00018) * 18;
-          const oy = rd ? 0 : Math.cos(t * 0.00014) * 14;
+          const ox = Math.sin(t * 0.00018) * 18;
+          const oy = Math.cos(t * 0.00014) * 14;
           ctx.save();
-          ctx.globalAlpha = rd ? 0.25 : 0.42;
+          ctx.globalAlpha = 0.36;
           ctx.drawImage(pImg, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
           ctx.restore();
         }
